@@ -3,6 +3,10 @@
 //! This crate deliberately does not open sockets. It models only the privacy
 //! capability future networked adapters are allowed to receive.
 
+mod arti_launch;
+
+pub use arti_launch::ArtiLaunchSpec;
+
 use std::{error::Error, fmt, num::NonZeroU16};
 
 const TOR_SOCKS_HOST: &str = "127.0.0.1";
