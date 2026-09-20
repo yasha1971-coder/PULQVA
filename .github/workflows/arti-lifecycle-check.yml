@@ -1,0 +1,63 @@
+name: arti-lifecycle-check
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          rustup default 1.91.0
+
+      - name: Build exact pinned Arti sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTI_VERSION="$(tr -d '\r\n' < sidecars/arti/VERSION)"
+          test "$ARTI_VERSION" = "2.6.0"
+
+          EXTRA_FEATURES=()
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            EXTRA_FEATURES=(--features static-sqlite)
+          fi
+
+          cargo +1.91.0 install arti \
+            --version "$ARTI_VERSION" \
+            --locked \
+            "${EXTRA_FEATURES[@]}" \
+            --root "$RUNNER_TEMP/arti-root"
+
+      - name: Start and stop real Arti with deferred bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTI_BIN="$RUNNER_TEMP/arti-root/bin/arti"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ARTI_BIN="${ARTI_BIN}.exe"
+          fi
+
+          test -f "$ARTI_BIN"
+
+          cargo +1.91.0 run \
+            --quiet \
+            --locked \
+            -p pulqva-privacy \
+            --example real_arti_lifecycle \
+            -- "$ARTI_BIN" \
+            | grep -F "PULQVA_REAL_ARTI_LIFECYCLE_OK"
