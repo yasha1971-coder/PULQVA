@@ -1,0 +1,12 @@
+[package]
+name = "pulqva-arti-config-check"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.91"
+publish = false
+
+[workspace]
+
+[dependencies]
+arti = { version = "=2.6.0", features = ["experimental-api", "static-sqlite"] }
+tor-config = "=0.46.0"
