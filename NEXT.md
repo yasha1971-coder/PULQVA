@@ -1,28 +1,36 @@
 # NEXT
 
 ## Current verified state
-The PULQVA continuity/kernel bootstrap scaffold has been generated.
 
-The product kernel is defined in `kernel/` and is intentionally independent of specific UI, bundler, AI provider, or retrieval backend choices.
+T001 is complete.
+
+The continuity/kernel scaffold is published in `main`. The continuity guard passed in GitHub
+Actions for commit `ba39fc6e2757120c5daf38edccbfaee5a5de3f6e`.
+
+Kernel v1 is the durable product contract. The completion workflow creates `kernel-v1.0.0`
+once T001 is recorded as complete; later CI rejects ordinary changes to `kernel/`.
 
 ## Next atomic task
-**T001 — Establish the repository and green bootstrap checkpoint**
 
-After `yasha1971-coder/PULQVA` exists:
-1. Publish this scaffold to the default branch.
-2. Run the continuity guard.
-3. Fix bootstrap-only issues if any.
-4. Set `last_verified_commit` in `PROJECT_STATE.json`.
-5. Remove the repository-missing blocker.
-6. Tag the verified kernel checkpoint `kernel-v1.0.0`.
-7. Move `T001` to DONE.
-8. Create the next small implementation task; do not jump directly to Tor + UI + AI together.
+**T002 — Create the minimal Rust workspace**
+
+Create only the smallest compiling Rust foundation:
+
+- root Cargo workspace;
+- `crates/pulqva-core`;
+- one smoke test proving the workspace builds and tests.
 
 ## Do not do yet
-- Do not add product code before the bootstrap checkpoint is green.
-- Do not select a remote AI provider as an irreversible dependency.
-- Do not implement direct-network fallback.
-- Do not redesign the kernel while implementing tooling.
+
+- no Tauri;
+- no React/Vite/Farm;
+- no Arti/Tor implementation;
+- no AI provider;
+- no yt-dlp;
+- no network dependency.
 
 ## Success
-A fresh agent can open the repository, read the required files, run the guard, and identify the next task without reading any prior chat.
+
+`cargo test --workspace` passes and the repository remains continuity-green.
+
+After T002, update state and create the next atomic task before adding another subsystem.

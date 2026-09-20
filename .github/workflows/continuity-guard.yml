@@ -1,10 +1,13 @@
 name: continuity-guard
+
 on:
   push:
     branches: ["main"]
   pull_request:
+
 permissions:
-  contents: read
+  contents: write
+
 jobs:
   continuity:
     runs-on: ubuntu-latest
@@ -12,8 +15,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Validate repository continuity state
         run: python3 scripts/continuity_guard.py
+
       - name: Protect frozen kernel after v1 tag exists
         shell: bash
         run: |
@@ -27,3 +32,28 @@ jobs:
           else
             echo "kernel-v1.0.0 tag not present yet; bootstrap phase."
           fi
+
+      - name: Freeze kernel v1 after T001
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse "refs/tags/kernel-v1.0.0" >/dev/null 2>&1; then
+            echo "kernel-v1.0.0 already exists."
+            exit 0
+          fi
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path("PROJECT_STATE.json").read_text())
+          if state.get("last_completed_task") != "T001":
+              raise SystemExit("T001 not complete; kernel tag will not be created")
+          if state.get("kernel_version") != "1.0.0":
+              raise SystemExit("unexpected kernel version")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a kernel-v1.0.0 "$GITHUB_SHA" -m "PULQVA Kernel v1.0.0"
+          git push origin kernel-v1.0.0
