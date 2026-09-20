@@ -2,35 +2,38 @@
 
 ## Current verified state
 
-T001 is complete.
+T002 is complete.
 
-The continuity/kernel scaffold is published in `main`. The continuity guard passed in GitHub
-Actions for commit `ba39fc6e2757120c5daf38edccbfaee5a5de3f6e`.
+The repository now has a minimal Rust workspace with `crates/pulqva-core`.
+GitHub Actions verified both:
 
-Kernel v1 is the durable product contract. The completion workflow creates `kernel-v1.0.0`
-once T001 is recorded as complete; later CI rejects ordinary changes to `kernel/`.
+- continuity guard: green;
+- `cargo test --workspace --locked`: green on commit
+  `08ed4f4d1f3f0d8cd7d2efe7f33e402e93f84f45`.
+
+No UI, network, Tor, AI, yt-dlp, ranking, or packaging code exists yet.
 
 ## Next atomic task
 
-**T002 — Create the minimal Rust workspace**
+**T003 — Add the first typed intent boundary**
 
-Create only the smallest compiling Rust foundation:
+Add only a minimal `SearchIntent` type to `pulqva-core` with explicit validation that rejects
+an empty/whitespace-only query.
 
-- root Cargo workspace;
-- `crates/pulqva-core`;
-- one smoke test proving the workspace builds and tests.
+This establishes the first safe data boundary without introducing any provider, parser, network
+client, or executable command generation.
 
 ## Do not do yet
 
 - no Tauri;
-- no React/Vite/Farm;
-- no Arti/Tor implementation;
+- no frontend framework/bundler;
+- no Arti/Tor;
 - no AI provider;
-- no yt-dlp;
-- no network dependency.
+- no yt-dlp/FFmpeg;
+- no shell command generation;
+- no search execution.
 
 ## Success
 
-`cargo test --workspace` passes and the repository remains continuity-green.
-
-After T002, update state and create the next atomic task before adding another subsystem.
+`SearchIntent` is typed, blank queries are rejected by tests, non-empty queries are accepted,
+`cargo test --workspace --locked` passes, and continuity remains green.
