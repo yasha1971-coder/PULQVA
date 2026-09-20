@@ -2,54 +2,50 @@
 
 ## Current verified state
 
-T010 is complete.
+T011 is complete.
 
-PULQVA now has a source-verified Arti 2.6.0 configuration contract and deterministic fixture:
+PULQVA now has a typed deterministic `ArtiConfigSpec`:
 
-- `application.defer_bootstrap = true`;
+- SOCKS port comes from `TorSocksEndpoint`;
+- cache and state paths are explicit typed inputs;
+- `defer_bootstrap = true`;
 - configuration watching disabled;
-- SOCKS listener configured as a numeric loopback-only Arti listener;
 - DNS listener disabled;
-- cache and state directories explicit;
-- fixture parsed and resolved through Arti 2.6.0 APIs on Windows and Linux;
-- no Arti proxy process was started;
-- no Tor bootstrap or network connection occurred.
+- canonical rendering matches `sidecars/arti/pulqva.toml` byte-for-byte;
+- TOML path characters are escaped deterministically;
+- no file I/O, process spawn, sockets, or Tor bootstrap.
 
 Verified PR head:
-`445331c69fc30ce580586d82669a1e3f4d3bbdb8`
+`24535b1fa08f5ca50698b7758c77c159c86fb0f8`
 
-Verified runs:
+Verified checks:
 
-- arti-config-contract: `35527538838` — success;
-- rust-check: `35527538803` — success;
-- continuity-guard: `35527538852` — success;
-- arti-sidecar-check: `35527538906` — success.
+- rust-check: success;
+- continuity-guard: success;
+- arti-config-contract: success;
+- arti-sidecar-check: success.
 
 ## Next atomic task
 
-**T011 — Add a typed deterministic Arti configuration renderer**
+**T012 — Add a typed Arti runtime plan**
 
-Add a pure-data `ArtiConfigSpec` in `pulqva-privacy` that renders the validated Arti 2.6.0
-configuration contract from explicit inputs.
+Create one pure-data `ArtiRuntimePlan` that composes the verified launch and configuration specs
+from one set of inputs.
 
-The renderer must carry:
+The plan must guarantee that:
 
-- SOCKS port as typed non-zero loopback endpoint data;
-- explicit cache directory;
-- explicit state directory;
-- `defer_bootstrap = true`;
-- DNS listener disabled;
-- configuration watching disabled.
-
-The rendered canonical fixture for port 19050 and the repository test paths must match
-`sidecars/arti/pulqva.toml` byte-for-byte.
+- executable and config-file paths belong to one launch spec;
+- cache/state paths used by launch metadata and rendered config cannot drift apart;
+- the typed loopback SOCKS endpoint is shared with the config renderer;
+- generated launch arguments remain deterministic;
+- generated config remains byte-stable.
 
 ## Do not do yet
 
 - no file writes;
 - no process spawn;
 - no Tor bootstrap/network;
-- no SOCKS readiness probing;
+- no readiness probing;
 - no dynamic port discovery;
 - no yt-dlp/FFmpeg;
 - no AI;
@@ -57,5 +53,5 @@ The rendered canonical fixture for port 19050 and the repository test paths must
 
 ## Success
 
-The configuration is generated deterministically from typed privacy inputs, exact-fixture parity is
-covered by tests, and all existing checks remain green.
+One typed, internally consistent runtime plan can deterministically produce both launch arguments
+and Arti configuration while all existing checks remain green.
