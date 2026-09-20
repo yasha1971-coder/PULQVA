@@ -2,38 +2,41 @@
 
 ## Current verified state
 
-T002 is complete.
+T003 is complete.
 
-The repository now has a minimal Rust workspace with `crates/pulqva-core`.
-GitHub Actions verified both:
+The core now exposes a dependency-free `SearchIntent` boundary:
 
-- continuity guard: green;
-- `cargo test --workspace --locked`: green on commit
-  `08ed4f4d1f3f0d8cd7d2efe7f33e402e93f84f45`.
+- non-empty natural-language queries are accepted;
+- empty and whitespace-only queries are rejected;
+- the type is data-only;
+- no network/runtime dependency exists;
+- no shell or executable command generation exists.
 
-No UI, network, Tor, AI, yt-dlp, ranking, or packaging code exists yet.
+GitHub Actions verified continuity and `cargo test --workspace --locked` on commit
+`7e6483c544b5df421fb0e9c0f57afe076adea0b9`.
 
 ## Next atomic task
 
-**T003 — Add the first typed intent boundary**
+**T004 — Add strict JSON -> SearchIntent parsing**
 
-Add only a minimal `SearchIntent` type to `pulqva-core` with explicit validation that rejects
-an empty/whitespace-only query.
+Add a minimal JSON decoding boundary that converts a strict JSON object into `SearchIntent`
+without choosing or calling any AI provider.
 
-This establishes the first safe data boundary without introducing any provider, parser, network
-client, or executable command generation.
+The JSON contract must reject unknown fields and still enforce the existing non-blank query
+validation.
 
 ## Do not do yet
 
-- no Tauri;
-- no frontend framework/bundler;
-- no Arti/Tor;
 - no AI provider;
+- no HTTP client;
+- no Tor/Arti;
 - no yt-dlp/FFmpeg;
+- no search execution;
 - no shell command generation;
-- no search execution.
+- no UI;
+- no ranking/download logic.
 
 ## Success
 
-`SearchIntent` is typed, blank queries are rejected by tests, non-empty queries are accepted,
-`cargo test --workspace --locked` passes, and continuity remains green.
+A valid JSON object produces `SearchIntent`; blank queries, malformed JSON, and unknown fields
+are rejected by tests; `cargo test --workspace --locked` and continuity guard remain green.

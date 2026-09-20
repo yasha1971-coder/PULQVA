@@ -1,8 +1,11 @@
-//! Minimal PULQVA core crate bootstrap.
+//! PULQVA core domain boundaries.
 //!
-//! Product behavior is intentionally absent at T002. This crate only proves
-//! that the Rust workspace exists and is testable without network/runtime
-//! dependencies.
+//! The core crate stays independent from UI, networking, Tor, AI providers,
+//! media backends, and shell execution.
+
+mod intent;
+
+pub use intent::{SearchIntent, SearchIntentError};
 
 /// Marker proving the core crate is linked and available.
 pub const CORE_CRATE_READY: bool = true;
