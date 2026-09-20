@@ -2,54 +2,60 @@
 
 ## Current verified state
 
-T009 is complete.
+T010 is complete.
 
-PULQVA now has a pure-data Arti sidecar launch specification:
+PULQVA now has a source-verified Arti 2.6.0 configuration contract and deterministic fixture:
 
-- executable path is explicit input data;
-- config, cache and state paths are explicit input data;
-- proxy subcommand arguments are deterministic;
-- no process is spawned;
-- no socket is opened;
-- no Tor bootstrap occurs.
+- `application.defer_bootstrap = true`;
+- configuration watching disabled;
+- SOCKS listener configured as a numeric loopback-only Arti listener;
+- DNS listener disabled;
+- cache and state directories explicit;
+- fixture parsed and resolved through Arti 2.6.0 APIs on Windows and Linux;
+- no Arti proxy process was started;
+- no Tor bootstrap or network connection occurred.
 
 Verified PR head:
-`df0c0ad867ce10d868545b0014a5d6e8de577c58`
+`445331c69fc30ce580586d82669a1e3f4d3bbdb8`
 
-Verified checks:
+Verified runs:
 
-- rust-check: success;
-- continuity-guard: success;
-- arti-sidecar-check: success.
+- arti-config-contract: `35527538838` — success;
+- rust-check: `35527538803` — success;
+- continuity-guard: `35527538852` — success;
+- arti-sidecar-check: `35527538906` — success.
 
 ## Next atomic task
 
-**T010 — Verify the pinned Arti configuration contract**
+**T011 — Add a typed deterministic Arti configuration renderer**
 
-Confirm the exact Arti 2.6.0 configuration keys and CLI path needed for a self-contained proxy
-configuration, then add a deterministic config fixture and CI parse/check proof without starting
-the proxy.
+Add a pure-data `ArtiConfigSpec` in `pulqva-privacy` that renders the validated Arti 2.6.0
+configuration contract from explicit inputs.
 
-The proof must cover:
+The renderer must carry:
 
+- SOCKS port as typed non-zero loopback endpoint data;
 - explicit cache directory;
 - explicit state directory;
-- loopback-only SOCKS listen configuration;
-- config accepted by pinned Arti 2.6.0 on Windows and Linux;
-- no Tor bootstrap and no network connection.
+- `defer_bootstrap = true`;
+- DNS listener disabled;
+- configuration watching disabled.
+
+The rendered canonical fixture for port 19050 and the repository test paths must match
+`sidecars/arti/pulqva.toml` byte-for-byte.
 
 ## Do not do yet
 
-- no product process spawn;
+- no file writes;
+- no process spawn;
 - no Tor bootstrap/network;
 - no SOCKS readiness probing;
 - no dynamic port discovery;
-- no yt-dlp;
-- no HTTP;
-- no AI provider;
+- no yt-dlp/FFmpeg;
+- no AI;
 - no UI.
 
 ## Success
 
-The exact configuration contract is source-verified, represented by a deterministic fixture, and
-validated by CI on Windows and Linux without starting Tor.
+The configuration is generated deterministically from typed privacy inputs, exact-fixture parity is
+covered by tests, and all existing checks remain green.
