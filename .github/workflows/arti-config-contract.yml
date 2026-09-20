@@ -1,0 +1,42 @@
+name: arti-config-contract
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          rustup default 1.91.0
+
+      - name: Verify deterministic PULQVA Arti config contract
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          grep -F 'defer_bootstrap = true' sidecars/arti/pulqva.toml
+          grep -F 'socks_listen = 19050' sidecars/arti/pulqva.toml
+          grep -F 'dns_listen = 0' sidecars/arti/pulqva.toml
+          grep -F 'cache_dir = { literal = "runtime/cache" }' sidecars/arti/pulqva.toml
+          grep -F 'state_dir = { literal = "runtime/state" }' sidecars/arti/pulqva.toml
+
+          cargo +1.91.0 run \
+            --manifest-path tools/arti-config-check/Cargo.toml \
+            --quiet \
+            | grep -F 'PULQVA_ARTI_CONFIG_OK'
