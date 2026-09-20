@@ -1,0 +1,59 @@
+name: arti-sidecar-check
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          rustup default 1.91.0
+
+      - name: Build exact Arti sidecar without running Tor
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTI_VERSION="$(tr -d '\r\n' < sidecars/arti/VERSION)"
+          test "$ARTI_VERSION" = "2.6.0"
+
+          EXTRA_FEATURES=()
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            EXTRA_FEATURES=(--features static-sqlite)
+          fi
+
+          cargo +1.91.0 install arti \
+            --version "$ARTI_VERSION" \
+            --locked \
+            "${EXTRA_FEATURES[@]}" \
+            --root "$RUNNER_TEMP/arti-root"
+
+      - name: Verify Arti binary and proxy CLI without bootstrapping
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTI_BIN="$RUNNER_TEMP/arti-root/bin/arti"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ARTI_BIN="${ARTI_BIN}.exe"
+          fi
+          test -f "$ARTI_BIN"
+          VERSION_OUTPUT="$("$ARTI_BIN" --version)"
+          echo "$VERSION_OUTPUT"
+          echo "$VERSION_OUTPUT" | grep -F "2.6.0"
+          "$ARTI_BIN" help proxy > "$RUNNER_TEMP/arti-proxy-help.txt"
+          grep -i "proxy" "$RUNNER_TEMP/arti-proxy-help.txt"
