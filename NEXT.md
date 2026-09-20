@@ -2,46 +2,48 @@
 
 ## Current verified state
 
-T008 is complete.
+T009 is complete.
 
-Arti sidecar build proof is green on both kernel release targets:
+PULQVA now has a pure-data Arti sidecar launch specification:
 
-- official `arti` binary version pinned to `2.6.0`;
-- Rust `1.91.0`;
-- Ubuntu 24.04 build/install succeeds;
-- Windows build/install succeeds with Arti's `static-sqlite` feature;
-- `arti --version` contains `2.6.0`;
-- `arti help proxy` succeeds on both targets;
-- no Tor bootstrap or runtime network connection was started;
-- continuity and workspace Rust checks are green.
+- executable path is explicit input data;
+- config, cache and state paths are explicit input data;
+- proxy subcommand arguments are deterministic;
+- no process is spawned;
+- no socket is opened;
+- no Tor bootstrap occurs.
 
 Verified PR head:
-`756b6c574c80a8cc99b22261cb546838ddebb85b`
+`df0c0ad867ce10d868545b0014a5d6e8de577c58`
 
-Verified Arti run:
-`35519121511`
+Verified checks:
+
+- rust-check: success;
+- continuity-guard: success;
+- arti-sidecar-check: success.
 
 ## Next atomic task
 
-**T009 — Add a typed Arti sidecar launch specification**
+**T010 — Verify the pinned Arti configuration contract**
 
-Add a pure-data launch specification for the pinned Arti sidecar:
+Confirm the exact Arti 2.6.0 configuration keys and CLI path needed for a self-contained proxy
+configuration, then add a deterministic config fixture and CI parse/check proof without starting
+the proxy.
 
-- executable identity/path input;
-- argument vector for the proxy subcommand;
-- explicit data/state directory inputs;
-- no process spawn;
-- no Tor bootstrap;
-- no sockets/network.
+The proof must cover:
 
-This prepares a narrow boundary for the later runtime launcher while keeping process execution and
-privacy-sensitive runtime behavior out of scope.
+- explicit cache directory;
+- explicit state directory;
+- loopback-only SOCKS listen configuration;
+- config accepted by pinned Arti 2.6.0 on Windows and Linux;
+- no Tor bootstrap and no network connection.
 
 ## Do not do yet
 
-- no process spawn;
+- no product process spawn;
 - no Tor bootstrap/network;
-- no dynamic SOCKS-port discovery;
+- no SOCKS readiness probing;
+- no dynamic port discovery;
 - no yt-dlp;
 - no HTTP;
 - no AI provider;
@@ -49,5 +51,5 @@ privacy-sensitive runtime behavior out of scope.
 
 ## Success
 
-The launch specification is typed, deterministic, platform-neutral at the core boundary, covered
-by tests, and all existing checks remain green.
+The exact configuration contract is source-verified, represented by a deterministic fixture, and
+validated by CI on Windows and Linux without starting Tor.
