@@ -2,23 +2,23 @@
 
 ## Current verified state
 
-T013 is complete.
+T014 is complete.
 
-PULQVA can now materialize the deterministic Arti configuration to disk safely:
+PULQVA now has a typed `PreparedArtiRuntime` capability:
 
-- config bytes come only from `ArtiRuntimePlan::render_config`;
-- only the config parent directory is created;
-- writes use a unique temporary sibling file;
-- temporary contents are flushed and synced before replacement;
-- final replacement uses same-filesystem rename semantics;
-- handled failures clean up temporary files;
-- Windows and Linux materialization tests pass;
+- callers cannot construct it directly from raw fields;
+- successful preparation materializes the verified Arti config first;
+- failed materialization returns no prepared capability;
+- the capability carries the immutable `ArtiRuntimePlan`;
+- typed Tor SOCKS endpoint is preserved;
+- deterministic launch arguments are exposed;
+- Windows and Linux privacy runtime tests pass;
 - no Arti process is spawned;
-- no sockets are opened;
+- no sockets are opened by PULQVA;
 - no Tor bootstrap occurs.
 
 Verified PR head:
-`e314b928365bcfa36cabbcccb3ea7c3982f2c2fb`
+`d76d23a2e3ac982d2a91721fc8216d7b96f7808f`
 
 Verified checks:
 
@@ -30,24 +30,25 @@ Verified checks:
 
 ## Next atomic task
 
-**T014 — Add a prepared Arti runtime capability**
+**T015 — Add a controlled Arti child-process launcher**
 
-Introduce a typed `PreparedArtiRuntime` capability that can only be produced after successful
-configuration materialization.
+Introduce the first process side effect behind the prepared capability boundary.
 
-The capability must:
+The launcher must:
 
-- carry the immutable runtime plan needed by a future launcher;
-- be constructible only through successful preparation/materialization;
-- expose deterministic launch arguments and the typed Tor SOCKS endpoint;
-- prevent future launch code from accepting an unprepared runtime plan by accident;
-- introduce no process spawn and no network behavior.
+- accept only `PreparedArtiRuntime`, never a raw runtime plan;
+- spawn only the explicit Arti executable with deterministic arguments;
+- inherit no shell;
+- capture process identity/handle in a typed `RunningArti` capability;
+- provide deterministic shutdown/cleanup;
+- keep `defer_bootstrap = true`;
+- perform no SOCKS request, readiness probe, DNS request, or Tor bootstrap trigger.
 
 ## Do not do yet
 
-- no Arti process spawn;
-- no Tor bootstrap/network;
-- no readiness probing;
+- no external network request;
+- no Tor bootstrap trigger;
+- no SOCKS readiness probing;
 - no dynamic port discovery;
 - no yt-dlp/FFmpeg;
 - no AI;
@@ -55,5 +56,5 @@ The capability must:
 
 ## Success
 
-A future launcher can be designed to require a `PreparedArtiRuntime` token, making successful
-config materialization a type-level prerequisite while all existing checks remain green.
+A prepared runtime can be launched and cleanly stopped as a supervised child process without
+triggering external network activity, with Windows/Linux tests and all existing checks green.
