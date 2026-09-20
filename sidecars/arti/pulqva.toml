@@ -1,0 +1,11 @@
+[application]
+defer_bootstrap = true
+watch_configuration = false
+
+[proxy]
+socks_listen = 19050
+dns_listen = 0
+
+[storage]
+cache_dir = { literal = "runtime/cache" }
+state_dir = { literal = "runtime/state" }
