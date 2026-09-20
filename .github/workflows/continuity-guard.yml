@@ -1,0 +1,29 @@
+name: continuity-guard
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  continuity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate repository continuity state
+        run: python3 scripts/continuity_guard.py
+      - name: Protect frozen kernel after v1 tag exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse "refs/tags/kernel-v1.0.0" >/dev/null 2>&1; then
+            if ! git diff --quiet "kernel-v1.0.0" -- kernel/; then
+              echo "Kernel files differ from frozen kernel-v1.0.0."
+              echo "Normal feature work must be additive outside kernel/."
+              exit 1
+            fi
+          else
+            echo "kernel-v1.0.0 tag not present yet; bootstrap phase."
+          fi

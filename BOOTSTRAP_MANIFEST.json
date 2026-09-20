@@ -1,0 +1,21 @@
+{
+  "files": {
+    ".github/pull_request_template.md": "51ea6fd437c480ad81ac8e1c9e5cece256f50a020164dbf5cf0734a561f68252",
+    ".github/workflows/continuity-guard.yml": "634d21b62a6bede22a982a0ab7f4fae5f279c80cdadf8217d916cad810e1e312",
+    "AGENTS.md": "024f3c89c0d7ef702ff3391dd01e4b1908c579f00e4e0fa8e2fde1bfee0974f1",
+    "NEXT.md": "810fda232fc9ddc38253467dbd980b4b3ded3882b7483c62b0bf15fbe2dc5939",
+    "PROJECT_STATE.json": "14ecac749310ff3b15d8775aab9b2b442ee83dae5668287552b559aacf7e3e85",
+    "README.md": "2b285f6a253db544d07ea5cd684746b0964e0988e3e518e98445216b3810b2d6",
+    "decisions/ADR-0001-repository-is-source-of-truth.md": "f356325c1fb60915ecdca99fbf99a9739e9b0f3d0e6ddf397a095f19ac933c8d",
+    "decisions/ADR-0002-kernel-vs-adapters.md": "e848f96b01017b444af55f6f1ce1ead886a048334557bee7ef50a511b363e8b4",
+    "decisions/ADR-0003-atomic-work-green-checkpoints.md": "125ad104ed4188e45f83ad340f5ae0e7a1b6a91b6561cc6325fab3389ca8ff7a",
+    "kernel/CORE_CONTRACT.md": "db982ed86afbd6690592735829d73a2c5651ab17462be006c85dac230d4b43f3",
+    "kernel/KERNEL_VERSION": "59854984853104df5c353e2f681a15fc7924742f9a2e468c29af248dce45ce03",
+    "kernel/PRIVACY_INVARIANTS.md": "ffd7695ec09f2fbb5c07d76916cf785c4b65229bda6bf1550a8a65903197cfc9",
+    "kernel/UX_CONTRACT.md": "5f2ae4438a54b115baf50bad2a7f255849458969c5653745cd67f9b7792b5919",
+    "scripts/continuity_guard.py": "dd549f12ad6404abf6522052b581724ff65500225585a7a2f16679a12e7c5e21",
+    "tasks/ACTIVE/README.md": "881dfa56e080f8fff2d88ff25facc88e503e9522b86d72dd68667fc61c0501b0",
+    "tasks/DONE/T000-define-continuity-kernel.md": "15fc165113ee61c600806b6dffb1cc05b2a7d75bc8daa8610c358ab9a6e391f2",
+    "tasks/READY/T001-bootstrap-repository.md": "16b2b371f7d052794e0f34bf940b18e73b4aa6578412c7c5fac54de3c9d6e495"
+  }
+}

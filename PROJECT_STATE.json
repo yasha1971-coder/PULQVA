@@ -1,0 +1,17 @@
+{
+  "project": "PULQVA",
+  "state_schema": 1,
+  "kernel_version": "1.0.0",
+  "phase": "bootstrap",
+  "source_of_truth": "repository",
+  "last_verified_commit": null,
+  "last_completed_task": "T000",
+  "active_task": null,
+  "next_task": "T001",
+  "ci": "not_run",
+  "architecture_status": "kernel_frozen_implementation_open",
+  "known_blockers": [
+    "GitHub repository yasha1971-coder/PULQVA does not yet exist at bootstrap generation time."
+  ],
+  "updated": "2026-09-20"
+}
