@@ -2,6 +2,7 @@
 members = [
     "crates/pulqva-core",
     "crates/pulqva-intent-json",
+    "crates/pulqva-privacy",
 ]
 resolver = "2"
 
