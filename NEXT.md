@@ -2,45 +2,44 @@
 
 ## Current verified state
 
-T005 is complete.
+T006 is complete.
 
-`pulqva-core` now contains provider-neutral boundaries for both sides of search:
+`pulqva-privacy` now exposes a dependency-free `TorSocksEndpoint` capability:
 
-- `SearchIntent`: validated natural-language request;
-- `SearchCandidate`: validated human-visible title + opaque backend locator.
-
-The candidate locator deliberately has no URL or command semantics in core.
+- fixed loopback host `127.0.0.1`;
+- non-zero port required;
+- proxy representation uses `socks5h://` so DNS stays on the proxy side;
+- there is no Direct/Clearnet route variant;
+- the crate opens no socket and performs no network request.
 
 GitHub Actions verified continuity and `cargo test --workspace --locked` on commit
-`e14ee06114e98a14cfe6d60b48c0c040847faa5b`.
+`61fe501443c4883ea6b87a0760f2d72cf4836aa3`.
 
 ## Next atomic task
 
-**T006 — Add fail-closed Tor SOCKS capability boundary**
+**T007 — Raise and pin the Rust baseline to 1.91**
 
-Create a dependency-free `pulqva-privacy` crate with a `TorSocksEndpoint` value representing
-only a local Tor SOCKS endpoint.
+Reason: current Arti 2.6.0 declares `rust-version = "1.91"`. PULQVA is still pinned to Rust 1.85,
+so the toolchain must be upgraded before integrating the current Tor implementation.
 
-The value must:
+At T007 creation time (2026-09-20):
 
-- use fixed loopback host `127.0.0.1`;
-- require a non-zero port;
-- render a `socks5h://` proxy URL so name resolution stays inside the proxy path;
-- expose no Direct/Clearnet alternative.
+- latest Tor Project Arti release: 2.6.0;
+- `arti` 2.6.0 rust-version: 1.91;
+- `arti-client` 0.46.0 rust-version: 1.91.
 
-This task defines capability data only. It does not bootstrap Tor or open sockets.
+T007 changes only the build baseline. It does not add Arti yet.
 
 ## Do not do yet
 
-- no Arti dependency/bootstrap;
-- no sockets or HTTP;
+- no Arti dependency or runtime;
+- no Tor bootstrap/network;
 - no yt-dlp;
+- no HTTP;
 - no AI provider;
-- no UI;
-- no search/download execution;
-- no direct-network mode.
+- no UI.
 
 ## Success
 
-The privacy crate is dependency-free, invalid port 0 is rejected, a valid endpoint renders the
-expected `socks5h://127.0.0.1:<port>` value, no direct route exists, and all CI remains green.
+Workspace MSRV and CI are pinned to Rust 1.91.0, all current tests remain green, continuity remains
+green, and there is no product behavior change.
