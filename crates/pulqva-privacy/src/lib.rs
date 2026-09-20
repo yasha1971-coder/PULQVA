@@ -5,12 +5,14 @@
 
 mod arti_config;
 mod arti_launch;
+mod arti_launcher;
 mod arti_materialize;
 mod arti_prepared;
 mod arti_runtime;
 
 pub use arti_config::{ArtiConfigRenderError, ArtiConfigSpec};
 pub use arti_launch::ArtiLaunchSpec;
+pub use arti_launcher::{ArtiProcessError, RunningArti, launch_prepared_arti};
 pub use arti_materialize::{ArtiConfigMaterializeError, materialize_arti_config};
 pub use arti_prepared::{PreparedArtiRuntime, prepare_arti_runtime};
 pub use arti_runtime::ArtiRuntimePlan;

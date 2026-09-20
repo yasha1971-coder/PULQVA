@@ -2,23 +2,21 @@
 
 ## Current verified state
 
-T014 is complete.
+T015 is complete.
 
-PULQVA now has a typed `PreparedArtiRuntime` capability:
+PULQVA now has a controlled child-process launcher behind the prepared-runtime capability:
 
-- callers cannot construct it directly from raw fields;
-- successful preparation materializes the verified Arti config first;
-- failed materialization returns no prepared capability;
-- the capability carries the immutable `ArtiRuntimePlan`;
-- typed Tor SOCKS endpoint is preserved;
-- deterministic launch arguments are exposed;
-- Windows and Linux privacy runtime tests pass;
-- no Arti process is spawned;
-- no sockets are opened by PULQVA;
-- no Tor bootstrap occurs.
+- launcher accepts `PreparedArtiRuntime`, not a raw runtime plan;
+- executable path and argument vector come only from the prepared runtime;
+- child is spawned directly with `std::process::Command`, never through a shell;
+- `RunningArti` retains the child handle and PID;
+- deterministic stop/wait cleanup exists;
+- Windows and Linux tests use a local network-free fixture process;
+- no SOCKS request, DNS request, or external network request is made by the test path;
+- no Tor bootstrap is intentionally triggered.
 
 Verified PR head:
-`d76d23a2e3ac982d2a91721fc8216d7b96f7808f`
+`ab86bbadc91c09cedc77ac09547212ddd30e073d`
 
 Verified checks:
 
@@ -30,24 +28,24 @@ Verified checks:
 
 ## Next atomic task
 
-**T015 — Add a controlled Arti child-process launcher**
+**T016 — Prove the real pinned Arti sidecar can start and stop with deferred bootstrap**
 
-Introduce the first process side effect behind the prepared capability boundary.
+Use the actual pinned Arti 2.6.0 sidecar in a bounded Windows/Linux lifecycle proof.
 
-The launcher must:
+The proof must:
 
-- accept only `PreparedArtiRuntime`, never a raw runtime plan;
-- spawn only the explicit Arti executable with deterministic arguments;
-- inherit no shell;
-- capture process identity/handle in a typed `RunningArti` capability;
-- provide deterministic shutdown/cleanup;
-- keep `defer_bootstrap = true`;
-- perform no SOCKS request, readiness probe, DNS request, or Tor bootstrap trigger.
+- use the existing prepared-runtime path and real Arti executable;
+- use the verified config with `defer_bootstrap = true`;
+- start the real child directly, without a shell;
+- perform no SOCKS request, DNS request, or readiness probe;
+- send no user workload that can trigger bootstrap;
+- stop and reap the child deterministically;
+- preserve fail-closed privacy invariants.
 
 ## Do not do yet
 
-- no external network request;
 - no Tor bootstrap trigger;
+- no external request through Tor;
 - no SOCKS readiness probing;
 - no dynamic port discovery;
 - no yt-dlp/FFmpeg;
@@ -56,5 +54,5 @@ The launcher must:
 
 ## Success
 
-A prepared runtime can be launched and cleanly stopped as a supervised child process without
-triggering external network activity, with Windows/Linux tests and all existing checks green.
+The real pinned Arti sidecar can be started and stopped under PULQVA control on Windows and Linux
+without any client request that could trigger bootstrap, and all existing checks remain green.
