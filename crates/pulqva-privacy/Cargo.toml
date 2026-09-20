@@ -6,3 +6,9 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+
+[[bin]]
+name = "pulqva-child-fixture"
+path = "tests/fixtures/child_fixture.rs"
+test = false
+bench = false
