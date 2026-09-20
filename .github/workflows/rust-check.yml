@@ -19,12 +19,5 @@ jobs:
           rustup toolchain install 1.85.0 --profile minimal
           rustup default 1.85.0
 
-      - name: Generate lockfile for T004 diagnostic
-        run: |
-          cargo generate-lockfile
-          echo "-----BEGIN PULQVA CARGO.LOCK-----"
-          cat Cargo.lock
-          echo "-----END PULQVA CARGO.LOCK-----"
-
       - name: Test workspace
         run: cargo test --workspace --locked
