@@ -5,9 +5,11 @@
 
 mod arti_config;
 mod arti_launch;
+mod arti_runtime;
 
 pub use arti_config::{ArtiConfigRenderError, ArtiConfigSpec};
 pub use arti_launch::ArtiLaunchSpec;
+pub use arti_runtime::ArtiRuntimePlan;
 
 use std::{error::Error, fmt, num::NonZeroU16};
 
