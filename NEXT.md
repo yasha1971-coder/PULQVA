@@ -2,41 +2,47 @@
 
 ## Current verified state
 
-T003 is complete.
+T004 is complete.
 
-The core now exposes a dependency-free `SearchIntent` boundary:
+The project now has a strict provider-neutral JSON intent adapter in
+`crates/pulqva-intent-json`.
 
-- non-empty natural-language queries are accepted;
-- empty and whitespace-only queries are rejected;
-- the type is data-only;
-- no network/runtime dependency exists;
-- no shell or executable command generation exists.
+Verified behavior:
 
+- `{"query":"..."}` decodes into validated `SearchIntent`;
+- malformed JSON is rejected;
+- missing `query` is rejected;
+- unknown fields are rejected;
+- blank query values are rejected by the existing core validation;
+- no AI provider, network client, Tor, yt-dlp, UI, or shell execution exists.
+
+The generated dependency lockfile is committed and the normal locked CI path is restored.
 GitHub Actions verified continuity and `cargo test --workspace --locked` on commit
-`7e6483c544b5df421fb0e9c0f57afe076adea0b9`.
+`b875c99ddf97804155b084224854be3bf6a17cd1`.
 
 ## Next atomic task
 
-**T004 — Add strict JSON -> SearchIntent parsing**
+**T005 — Add the typed SearchCandidate boundary**
 
-Add a minimal JSON decoding boundary that converts a strict JSON object into `SearchIntent`
-without choosing or calling any AI provider.
+Add a provider-neutral candidate type to `pulqva-core` containing:
 
-The JSON contract must reject unknown fields and still enforce the existing non-blank query
-validation.
+- a human-visible title;
+- an opaque locator understood by a future search/download adapter.
+
+Both fields must reject empty/whitespace-only values.
 
 ## Do not do yet
 
+- no search provider;
+- no yt-dlp;
+- no URL semantics in core;
 - no AI provider;
-- no HTTP client;
+- no HTTP;
 - no Tor/Arti;
-- no yt-dlp/FFmpeg;
-- no search execution;
-- no shell command generation;
 - no UI;
-- no ranking/download logic.
+- no ranking or download execution.
 
 ## Success
 
-A valid JSON object produces `SearchIntent`; blank queries, malformed JSON, and unknown fields
-are rejected by tests; `cargo test --workspace --locked` and continuity guard remain green.
+A valid candidate can be constructed and read; blank title/locator values are rejected by tests;
+`cargo test --workspace --locked` and continuity remain green.
