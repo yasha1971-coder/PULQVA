@@ -1,5 +1,8 @@
 [workspace]
-members = ["crates/pulqva-core"]
+members = [
+    "crates/pulqva-core",
+    "crates/pulqva-intent-json",
+]
 resolver = "2"
 
 [workspace.package]
