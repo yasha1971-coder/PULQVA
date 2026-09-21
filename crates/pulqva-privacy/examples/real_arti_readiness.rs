@@ -45,10 +45,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     };
 
-    if ready.proxy_url() != "socks5h://127.0.0.1:19050" {
+    let proxy_url = ready.proxy_url();
+    if proxy_url != "socks5h://127.0.0.1:19050"
+        && proxy_url != "socks5h://[::1]:19050"
+    {
         let _ = running.stop_and_wait();
         let _ = fs::remove_dir_all(&root);
-        return Err("ready transport exposed an unexpected proxy URL".into());
+        return Err(format!("ready transport exposed an unexpected proxy URL: {proxy_url}").into());
     }
 
     let _ = running.stop_and_wait()?;
