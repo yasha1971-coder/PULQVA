@@ -12,3 +12,15 @@ name = "pulqva-child-fixture"
 path = "tests/fixtures/child_fixture.rs"
 test = false
 bench = false
+
+[[bin]]
+name = "pulqva-ytdlp-fixture"
+path = "tests/fixtures/ytdlp_fixture.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "pulqva-ready-arti-fixture"
+path = "tests/fixtures/ready_arti_fixture.rs"
+test = false
+bench = false
