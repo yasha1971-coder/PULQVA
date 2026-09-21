@@ -66,6 +66,10 @@ fn real_pinned_ffmpeg_remuxes_validated_local_media() {
         .any(|pair| pair[0] == OsStr::new("-protocol_whitelist") && pair[1] == OsStr::new("file"));
     assert!(whitelist, "real remux must keep the local file-only protocol whitelist");
     assert!(
+        arguments.iter().any(|arg| arg == OsStr::new("-dn")),
+        "real remux must drop non-media data/hint tracks while preserving stream copy"
+    );
+    assert!(
         !arguments.iter().any(|arg| {
             let value = arg.to_string_lossy();
             value.starts_with("http://")
