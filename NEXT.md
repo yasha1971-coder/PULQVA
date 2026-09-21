@@ -2,44 +2,44 @@
 
 ## Current verified state
 
-T019 is complete.
+T020 is complete.
 
-PULQVA now pins the official yt-dlp standalone release 2026.08.19:
+PULQVA now has a pure-data yt-dlp launch plan that cannot be constructed without
+`ReadyTorTransport`:
 
-- Linux yt-dlp_linux and Windows yt-dlp.exe are pinned by exact SHA-256;
-- both binaries passed exact --version verification;
-- --ignore-config --help passed on Windows and Linux;
-- no media URL or product-runtime media request was used;
-- all privacy and continuity checks stayed green.
+- executable path is explicit;
+- argument order is deterministic;
+- `--ignore-config` prevents ambient yt-dlp configuration from changing routing;
+- `--proxy` comes only from the verified `socks5h://...` transport capability;
+- no direct-route variant, shell command, process spawn, or media URL exists in the base plan.
 
 Verified PR head:
-dea983cc546a2239612b6bf592ca49db4f2cb5f7
+`72410559872be701a282e9eb385743c3fc323154`
 
 ## Active atomic task
 
-**T020 — Add a typed yt-dlp launch plan gated by ReadyTorTransport**
+**T021 — Add a typed yt-dlp media request plan**
 
-The pure-data launch plan requires ReadyTorTransport at construction time.
+The pure-data request layer adds:
 
-It keeps the executable path explicit and deterministically emits only:
+- validated HTTP(S)-only media source input;
+- explicit output root;
+- construction on top of `YtDlpLaunchPlan`;
+- deterministic request arguments appended after the unchanged Tor-only base arguments.
 
-- --ignore-config;
-- --proxy;
-- the verified socks5h:// route from ReadyTorTransport::proxy_url().
-
-There is no direct-route variant, shell command, process spawn, or media URL in T020.
+Local files, stdin-like untyped input, unsupported URL schemes, empty authorities, and empty output
+roots are rejected before any process exists.
 
 ## Queued next task
 
-**T021 — Add a typed yt-dlp media request plan**
+**T022 — Add a controlled yt-dlp child-process launcher**
 
-Add typed source/output request data on top of the Tor-gated launch plan while keeping the task
-pure-data and non-executing.
+Introduce the process boundary behind `YtDlpMediaRequestPlan` and prove exact argv/process
+lifecycle with a local network-free fixture before any real media request is allowed.
 
 ## Do not do yet
 
-- no yt-dlp process spawn;
-- no media download;
+- no real media download;
 - no FFmpeg;
 - no AI provider;
 - no UI;
@@ -47,5 +47,5 @@ pure-data and non-executing.
 
 ## Success
 
-Future media execution cannot construct its base yt-dlp launch plan without a verified Tor
-transport, and deterministic arguments cannot silently inherit ambient yt-dlp configuration.
+A media request is typed and deterministic before execution, while its inherited base route remains
+the verified Tor-only yt-dlp launch plan.
