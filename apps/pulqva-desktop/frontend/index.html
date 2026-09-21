@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="PULQVA privacy-first desktop shell"
+    />
+    <title>PULQVA</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero" aria-labelledby="product-title">
+        <div class="mark" aria-hidden="true">P</div>
+        <div>
+          <p class="eyebrow">Private intent-to-file engine</p>
+          <h1 id="product-title">PULQVA</h1>
+          <p class="subtitle">
+            Desktop shell connected only to the typed Rust command boundary.
+          </p>
+        </div>
+      </section>
+
+      <section class="status-card" aria-live="polite">
+        <div class="status-row">
+          <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+          <strong id="status-title">Checking local core…</strong>
+        </div>
+        <dl class="status-grid">
+          <div>
+            <dt>App</dt>
+            <dd id="app-version">—</dd>
+          </div>
+          <div>
+            <dt>Kernel</dt>
+            <dd id="kernel-version">—</dd>
+          </div>
+          <div>
+            <dt>Privacy</dt>
+            <dd id="privacy-mode">—</dd>
+          </div>
+          <div>
+            <dt>Core</dt>
+            <dd id="core-ready">—</dd>
+          </div>
+        </dl>
+      </section>
+
+      <p class="footnote">
+        This shell loads no remote web content and exposes no frontend Internet API.
+      </p>
+    </main>
+  </body>
+</html>
