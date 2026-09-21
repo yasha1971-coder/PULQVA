@@ -5,7 +5,7 @@ use std::{
     process::{Child, Command, ExitStatus, Stdio},
 };
 
-use crate::PreparedArtiRuntime;
+use crate::{PreparedArtiRuntime, TorSocksEndpoint};
 
 /// Typed handle for a directly spawned Arti child process.
 ///
@@ -14,11 +14,16 @@ use crate::PreparedArtiRuntime;
 #[derive(Debug)]
 pub struct RunningArti {
     child: Child,
+    endpoint: TorSocksEndpoint,
 }
 
 impl RunningArti {
     pub fn id(&self) -> u32 {
         self.child.id()
+    }
+
+    pub(crate) fn endpoint(&self) -> TorSocksEndpoint {
+        self.endpoint
     }
 
     pub fn try_wait(&mut self) -> Result<Option<ExitStatus>, io::Error> {
@@ -63,6 +68,7 @@ pub fn launch_prepared_arti(
 ) -> Result<RunningArti, ArtiProcessError> {
     let executable = prepared.plan().executable().to_owned();
     let arguments = prepared.launch_arguments();
+    let endpoint = prepared.socks_endpoint();
 
     let child = Command::new(&executable)
         .args(arguments)
@@ -75,7 +81,7 @@ pub fn launch_prepared_arti(
             source,
         })?;
 
-    Ok(RunningArti { child })
+    Ok(RunningArti { child, endpoint })
 }
 
 #[derive(Debug)]
