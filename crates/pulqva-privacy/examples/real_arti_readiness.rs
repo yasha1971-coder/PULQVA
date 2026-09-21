@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let prepared = prepare_arti_runtime(plan)?;
     let mut running = launch_prepared_arti(prepared)?;
 
-    let ready = match verify_tor_readiness(&mut running, Duration::from_secs(90)) {
+    let ready = match verify_tor_readiness(&mut running, Duration::from_secs(150)) {
         Ok(ready) => ready,
         Err(error) => {
             let _ = running.stop_and_wait();
