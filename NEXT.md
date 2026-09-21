@@ -2,55 +2,52 @@
 
 ## Current verified state
 
-T030 is complete.
+T031 is complete.
 
-PULQVA now proves one real bounded local FFmpeg stream-copy remux:
+PULQVA now has a compiling Windows/Linux Tauri 2 desktop shell:
 
-- exact pinned FFmpeg/ffprobe archives are verified before execution;
-- the immutable local MP4 fixture is verified before use;
-- input enters through the validated `CompletedDownloadResult` boundary;
-- real execution starts only from `FfmpegRemuxPlan`;
-- `-protocol_whitelist file` keeps FFmpeg input local;
-- `-c copy` preserves stream-copy behavior with no re-encoding;
-- non-media hint/data tracks are dropped explicitly;
-- Windows and Linux complete the same real-remux proof;
-- pinned ffprobe validates the resulting local Matroska file.
+- Tauri 2.11.6 and tauri-build 2.6.3 are pinned;
+- the Rust backend links `pulqva-core`;
+- the frontend loads only local assets;
+- frontend status access crosses only the typed Tauri command boundary;
+- CSP grants local content plus required Tauri IPC endpoints only;
+- CI rejects frontend fetch/XHR/WebSocket/EventSource/sendBeacon and remote HTTP(S) URLs;
+- Windows and Linux desktop compile checks are green.
 
 Verified PR head:
-`378ef54cb5bf9cec834e40f826a89b5ffb0913fa`
+`6faff7d194d87e714ae3b50d34834223a34309b1`
 
 ## Active atomic task
 
-**T031 — Bootstrap the Tauri 2 desktop shell**
+**T032 — Add the typed desktop intent-input boundary**
 
-T031 adds the first Windows/Linux desktop shell:
+The desktop shell now accepts one natural-language request:
 
-- Tauri is pinned to 2.11.6 and tauri-build to 2.6.3;
-- the desktop crate is isolated from the root Rust workspace so existing locked core checks remain unchanged;
-- the Rust backend links `pulqva-core` and exposes one typed `app_status` command;
-- the frontend calls only Tauri IPC through `window.__TAURI__.core.invoke`;
-- frontend assets are entirely local;
-- CSP permits only local content plus the Tauri IPC endpoints;
-- CI rejects fetch/XHR/WebSocket/EventSource/sendBeacon and remote HTTP(S) URLs in frontend code;
-- Windows and Linux compile checks are defined.
+- the frontend submits only the raw text through `submit_intent`;
+- Rust constructs the existing `pulqva_core::SearchIntent`;
+- blank/whitespace-only requests are rejected by the core invariant;
+- successful submissions return deterministic typed data: validated query + stage;
+- the UI shows only the local validation result;
+- no AI provider, search provider, URL execution, shell execution, or frontend Internet access is introduced.
 
 ## Queued next task
 
-**T032 — Add the typed desktop intent-input boundary**
+**T033 — Add the typed desktop candidate-list boundary**
 
-Add the first user text input to the local desktop UI and send it only through a typed Tauri command
-that constructs `SearchIntent` in Rust. No AI provider, search backend, URL execution, or frontend
-Internet access yet.
+Add a provider-neutral candidate response contract to the desktop backend and UI using
+`pulqva_core::SearchCandidate`. Keep the source local/test-only in this task; no search provider or
+external request yet.
 
 ## Do not do yet
 
 - no AI provider;
-- no external search from the frontend;
+- no external search provider;
+- no media download from UI;
 - no arbitrary user URL execution;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-PULQVA has a compiling Windows/Linux Tauri 2 shell whose frontend is local-only and can learn app
-status solely through the typed Rust command boundary.
+A user's raw text can cross the local desktop boundary, be validated by the core `SearchIntent`
+invariant, and return deterministic typed data without any network side effect.

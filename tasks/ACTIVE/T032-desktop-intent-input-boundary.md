@@ -1,7 +1,7 @@
 # T032 — Add the typed desktop intent-input boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
@@ -11,10 +11,11 @@ validation on the Rust side.
 ## Acceptance criteria
 
 - desktop UI contains one natural-language intent input and submit action;
-- frontend sends raw text only through one typed Tauri command;
+- frontend sends raw text only through the typed `submit_intent` Tauri command;
 - Rust command constructs `pulqva_core::SearchIntent`;
 - empty/whitespace-only input is rejected by the existing core invariant;
-- successful response returns deterministic typed data suitable for the next stage;
+- successful response returns deterministic typed fields: validated query and stage;
+- error response is typed and deterministic;
 - no AI provider is contacted;
 - no search provider is contacted;
 - no URL or shell execution is introduced;
