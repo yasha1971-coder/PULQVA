@@ -69,8 +69,13 @@
         </section>
 
         <section id="selection-panel" class="selection-panel" aria-labelledby="selection-title" hidden>
-          <p class="section-label">Selection</p>
-          <h3 id="selection-title">Selected candidate</h3>
+          <div class="selection-heading">
+            <div>
+              <p class="section-label">Selection</p>
+              <h3 id="selection-title">Selected candidate</h3>
+            </div>
+            <button id="download-action" type="button">Download</button>
+          </div>
           <dl class="selection-result">
             <div>
               <dt>Title</dt>
@@ -85,6 +90,32 @@
               <dd id="selection-stage-value">—</dd>
             </div>
           </dl>
+        </section>
+
+        <section id="download-plan-panel" class="download-plan-panel" aria-labelledby="download-plan-title" hidden>
+          <p class="section-label">Download action</p>
+          <h3 id="download-plan-title">Validated action plan</h3>
+          <dl class="download-plan-result">
+            <div>
+              <dt>Action</dt>
+              <dd id="download-plan-action">—</dd>
+            </div>
+            <div>
+              <dt>Title</dt>
+              <dd id="download-plan-title-value">—</dd>
+            </div>
+            <div>
+              <dt>Opaque locator</dt>
+              <dd id="download-plan-locator">—</dd>
+            </div>
+            <div>
+              <dt>Stage</dt>
+              <dd id="download-plan-stage">—</dd>
+            </div>
+          </dl>
+          <p class="download-plan-note">
+            Data-only boundary: no transfer, process, network request, or file write has started.
+          </p>
         </section>
       </section>
 
