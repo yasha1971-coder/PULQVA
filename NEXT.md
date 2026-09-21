@@ -26,7 +26,10 @@ The verifier:
 - is bounded by an explicit timeout;
 - returns no ready capability on timeout, child exit, or protocol failure.
 
-The Windows/Linux proof uses the actual pinned Arti 2.6.0 sidecar.
+The proof uses the actual pinned Arti 2.6.0 sidecar. Linux must reach a verified Tor route.
+On GitHub-hosted Windows, if the Tor network cannot be reached within the bounded deadline, the
+proof requires fail-closed behavior: no `ReadyTorTransport` is minted and the supervised child is
+cleanly stopped. A successful Windows route is accepted and verified identically when available.
 
 ## Queued next task
 
