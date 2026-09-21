@@ -11,6 +11,8 @@ mod arti_prepared;
 mod arti_readiness;
 mod arti_ready;
 mod arti_runtime;
+#[cfg(test)]
+mod ffmpeg_real_proof;
 mod ffmpeg_process;
 mod ffmpeg_remux;
 mod ytdlp_artifact;
