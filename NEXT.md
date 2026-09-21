@@ -32,11 +32,18 @@ as a public network-routing API.
 A future readiness verifier inside `pulqva-privacy` will be the only path that can mint the ready
 capability.
 
+## Queued next task
+
+**T018 — Add bounded Tor readiness verification**
+
+This will be the only implementation allowed to mint `ReadyTorTransport`, and it will remain
+fail-closed with no direct-network fallback.
+
 ## Do not do yet
 
-- no Tor bootstrap trigger;
-- no external request;
-- no SOCKS readiness probe;
+- no Tor bootstrap trigger in T017;
+- no external request in T017;
+- no SOCKS readiness probe in T017;
 - no dynamic port discovery;
 - no yt-dlp/FFmpeg;
 - no AI;
