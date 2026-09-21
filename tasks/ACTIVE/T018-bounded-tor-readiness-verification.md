@@ -19,7 +19,9 @@ fail-closed Tor readiness proof.
 - the verifier connects only to the local loopback SOCKS endpoint;
 - the external target is sent as a SOCKS5 domain name, never locally resolved;
 - no direct/clearnet fallback exists;
-- Windows and Linux CI use the actual pinned Arti 2.6.0 sidecar;
+- Linux CI requires successful readiness through the actual pinned Arti 2.6.0 sidecar;
+- Windows CI uses the actual pinned Arti 2.6.0 sidecar and requires either successful readiness or a bounded fail-closed timeout with the child still supervised;
+- a timeout never produces `ReadyTorTransport`;
 - all existing checks remain green.
 
 ## Out of scope
