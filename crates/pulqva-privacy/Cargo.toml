@@ -30,3 +30,9 @@ name = "pulqva-ytdlp-complete-fixture"
 path = "tests/fixtures/ytdlp_complete_fixture.rs"
 test = false
 bench = false
+
+[[bin]]
+name = "pulqva-ffmpeg-fixture"
+path = "tests/fixtures/ffmpeg_fixture.rs"
+test = false
+bench = false
