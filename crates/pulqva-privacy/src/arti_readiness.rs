@@ -2,7 +2,7 @@ use std::{
     error::Error,
     fmt,
     io::{self, Read, Write},
-    net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, TcpStream},
     process::ExitStatus,
     thread,
     time::{Duration, Instant},
@@ -62,7 +62,12 @@ pub fn verify_tor_readiness(
         let attempt_timeout = remaining.min(ATTEMPT_SLICE);
 
         match socks_connect_probe(running.endpoint(), attempt_timeout) {
-            Ok(()) => return Ok(certify_tor_ready(running.endpoint())),
+            Ok(verified_loopback) => {
+                return Ok(certify_tor_ready(
+                    running.endpoint(),
+                    verified_loopback,
+                ));
+            }
             Err(SocksProbeError::Retryable) => {
                 let sleep_for = deadline
                     .saturating_duration_since(Instant::now())
@@ -82,13 +87,38 @@ pub fn verify_tor_readiness(
 fn socks_connect_probe(
     endpoint: crate::TorSocksEndpoint,
     timeout: Duration,
-) -> Result<(), SocksProbeError> {
-    let local = SocketAddr::V4(SocketAddrV4::new(
-        Ipv4Addr::LOCALHOST,
-        endpoint.port(),
-    ));
+) -> Result<IpAddr, SocksProbeError> {
+    let addresses = [
+        SocketAddr::V4(SocketAddrV4::new(
+            Ipv4Addr::LOCALHOST,
+            endpoint.port(),
+        )),
+        SocketAddr::V6(SocketAddrV6::new(
+            Ipv6Addr::LOCALHOST,
+            endpoint.port(),
+            0,
+            0,
+        )),
+    ];
 
-    let mut stream = match TcpStream::connect_timeout(&local, timeout) {
+    for local in addresses {
+        match socks_connect_probe_at(local, timeout) {
+            Ok(()) => return Ok(local.ip()),
+            Err(SocksProbeError::Retryable) => continue,
+            Err(error) => return Err(error),
+        }
+    }
+
+    Err(SocksProbeError::Retryable)
+}
+
+fn socks_connect_probe_at(
+    local: SocketAddr,
+    timeout: Duration,
+) -> Result<(), SocksProbeError> {
+    let connect_timeout = timeout.min(Duration::from_secs(2));
+
+    let mut stream = match TcpStream::connect_timeout(&local, connect_timeout) {
         Ok(stream) => stream,
         Err(source) if is_retryable_io(&source) => return Err(SocksProbeError::Retryable),
         Err(_) => return Err(SocksProbeError::Retryable),
