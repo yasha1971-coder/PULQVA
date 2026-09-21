@@ -34,41 +34,43 @@
  * @property {string} stage
  */
 
-const invoke = window.__TAURI__.core.invoke;
-
 /**
- * @returns {Promise<AppStatus>}
+ * @typedef {Object} DownloadAction
+ * @property {string} intentQuery
+ * @property {string} title
+ * @property {string} locator
+ * @property {string} action
+ * @property {string} stage
  */
+
+const invoke = window.__TAURI__.core.invoke;
+/** @type {CandidateSelection | null} */
+let currentSelection = null;
+
 async function invokeAppStatus() {
   return invoke("app_status");
 }
 
-/**
- * Raw user text crosses only the typed Tauri command boundary.
- * @param {string} query
- * @returns {Promise<IntentSubmission>}
- */
 async function invokeSubmitIntent(query) {
   return invoke("submit_intent", { query });
 }
 
-/**
- * @param {string} query
- * @returns {Promise<CandidateList>}
- */
 async function invokeLocalCandidates(query) {
   return invoke("list_local_candidates", { query });
 }
 
-/**
- * Selection sends only validated intent text plus the opaque locator.
- * The locator remains inert data in the frontend and Rust backend.
- * @param {string} query
- * @param {string} locator
- * @returns {Promise<CandidateSelection>}
- */
 async function invokeSelectCandidate(query, locator) {
   return invoke("select_local_candidate", { query, locator });
+}
+
+/**
+ * Sends only validated intent text plus the opaque selected locator.
+ * @param {string} query
+ * @param {string} locator
+ * @returns {Promise<DownloadAction>}
+ */
+async function invokePlanDownload(query, locator) {
+  return invoke("plan_local_download", { query, locator });
 }
 
 async function renderStatus() {
@@ -93,30 +95,38 @@ async function renderStatus() {
   }
 }
 
-/**
- * @param {CandidateSelection} selection
- */
 function renderSelection(selection) {
+  currentSelection = selection;
   const panel = document.querySelector("#selection-panel");
+  const downloadPlanPanel = document.querySelector("#download-plan-panel");
+
   document.querySelector("#selection-title-value").textContent = selection.title;
   document.querySelector("#selection-locator-value").textContent = selection.locator;
   document.querySelector("#selection-stage-value").textContent = selection.stage;
+
+  downloadPlanPanel.hidden = true;
   panel.hidden = false;
 }
 
-/**
- * Render candidate fields and explicit select actions only.
- * The opaque locator is never interpreted, navigated, or executed.
- * @param {CandidateList} response
- */
+function renderDownloadPlan(plan) {
+  document.querySelector("#download-plan-action").textContent = plan.action;
+  document.querySelector("#download-plan-title-value").textContent = plan.title;
+  document.querySelector("#download-plan-locator").textContent = plan.locator;
+  document.querySelector("#download-plan-stage").textContent = plan.stage;
+  document.querySelector("#download-plan-panel").hidden = false;
+}
+
 function renderCandidates(response) {
   const panel = document.querySelector("#candidate-panel");
   const list = document.querySelector("#candidate-list");
   const selectionPanel = document.querySelector("#selection-panel");
+  const downloadPlanPanel = document.querySelector("#download-plan-panel");
   const state = document.querySelector("#intent-state");
 
+  currentSelection = null;
   list.replaceChildren();
   selectionPanel.hidden = true;
+  downloadPlanPanel.hidden = true;
 
   for (const candidate of response.candidates) {
     const item = document.createElement("li");
@@ -150,7 +160,7 @@ function renderCandidates(response) {
 
         renderSelection(selection);
         state.dataset.kind = "success";
-        state.textContent = "Candidate selected locally. Locator remains inert.";
+        state.textContent = "Candidate selected locally. Download is now available.";
       } catch (error) {
         const message =
           error && typeof error === "object" && "message" in error
@@ -172,6 +182,42 @@ function renderCandidates(response) {
   panel.hidden = false;
 }
 
+function bindDownloadAction() {
+  const button = document.querySelector("#download-action");
+  const state = document.querySelector("#intent-state");
+
+  button.addEventListener("click", async () => {
+    if (!currentSelection) {
+      return;
+    }
+
+    button.disabled = true;
+    state.dataset.kind = "pending";
+    state.textContent = "Revalidating Download action locally…";
+
+    try {
+      const plan = await invokePlanDownload(
+        currentSelection.intentQuery,
+        currentSelection.locator,
+      );
+
+      renderDownloadPlan(plan);
+      state.dataset.kind = "success";
+      state.textContent = "Download action validated. No transfer has started yet.";
+    } catch (error) {
+      const message =
+        error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "Download action was rejected by the local core.";
+
+      state.dataset.kind = "error";
+      state.textContent = message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 function bindIntentForm() {
   const form = document.querySelector("#intent-form");
   const query = document.querySelector("#intent-query");
@@ -182,16 +228,19 @@ function bindIntentForm() {
   const resultStage = document.querySelector("#intent-result-stage");
   const candidatePanel = document.querySelector("#candidate-panel");
   const selectionPanel = document.querySelector("#selection-panel");
+  const downloadPlanPanel = document.querySelector("#download-plan-panel");
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    currentSelection = null;
     button.disabled = true;
     state.dataset.kind = "pending";
     state.textContent = "Validating in local Rust core…";
     result.hidden = true;
     candidatePanel.hidden = true;
     selectionPanel.hidden = true;
+    downloadPlanPanel.hidden = true;
 
     try {
       const submission = await invokeSubmitIntent(query.value);
@@ -220,3 +269,4 @@ function bindIntentForm() {
 
 renderStatus();
 bindIntentForm();
+bindDownloadAction();
