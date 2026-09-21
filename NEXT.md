@@ -2,45 +2,44 @@
 
 ## Current verified state
 
-T022 is complete.
+T023 is complete.
 
-PULQVA now has a controlled yt-dlp process boundary:
+PULQVA now proves a real metadata-only yt-dlp request through Tor:
 
-- launcher accepts only `YtDlpMediaRequestPlan`;
-- executable and argv come only from the typed plan;
-- child is spawned directly with no shell;
-- `RunningYtDlp` owns the process handle;
-- deterministic stop/wait cleanup exists;
-- Windows/Linux tests use local network-free fixtures;
-- the exact Tor proxy/base arguments and request arguments are preserved across the process boundary.
+- actual pinned Arti 2.6.0 and yt-dlp 2026.08.19 binaries are used;
+- `ReadyTorTransport` is required before the yt-dlp plan exists;
+- metadata-only mode adds `--skip-download --dump-single-json --no-playlist`;
+- the request is bounded;
+- successful execution writes no media payload;
+- no direct retry/fallback exists;
+- Linux completes metadata extraction successfully;
+- Windows remains bounded and fail-closed when Tor readiness is unavailable.
 
 Verified PR head:
-`be07ecbaba2dd3027b3592ba0a4c191739e9c0e1`
+`ebc5da77ccc203095c102c6dcdf80ea4f2170c9f`
 
 ## Active atomic task
 
-**T023 — Prove a real pinned yt-dlp metadata-only request through Tor**
+**T024 — Prove one bounded real media download through Tor**
 
-T023 adds an explicit metadata-only mode to `YtDlpMediaRequestPlan`:
+The proof uses one fixed public MP4 pinned to an immutable GitHub commit:
 
-- `--skip-download`;
-- `--dump-single-json`;
-- `--no-playlist`.
+- source repository: `mediaelement/mediaelement-files`;
+- source commit: `4d21a042353022326071acb0251ab75cd6bae114`;
+- source object: `big_buck_bunny.mp4`;
+- expected size: 5,510,872 bytes.
 
-The proof uses the actual pinned Arti 2.6.0 and yt-dlp 2026.08.19 binaries, requires
-`ReadyTorTransport` before the yt-dlp plan can exist, runs a bounded request through the verified
-`socks5h://` route, and rejects any created download output.
-
-Linux must complete the metadata-only request successfully. On GitHub-hosted Windows, Tor readiness
-may instead terminate in the already-defined bounded fail-closed path; no yt-dlp process is started
-in that case.
+The real pinned yt-dlp process is constructed only from `YtDlpMediaRequestPlan`, inherits only the
+verified `socks5h://` Tor route, writes into an isolated output root, and is bounded by an explicit
+timeout. Linux must produce exactly one media artifact matching the pinned byte size. Windows may
+take the existing bounded Tor-readiness fail-closed path.
 
 ## Queued next task
 
-**T024 — Prove one bounded real media download through Tor**
+**T025 — Add a typed completed-media artifact receipt**
 
-Use the typed process path to download one small fixed sample media object into an isolated output
-root through Tor, with an explicit timeout, no FFmpeg, and no direct-network fallback.
+After a successful yt-dlp child exit, validate the isolated output root and return a typed receipt
+for the completed regular media artifact without following symlinks or accepting path escape.
 
 ## Do not do yet
 
@@ -52,5 +51,5 @@ root through Tor, with an explicit timeout, no FFmpeg, and no direct-network fal
 
 ## Success
 
-The pinned real yt-dlp binary can perform metadata extraction only after Tor readiness, the request
-is bounded, no media payload is written, and failure never triggers a direct retry.
+One real media object crosses the full typed path and is written byte-complete through Tor with no
+fallback and no FFmpeg dependency.

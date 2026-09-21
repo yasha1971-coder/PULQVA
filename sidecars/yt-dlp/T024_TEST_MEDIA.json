@@ -1,0 +1,10 @@
+{
+  "source_repository": "https://github.com/mediaelement/mediaelement-files",
+  "source_commit": "4d21a042353022326071acb0251ab75cd6bae114",
+  "path": "big_buck_bunny.mp4",
+  "git_blob_sha1": "81d11df5f2c8ed6e33a1350d98e800d943bac7e9",
+  "expected_size_bytes": 5510872,
+  "raw_url": "https://raw.githubusercontent.com/mediaelement/mediaelement-files/4d21a042353022326071acb0251ab75cd6bae114/big_buck_bunny.mp4",
+  "verified_on": "2026-09-21",
+  "purpose": "Fixed small public media object for the bounded T024 Tor-only yt-dlp download proof."
+}
