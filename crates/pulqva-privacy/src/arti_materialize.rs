@@ -25,7 +25,13 @@ pub fn materialize_arti_config(
         .render_config()
         .map_err(ArtiConfigMaterializeError::Render)?;
 
-    let destination = plan.config_file();
+    materialize_arti_config_bytes(plan.config_file(), rendered.as_bytes())
+}
+
+pub(crate) fn materialize_arti_config_bytes(
+    destination: &Path,
+    rendered: &[u8],
+) -> Result<(), ArtiConfigMaterializeError> {
     let file_name = destination
         .file_name()
         .ok_or(ArtiConfigMaterializeError::MissingConfigFileName)?;
@@ -41,7 +47,7 @@ pub fn materialize_arti_config(
     let (temp_path, mut temp_file) = create_temp_sibling(parent, file_name)?;
 
     let write_result = (|| -> io::Result<()> {
-        temp_file.write_all(rendered.as_bytes())?;
+        temp_file.write_all(rendered)?;
         temp_file.flush()?;
         temp_file.sync_all()?;
         Ok(())
