@@ -12,6 +12,7 @@ mod arti_readiness;
 mod arti_ready;
 mod arti_runtime;
 mod ytdlp_launch;
+mod ytdlp_media;
 
 pub use arti_config::{ArtiConfigRenderError, ArtiConfigSpec};
 pub use arti_launch::ArtiLaunchSpec;
@@ -22,6 +23,7 @@ pub use arti_readiness::{TorReadinessError, verify_tor_readiness};
 pub use arti_ready::ReadyTorTransport;
 pub use arti_runtime::ArtiRuntimePlan;
 pub use ytdlp_launch::YtDlpLaunchPlan;
+pub use ytdlp_media::{YtDlpMediaRequestError, YtDlpMediaRequestPlan, YtDlpMediaSourceError, YtDlpMediaSourceUrl};
 
 use std::{error::Error, fmt, num::NonZeroU16};
 
