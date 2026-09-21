@@ -1,4 +1,6 @@
-use pulqva_core::{CORE_CRATE_READY, SearchIntent, SearchIntentError};
+use pulqva_core::{
+    CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
+};
 use serde::Serialize;
 
 const PRODUCT_NAME: &str = "PULQVA";
@@ -38,6 +40,68 @@ impl From<SearchIntentError> for IntentSubmissionError {
     }
 }
 
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct DesktopCandidate {
+    title: String,
+    locator: String,
+}
+
+impl From<&SearchCandidate> for DesktopCandidate {
+    fn from(candidate: &SearchCandidate) -> Self {
+        Self {
+            title: candidate.title().to_owned(),
+            locator: candidate.locator().to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CandidateList {
+    intent_query: String,
+    stage: &'static str,
+    candidates: Vec<DesktopCandidate>,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CandidateListError {
+    code: &'static str,
+    message: String,
+}
+
+impl From<SearchIntentError> for CandidateListError {
+    fn from(source: SearchIntentError) -> Self {
+        Self {
+            code: "invalid-search-intent",
+            message: source.to_string(),
+        }
+    }
+}
+
+impl From<SearchCandidateError> for CandidateListError {
+    fn from(source: SearchCandidateError) -> Self {
+        Self {
+            code: "invalid-local-candidate",
+            message: source.to_string(),
+        }
+    }
+}
+
+fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
+    Ok(vec![
+        SearchCandidate::new(
+            "Official live performance",
+            "local:test:candidate:official-live",
+        )?,
+        SearchCandidate::new(
+            "Archive performance",
+            "local:test:candidate:archive-performance",
+        )?,
+    ])
+}
+
 #[tauri::command]
 fn app_status() -> AppStatus {
     AppStatus {
@@ -59,16 +123,36 @@ fn submit_intent(query: String) -> Result<IntentSubmission, IntentSubmissionErro
     })
 }
 
+#[tauri::command]
+fn list_local_candidates(query: String) -> Result<CandidateList, CandidateListError> {
+    let intent = SearchIntent::new(query).map_err(CandidateListError::from)?;
+    let candidates = local_candidate_source()
+        .map_err(CandidateListError::from)?
+        .iter()
+        .map(DesktopCandidate::from)
+        .collect();
+
+    Ok(CandidateList {
+        intent_query: intent.query().to_owned(),
+        stage: "local-candidate-list",
+        candidates,
+    })
+}
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![app_status, submit_intent])
+        .invoke_handler(tauri::generate_handler![
+            app_status,
+            submit_intent,
+            list_local_candidates
+        ])
         .run(tauri::generate_context!())
         .expect("PULQVA desktop shell failed to start");
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{app_status, submit_intent};
+    use super::{app_status, list_local_candidates, submit_intent};
 
     #[test]
     fn typed_status_contract_reports_linked_core_and_kernel() {
@@ -93,6 +177,35 @@ mod tests {
     #[test]
     fn desktop_intent_command_rejects_whitespace_only_input() {
         let error = submit_intent("  \t\n  ".to_owned()).expect_err("blank intent must fail");
+
+        assert_eq!(error.code, "invalid-search-intent");
+        assert_eq!(error.message, "search query must not be empty");
+    }
+
+    #[test]
+    fn local_candidate_command_is_deterministic_and_core_validated() {
+        let result = list_local_candidates("find the official live performance".to_owned())
+            .expect("validated intent gets local proof candidates");
+
+        assert_eq!(result.intent_query, "find the official live performance");
+        assert_eq!(result.stage, "local-candidate-list");
+        assert_eq!(result.candidates.len(), 2);
+        assert_eq!(result.candidates[0].title, "Official live performance");
+        assert_eq!(
+            result.candidates[0].locator,
+            "local:test:candidate:official-live"
+        );
+        assert_eq!(result.candidates[1].title, "Archive performance");
+        assert_eq!(
+            result.candidates[1].locator,
+            "local:test:candidate:archive-performance"
+        );
+    }
+
+    #[test]
+    fn local_candidate_command_rejects_blank_intent() {
+        let error =
+            list_local_candidates(" \n ".to_owned()).expect_err("blank intent must fail first");
 
         assert_eq!(error.code, "invalid-search-intent");
         assert_eq!(error.message, "search query must not be empty");
