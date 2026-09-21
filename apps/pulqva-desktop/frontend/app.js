@@ -8,11 +8,27 @@
  */
 
 /**
- * The frontend boundary is intentionally limited to one typed Tauri command.
+ * @typedef {Object} IntentSubmission
+ * @property {string} query
+ * @property {string} stage
+ */
+
+const invoke = window.__TAURI__.core.invoke;
+
+/**
  * @returns {Promise<AppStatus>}
  */
 async function invokeAppStatus() {
-  return window.__TAURI__.core.invoke("app_status");
+  return invoke("app_status");
+}
+
+/**
+ * Raw user text crosses only the typed Tauri command boundary.
+ * @param {string} query
+ * @returns {Promise<IntentSubmission>}
+ */
+async function invokeSubmitIntent(query) {
+  return invoke("submit_intent", { query });
 }
 
 async function renderStatus() {
@@ -37,4 +53,44 @@ async function renderStatus() {
   }
 }
 
+function bindIntentForm() {
+  const form = document.querySelector("#intent-form");
+  const query = document.querySelector("#intent-query");
+  const button = document.querySelector("#intent-submit");
+  const state = document.querySelector("#intent-state");
+  const result = document.querySelector("#intent-result");
+  const resultQuery = document.querySelector("#intent-result-query");
+  const resultStage = document.querySelector("#intent-result-stage");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    button.disabled = true;
+    state.dataset.kind = "pending";
+    state.textContent = "Validating in local Rust core…";
+    result.hidden = true;
+
+    try {
+      const submission = await invokeSubmitIntent(query.value);
+
+      resultQuery.textContent = submission.query;
+      resultStage.textContent = submission.stage;
+      result.hidden = false;
+      state.dataset.kind = "success";
+      state.textContent = "Intent accepted locally.";
+    } catch (error) {
+      const message =
+        error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "Intent rejected by the local core.";
+
+      state.dataset.kind = "error";
+      state.textContent = message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
 renderStatus();
+bindIntentForm();
