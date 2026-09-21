@@ -42,12 +42,23 @@ impl ArtiConfigSpec {
     }
 
     pub fn render(&self) -> Result<String, ArtiConfigRenderError> {
+        self.render_with_defer_bootstrap(true)
+    }
+
+    pub(crate) fn render_for_bootstrap(&self) -> Result<String, ArtiConfigRenderError> {
+        self.render_with_defer_bootstrap(false)
+    }
+
+    fn render_with_defer_bootstrap(
+        &self,
+        defer_bootstrap: bool,
+    ) -> Result<String, ArtiConfigRenderError> {
         let cache_dir = utf8_path(&self.cache_dir, "cache_dir")?;
         let state_dir = utf8_path(&self.state_dir, "state_dir")?;
 
         Ok(format!(
             "[application]\n\
-defer_bootstrap = true\n\
+defer_bootstrap = {}\n\
 watch_configuration = false\n\
 \n\
 [proxy]\n\
@@ -57,6 +68,7 @@ dns_listen = 0\n\
 [storage]\n\
 cache_dir = {{ literal = \"{}\" }}\n\
 state_dir = {{ literal = \"{}\" }}\n",
+            defer_bootstrap,
             self.socks.port(),
             escape_toml_basic_string(cache_dir),
             escape_toml_basic_string(state_dir),
@@ -140,6 +152,17 @@ mod tests {
         let fixture = include_str!("../../../sidecars/arti/pulqva.toml");
 
         assert_eq!(rendered.as_bytes(), fixture.as_bytes());
+    }
+
+    #[test]
+    fn bootstrap_render_is_an_explicit_internal_transition() {
+        let rendered = canonical_spec()
+            .render_for_bootstrap()
+            .expect("canonical paths are UTF-8");
+
+        assert!(rendered.contains("defer_bootstrap = false"));
+        assert!(rendered.contains("watch_configuration = false"));
+        assert!(rendered.contains("dns_listen = 0"));
     }
 
     #[test]

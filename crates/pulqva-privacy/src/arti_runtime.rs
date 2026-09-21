@@ -82,6 +82,10 @@ impl ArtiRuntimePlan {
     pub fn render_config(&self) -> Result<String, ArtiConfigRenderError> {
         self.config_spec().render()
     }
+
+    pub(crate) fn render_bootstrap_config(&self) -> Result<String, ArtiConfigRenderError> {
+        self.config_spec().render_for_bootstrap()
+    }
 }
 
 #[cfg(test)]
