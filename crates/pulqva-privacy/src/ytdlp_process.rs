@@ -7,7 +7,8 @@ use std::{
 };
 
 use crate::{
-    CompletedMediaArtifactReceipt, MediaArtifactReceiptError, YtDlpMediaRequestPlan,
+    CompletedDownloadResult, CompletedMediaArtifactReceipt, MediaArtifactReceiptError,
+    YtDlpMediaRequestPlan, YtDlpMediaSourceUrl,
     ytdlp_artifact::validate_completed_media_artifact,
 };
 
@@ -18,6 +19,7 @@ use crate::{
 pub struct RunningYtDlp {
     child: Child,
     output_root: PathBuf,
+    source: YtDlpMediaSourceUrl,
 }
 
 impl RunningYtDlp {
@@ -44,6 +46,28 @@ impl RunningYtDlp {
 
         validate_completed_media_artifact(&self.output_root)
             .map_err(YtDlpCompletionError::Artifact)
+    }
+
+    pub fn complete_download(mut self) -> Result<CompletedDownloadResult, YtDlpCompletionError> {
+        let status = self
+            .child
+            .wait()
+            .map_err(|source| YtDlpCompletionError::Io {
+                operation: "wait for yt-dlp child completion",
+                source,
+            })?;
+
+        if !status.success() {
+            return Err(YtDlpCompletionError::ProcessFailed(status));
+        }
+
+        let artifact = validate_completed_media_artifact(&self.output_root)
+            .map_err(YtDlpCompletionError::Artifact)?;
+
+        Ok(CompletedDownloadResult::from_validated_completion(
+            self.source,
+            artifact,
+        ))
     }
 
     pub fn stop_and_wait(mut self) -> Result<ExitStatus, YtDlpProcessError> {
@@ -84,6 +108,7 @@ pub fn launch_ytdlp_request(
     let executable = request.executable().to_owned();
     let arguments = request.arguments();
     let output_root = request.output_root().to_owned();
+    let source = request.source().clone();
 
     let child = Command::new(&executable)
         .args(arguments)
@@ -96,7 +121,11 @@ pub fn launch_ytdlp_request(
             source,
         })?;
 
-    Ok(RunningYtDlp { child, output_root })
+    Ok(RunningYtDlp {
+        child,
+        output_root,
+        source,
+    })
 }
 
 #[derive(Debug)]
