@@ -24,3 +24,9 @@ name = "pulqva-ready-arti-fixture"
 path = "tests/fixtures/ready_arti_fixture.rs"
 test = false
 bench = false
+
+[[bin]]
+name = "pulqva-ytdlp-complete-fixture"
+path = "tests/fixtures/ytdlp_complete_fixture.rs"
+test = false
+bench = false
