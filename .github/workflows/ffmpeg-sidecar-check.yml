@@ -1,0 +1,109 @@
+name: ffmpeg-sidecar-check
+
+on:
+  pull_request:
+    paths:
+      - "sidecars/ffmpeg/**"
+      - ".github/workflows/ffmpeg-sidecar-check.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "sidecars/ffmpeg/**"
+      - ".github/workflows/ffmpeg-sidecar-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact pinned FFmpeg archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(tr -d '\r\n' < sidecars/ffmpeg/VERSION)"
+          test "$VERSION" = "n9.0.2-3-ga5923073bf"
+
+          RELEASE="autobuild-2026-09-20-13-11"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ASSET="ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip"
+          else
+            ASSET="ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz"
+          fi
+
+          EXPECTED="$(awk -v asset="$ASSET" '$2 == asset {print $1}' sidecars/ffmpeg/SHA256SUMS)"
+          test -n "$EXPECTED"
+
+          ARCHIVE="$RUNNER_TEMP/$ASSET"
+          URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/$RELEASE/$ASSET"
+
+          curl --fail --location --retry 3 --retry-delay 2 --output "$ARCHIVE" "$URL"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ACTUAL="$(powershell.exe -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath '$ARCHIVE').Hash.ToLowerInvariant()" | tr -d '\r\n')"
+          else
+            ACTUAL="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
+          fi
+
+          echo "expected sha256: $EXPECTED"
+          echo "actual   sha256: $ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+
+          echo "FFMPEG_ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+          echo "FFMPEG_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Extract verified archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXTRACT_DIR="$RUNNER_TEMP/pulqva-ffmpeg"
+          mkdir -p "$EXTRACT_DIR"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            powershell.exe -NoProfile -Command "Expand-Archive -LiteralPath '$FFMPEG_ARCHIVE' -DestinationPath '$EXTRACT_DIR' -Force"
+            SEARCH_ROOT="$(cygpath -u "$EXTRACT_DIR")"
+            FFMPEG_BIN="$(find "$SEARCH_ROOT" -type f -iname 'ffmpeg.exe' -print -quit)"
+            FFPROBE_BIN="$(find "$SEARCH_ROOT" -type f -iname 'ffprobe.exe' -print -quit)"
+          else
+            tar -xJf "$FFMPEG_ARCHIVE" -C "$EXTRACT_DIR"
+            FFMPEG_BIN="$(find "$EXTRACT_DIR" -type f -name 'ffmpeg' -print -quit)"
+            FFPROBE_BIN="$(find "$EXTRACT_DIR" -type f -name 'ffprobe' -print -quit)"
+            chmod +x "$FFMPEG_BIN" "$FFPROBE_BIN"
+          fi
+
+          test -n "$FFMPEG_BIN"
+          test -n "$FFPROBE_BIN"
+          test -f "$FFMPEG_BIN"
+          test -f "$FFPROBE_BIN"
+
+          echo "FFMPEG_BIN=$FFMPEG_BIN" >> "$GITHUB_ENV"
+          echo "FFPROBE_BIN=$FFPROBE_BIN" >> "$GITHUB_ENV"
+
+      - name: Prove exact local CLI only
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FFMPEG_OUTPUT="$("$FFMPEG_BIN" -version 2>&1)"
+          FFPROBE_OUTPUT="$("$FFPROBE_BIN" -version 2>&1)"
+
+          echo "$FFMPEG_OUTPUT" | head -n 3
+          echo "$FFPROBE_OUTPUT" | head -n 3
+
+          echo "$FFMPEG_OUTPUT" | head -n 1 | grep -F "$FFMPEG_VERSION"
+          echo "$FFPROBE_OUTPUT" | head -n 1 | grep -F "$FFMPEG_VERSION"
+
+          echo "PULQVA_FFMPEG_SIDECAR_OK"
