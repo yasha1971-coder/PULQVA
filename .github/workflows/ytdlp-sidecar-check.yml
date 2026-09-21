@@ -1,0 +1,73 @@
+name: ytdlp-sidecar-check
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact official yt-dlp standalone asset
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(tr -d '\r\n' < sidecars/yt-dlp/VERSION)"
+          test "$VERSION" = "2026.08.19"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ASSET="yt-dlp.exe"
+          else
+            ASSET="yt-dlp_linux"
+          fi
+
+          EXPECTED="$(awk -v asset="$ASSET" '$2 == asset {print $1}' sidecars/yt-dlp/SHA256SUMS)"
+          test -n "$EXPECTED"
+
+          BIN="$RUNNER_TEMP/$ASSET"
+          URL="https://github.com/yt-dlp/yt-dlp/releases/download/$VERSION/$ASSET"
+
+          curl --fail --location --retry 3 --retry-delay 2 --output "$BIN" "$URL"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ACTUAL="$(powershell.exe -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath '$BIN').Hash.ToLowerInvariant()" | tr -d '\r\n')"
+            EXEC_BIN="$(cygpath -u "$BIN")"
+          else
+            ACTUAL="$(sha256sum "$BIN" | awk '{print $1}')"
+            chmod +x "$BIN"
+            EXEC_BIN="$BIN"
+          fi
+
+          echo "expected sha256: $EXPECTED"
+          echo "actual   sha256: $ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+
+          echo "YTDLP_BIN=$EXEC_BIN" >> "$GITHUB_ENV"
+          echo "YTDLP_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Verify exact version and local CLI only
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION_OUTPUT="$("$YTDLP_BIN" --version)"
+          echo "$VERSION_OUTPUT"
+          test "$VERSION_OUTPUT" = "$YTDLP_VERSION"
+
+          "$YTDLP_BIN" --ignore-config --help > "$RUNNER_TEMP/yt-dlp-help.txt"
+          test -s "$RUNNER_TEMP/yt-dlp-help.txt"
+          grep -F "yt-dlp" "$RUNNER_TEMP/yt-dlp-help.txt"
+
+          echo "PULQVA_YTDLP_SIDECAR_OK"

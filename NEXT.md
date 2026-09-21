@@ -2,51 +2,49 @@
 
 ## Current verified state
 
-T017 is complete.
+T018 is complete.
 
-PULQVA now exposes external-network routing only through a readiness-gated
-`ReadyTorTransport` capability. Raw `TorSocksEndpoint` data cannot expose a public proxy URL.
+PULQVA now has a bounded, fail-closed Tor readiness gate:
+
+- only the privacy layer can mint `ReadyTorTransport`;
+- bootstrap is activated explicitly from the deferred state;
+- readiness probes only the local Tor SOCKS listener;
+- the external target is passed as a SOCKS5 domain name, so DNS stays on the Tor side;
+- no direct/clearnet fallback exists;
+- Linux proved a ready Tor route with the pinned Arti 2.6.0 sidecar;
+- Windows proved bounded fail-closed behavior on the hosted runner when Tor readiness timed out;
+- all existing checks are green.
 
 Verified PR head:
-`7009058db21c86a442ce466bc200f6b035e5919a`
+`490e6467ac2f56d69dcfdcb436775e216ebf3859`
 
 ## Active atomic task
 
-**T018 — Add bounded Tor readiness verification**
+**T019 — Pin and prove the yt-dlp standalone sidecar**
 
-The privacy layer now owns the only path allowed to mint `ReadyTorTransport`.
+The official yt-dlp release observed on 2026-09-21 is pinned to `2026.08.19`.
 
-The verifier:
-
-- accepts a running Arti child owned by the privacy layer;
-- explicitly transitions the deferred Arti config into bootstrap-enabled mode and restarts the same pinned child;
-- uses only the local loopback SOCKS endpoint;
-- sends a SOCKS5 domain-name CONNECT request so DNS stays on the Tor side;
-- uses no direct/clearnet fallback;
-- is bounded by an explicit timeout;
-- returns no ready capability on timeout, child exit, or protocol failure.
-
-The proof uses the actual pinned Arti 2.6.0 sidecar. Linux must reach a verified Tor route.
-On GitHub-hosted Windows, if the Tor network cannot be reached within the bounded deadline, the
-proof requires fail-closed behavior: no `ReadyTorTransport` is minted and the supervised child is
-cleanly stopped. A successful Windows route is accepted and verified identically when available.
+T019 verifies the official Linux and Windows standalone release assets by exact SHA-256, then runs
+only `--version` and `--help`. No media URL is supplied and PULQVA performs no media download.
 
 ## Queued next task
 
-**T019 — Pin and prove the yt-dlp standalone sidecar**
+**T020 — Add a typed yt-dlp launch plan gated by ReadyTorTransport**
 
-Source-verify the current official standalone yt-dlp release, pin it, and prove the exact binary
-CLI on Windows and Linux before adding any media-network request.
+Model the future yt-dlp invocation as typed data. The plan must require a verified
+`ReadyTorTransport` and must render a Tor-only proxy argument with no direct-network alternative.
+No yt-dlp process or media request will be started in T020.
 
 ## Do not do yet
 
-- no user download request;
-- no direct-network fallback;
+- no media URL request;
+- no yt-dlp process from product runtime;
 - no FFmpeg integration;
 - no AI provider;
-- no UI.
+- no UI;
+- no direct-network fallback.
 
 ## Success
 
-Only a successfully verified Tor route can produce `ReadyTorTransport`, and the proof is bounded,
-fail-closed, remote-DNS-safe, and green on Windows and Linux.
+The exact official yt-dlp standalone binaries are pinned and reproducibly verified on Windows and
+Linux before any media-network behavior is introduced.
