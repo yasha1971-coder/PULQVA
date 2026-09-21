@@ -2,52 +2,51 @@
 
 ## Current verified state
 
-T031 is complete.
+T032 is complete.
 
-PULQVA now has a compiling Windows/Linux Tauri 2 desktop shell:
+PULQVA now accepts a natural-language request in the local desktop shell:
 
-- Tauri 2.11.6 and tauri-build 2.6.3 are pinned;
-- the Rust backend links `pulqva-core`;
-- the frontend loads only local assets;
-- frontend status access crosses only the typed Tauri command boundary;
-- CSP grants local content plus required Tauri IPC endpoints only;
-- CI rejects frontend fetch/XHR/WebSocket/EventSource/sendBeacon and remote HTTP(S) URLs;
-- Windows and Linux desktop compile checks are green.
+- frontend sends raw text only through the typed `submit_intent` Tauri command;
+- Rust constructs the existing `pulqva_core::SearchIntent`;
+- blank/whitespace-only input is rejected by the core invariant;
+- successful submission returns deterministic typed query/stage data;
+- no AI provider, search provider, URL execution, shell execution, or frontend Internet access exists.
 
 Verified PR head:
-`6faff7d194d87e714ae3b50d34834223a34309b1`
+`29193748fe3352684c30d52a94bc5b09ba421e11`
 
 ## Active atomic task
 
-**T032 — Add the typed desktop intent-input boundary**
+**T033 — Add the typed desktop candidate-list boundary**
 
-The desktop shell now accepts one natural-language request:
+T033 adds the first provider-neutral candidate response path:
 
-- the frontend submits only the raw text through `submit_intent`;
-- Rust constructs the existing `pulqva_core::SearchIntent`;
-- blank/whitespace-only requests are rejected by the core invariant;
-- successful submissions return deterministic typed data: validated query + stage;
-- the UI shows only the local validation result;
-- no AI provider, search provider, URL execution, shell execution, or frontend Internet access is introduced.
+- Rust validates the request as `SearchIntent` before producing candidates;
+- local proof candidates are constructed only through `pulqva_core::SearchCandidate`;
+- a typed desktop DTO copies only validated title + opaque locator fields;
+- candidate order and values are deterministic;
+- the source is local/test-only and contacts no provider;
+- frontend renders title/locator fields only as inert text;
+- opaque locators are not interpreted, navigated, selected, or executed.
 
 ## Queued next task
 
-**T033 — Add the typed desktop candidate-list boundary**
+**T034 — Add the typed desktop candidate-selection boundary**
 
-Add a provider-neutral candidate response contract to the desktop backend and UI using
-`pulqva_core::SearchCandidate`. Keep the source local/test-only in this task; no search provider or
-external request yet.
+Allow the user to select one already-returned candidate through a typed local command. Validate the
+selection against the same local candidate set and return only deterministic selection data. Do not
+execute the locator or start any media/network action yet.
 
 ## Do not do yet
 
-- no AI provider;
 - no external search provider;
+- no AI provider;
+- no locator execution;
 - no media download from UI;
-- no arbitrary user URL execution;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-A user's raw text can cross the local desktop boundary, be validated by the core `SearchIntent`
-invariant, and return deterministic typed data without any network side effect.
+A validated intent can produce a deterministic provider-neutral candidate list whose opaque locators
+remain inert data all the way through the desktop UI.
