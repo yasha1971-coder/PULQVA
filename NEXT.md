@@ -2,46 +2,48 @@
 
 ## Current verified state
 
-T033 is complete.
+T034 is complete.
 
-PULQVA now has a provider-neutral desktop candidate-list boundary:
+PULQVA now has an explicit typed candidate-selection boundary:
 
-- Rust validates the request as `SearchIntent`;
-- local proof candidates are created only through `SearchCandidate`;
-- the desktop receives deterministic title + opaque locator fields;
-- the frontend renders locator values only as inert text;
-- no provider, AI, URL, shell, media process, or frontend Internet access is involved.
+- every displayed local candidate has one Select action;
+- selection sends only validated intent text + opaque locator through Tauri IPC;
+- Rust reconstructs the deterministic validated candidate set;
+- locator matching is exact and fail-closed;
+- unknown locators are rejected;
+- the selection result remains inert title/locator/stage data;
+- no provider, network, shell, filesystem, or media side effect is involved.
 
 Verified PR head:
-`9b09501d6e8332437ec5583c5899961f41e08be5`
+`adad7423dab41387ca70d483bbedc466b50f1bf5`
 
 ## Active atomic task
 
-**T034 — Add the typed desktop candidate-selection boundary**
+**T035 — Add the typed desktop Download action boundary**
 
-T034 adds explicit candidate selection without execution:
+T035 adds the UX contract's explicit Download action while keeping it data-only:
 
-- each rendered candidate has one Select action;
-- selection sends only validated intent text + opaque locator through Tauri IPC;
-- Rust reconstructs the same deterministic validated candidate set;
-- locator matching is exact and fail-closed;
-- unknown locators are rejected;
-- typed selection output contains only intent/title/locator/stage data;
-- selection is rendered as inert text and triggers no network/media side effect.
+- Download appears only after a candidate has been validated and selected;
+- frontend sends only validated intent text + the opaque selected locator;
+- Rust reconstructs and revalidates the candidate set again;
+- the locator must exactly match a validated `SearchCandidate`;
+- the response contains only deterministic intent/title/locator/action/stage data;
+- the opaque locator is not interpreted or converted to a URL;
+- no yt-dlp, FFmpeg, shell, network, or filesystem action starts.
 
 ## Queued next task
 
-**T035 — Add the typed desktop Download action boundary**
+**T036 — Add the backend-only typed media-source resolution boundary**
 
-Add the UX contract's explicit Download action after a validated candidate selection. The action must
-remain data-only in T035: Rust revalidates the selected candidate and returns a typed download-action
-request without starting yt-dlp, FFmpeg, networking, or filesystem output yet.
+Resolve one revalidated local proof candidate to a typed `YtDlpMediaSourceUrl` entirely inside Rust,
+using an exact backend-only mapping to the immutable T024 media object. The frontend must never
+receive or construct the media URL, and no process/network/filesystem side effect may start yet.
 
 ## Do not do yet
 
 - no external search provider;
 - no AI provider;
-- no locator execution;
+- no actual download execution from the desktop UI;
 - no yt-dlp/FFmpeg process from the desktop UI;
 - no filesystem output from the desktop UI;
 - no packaging/release installers;
@@ -49,5 +51,5 @@ request without starting yt-dlp, FFmpeg, networking, or filesystem output yet.
 
 ## Success
 
-The user can explicitly select one displayed candidate, Rust verifies that the locator belongs to the
-validated local candidate set, and the opaque locator remains inert.
+After a validated selection, the user can press Download and receive a typed, fail-closed,
+data-only Download action plan while the selected opaque locator remains inert.
