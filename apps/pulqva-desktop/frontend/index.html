@@ -19,9 +19,43 @@
           <p class="eyebrow">Private intent-to-file engine</p>
           <h1 id="product-title">PULQVA</h1>
           <p class="subtitle">
-            Desktop shell connected only to the typed Rust command boundary.
+            Say what you want. Rust validates the intent before any later stage can use it.
           </p>
         </div>
+      </section>
+
+      <section class="intent-card" aria-labelledby="intent-title">
+        <p class="section-label">Intent</p>
+        <h2 id="intent-title">What should PULQVA find?</h2>
+        <form id="intent-form">
+          <label class="sr-only" for="intent-query">Natural-language request</label>
+          <textarea
+            id="intent-query"
+            name="intent-query"
+            rows="3"
+            autocomplete="off"
+            spellcheck="true"
+            placeholder="Example: Find the official live performance in the best available quality"
+            required
+          ></textarea>
+          <div class="intent-actions">
+            <button id="intent-submit" type="submit">Validate intent</button>
+            <p id="intent-state" class="intent-state" aria-live="polite">
+              Waiting for local input.
+            </p>
+          </div>
+        </form>
+
+        <dl id="intent-result" class="intent-result" hidden>
+          <div>
+            <dt>Validated text</dt>
+            <dd id="intent-result-query">—</dd>
+          </div>
+          <div>
+            <dt>Stage</dt>
+            <dd id="intent-result-stage">—</dd>
+          </div>
+        </dl>
       </section>
 
       <section class="status-card" aria-live="polite">
