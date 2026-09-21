@@ -1,0 +1,152 @@
+name: ffmpeg-real-remux-check
+
+on:
+  pull_request:
+    paths:
+      - "crates/pulqva-privacy/src/ffmpeg_real_proof.rs"
+      - "crates/pulqva-privacy/src/ffmpeg_process.rs"
+      - "crates/pulqva-privacy/src/ffmpeg_remux.rs"
+      - "crates/pulqva-privacy/src/ytdlp_artifact.rs"
+      - "crates/pulqva-privacy/src/ytdlp_completed.rs"
+      - "crates/pulqva-privacy/src/lib.rs"
+      - "sidecars/ffmpeg/**"
+      - "sidecars/yt-dlp/T024_TEST_MEDIA.json"
+      - ".github/workflows/ffmpeg-real-remux-check.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "crates/pulqva-privacy/src/ffmpeg_real_proof.rs"
+      - "crates/pulqva-privacy/src/ffmpeg_process.rs"
+      - "crates/pulqva-privacy/src/ffmpeg_remux.rs"
+      - "crates/pulqva-privacy/src/ytdlp_artifact.rs"
+      - "crates/pulqva-privacy/src/ytdlp_completed.rs"
+      - "crates/pulqva-privacy/src/lib.rs"
+      - "sidecars/ffmpeg/**"
+      - "sidecars/yt-dlp/T024_TEST_MEDIA.json"
+      - ".github/workflows/ffmpeg-real-remux-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  remux:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          rustup default 1.91.0
+
+      - name: Download and verify exact pinned FFmpeg archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(tr -d '\r\n' < sidecars/ffmpeg/VERSION)"
+          test "$VERSION" = "n9.0.2-3-ga5923073bf"
+          RELEASE="autobuild-2026-09-20-13-11"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ASSET="ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip"
+          else
+            ASSET="ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz"
+          fi
+
+          EXPECTED="$(awk -v asset="$ASSET" '$2 == asset {print $1}' sidecars/ffmpeg/SHA256SUMS)"
+          test -n "$EXPECTED"
+
+          ARCHIVE="$RUNNER_TEMP/$ASSET"
+          URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/$RELEASE/$ASSET"
+          curl --fail --location --retry 3 --retry-delay 2 --output "$ARCHIVE" "$URL"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ACTUAL="$(powershell.exe -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath '$ARCHIVE').Hash.ToLowerInvariant()" | tr -d '\r\n')"
+          else
+            ACTUAL="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
+          fi
+
+          test "$ACTUAL" = "$EXPECTED"
+          echo "FFMPEG_ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Extract verified FFmpeg and ffprobe
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          EXTRACT_DIR="$RUNNER_TEMP/pulqva-ffmpeg-real-remux"
+          mkdir -p "$EXTRACT_DIR"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            powershell.exe -NoProfile -Command "Expand-Archive -LiteralPath '$FFMPEG_ARCHIVE' -DestinationPath '$EXTRACT_DIR' -Force"
+            SEARCH_ROOT="$(cygpath -u "$EXTRACT_DIR")"
+            FFMPEG_BIN="$(find "$SEARCH_ROOT" -type f -iname 'ffmpeg.exe' -print -quit)"
+            FFPROBE_BIN="$(find "$SEARCH_ROOT" -type f -iname 'ffprobe.exe' -print -quit)"
+            FFMPEG_ENV="$(cygpath -w "$FFMPEG_BIN")"
+            FFPROBE_ENV="$(cygpath -w "$FFPROBE_BIN")"
+          else
+            FFMPEG_BIN="$(find "$EXTRACT_DIR" -type f -name 'ffmpeg' -print -quit)"
+            FFPROBE_BIN="$(find "$EXTRACT_DIR" -type f -name 'ffprobe' -print -quit)"
+            tar -xJf "$FFMPEG_ARCHIVE" -C "$EXTRACT_DIR"
+            FFMPEG_BIN="$(find "$EXTRACT_DIR" -type f -name 'ffmpeg' -print -quit)"
+            FFPROBE_BIN="$(find "$EXTRACT_DIR" -type f -name 'ffprobe' -print -quit)"
+            chmod +x "$FFMPEG_BIN" "$FFPROBE_BIN"
+            FFMPEG_ENV="$FFMPEG_BIN"
+            FFPROBE_ENV="$FFPROBE_BIN"
+          fi
+
+          test -n "$FFMPEG_BIN"
+          test -n "$FFPROBE_BIN"
+
+          echo "PULQVA_FFMPEG_BIN=$FFMPEG_ENV" >> "$GITHUB_ENV"
+          echo "PULQVA_FFPROBE_BIN=$FFPROBE_ENV" >> "$GITHUB_ENV"
+
+      - name: Download and verify immutable local media fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          COMMIT="4d21a042353022326071acb0251ab75cd6bae114"
+          EXPECTED_BLOB="81d11df5f2c8ed6e33a1350d98e800d943bac7e9"
+          EXPECTED_SIZE="5510872"
+          MEDIA="$RUNNER_TEMP/pulqva-t030-big-buck-bunny.mp4"
+          URL="https://raw.githubusercontent.com/mediaelement/mediaelement-files/$COMMIT/big_buck_bunny.mp4"
+
+          curl --fail --location --retry 3 --retry-delay 2 --output "$MEDIA" "$URL"
+
+          ACTUAL_BLOB="$(git hash-object "$MEDIA")"
+          ACTUAL_SIZE="$(wc -c < "$MEDIA" | tr -d '[:space:]')"
+
+          test "$ACTUAL_BLOB" = "$EXPECTED_BLOB"
+          test "$ACTUAL_SIZE" = "$EXPECTED_SIZE"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            MEDIA_ENV="$(cygpath -w "$MEDIA")"
+          else
+            MEDIA_ENV="$MEDIA"
+          fi
+
+          echo "PULQVA_MEDIA_FIXTURE=$MEDIA_ENV" >> "$GITHUB_ENV"
+
+      - name: Prove bounded real local stream-copy remux
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cargo +1.91.0 test \
+            --locked \
+            -p pulqva-privacy \
+            ffmpeg_real_proof::real_pinned_ffmpeg_remuxes_validated_local_media \
+            -- \
+            --ignored \
+            --exact \
+            --nocapture
