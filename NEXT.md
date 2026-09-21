@@ -2,50 +2,54 @@
 
 ## Current verified state
 
-T025 is complete.
+T026 is complete.
 
-PULQVA now has a completion-gated `CompletedMediaArtifactReceipt`:
+PULQVA now has a stable `CompletedDownloadResult` for the future desktop/UI boundary:
 
-- only a successful yt-dlp child can enter artifact validation;
-- the exact output root is retained by the running typed request;
-- exactly one regular non-empty file is required;
-- symlinks, parent traversal, path escape, empty output, multiple files, and zero-byte artifacts are rejected;
-- the receipt exposes only the canonical artifact path and byte size;
-- Windows/Linux filesystem checks are green.
+- it is produced only after successful yt-dlp child completion and validated artifact receipt creation;
+- the original typed `YtDlpMediaSourceUrl` is retained;
+- canonical artifact path and byte size come only from `CompletedMediaArtifactReceipt`;
+- process handles and Tor/proxy internals are not exposed;
+- deterministic display-facing fields are available without adding network, process, or filesystem side effects.
 
 Verified PR head:
-`3e03bd96302f7458947c661f38a65a762e5129b3`
+`e25ecbee08e21cfb82b52514980423ed9904a1e1`
 
 ## Active atomic task
 
-**T026 — Add a completed download result for UI handoff**
+**T027 — Pin and prove the FFmpeg/ffprobe sidecar**
 
-A successful validated completion can now be consumed into `CompletedDownloadResult`.
+T027 pins the exact upstream FFmpeg source identity and one dated cross-platform static build
+snapshot:
 
-The result:
+- upstream source commit: `a5923073bfd8f25b7300d93af3f8e690174ebd30`;
+- version marker: `n9.0.2-3-ga5923073bf`;
+- build snapshot: `BtbN/FFmpeg-Builds` tag `autobuild-2026-09-20-13-11`;
+- Linux and Windows archive SHA-256 digests are frozen in-repo;
+- archives are verified before extraction or execution;
+- CI executes only local `ffmpeg -version` and `ffprobe -version`;
+- no media URL, transform, remux, transcode, or runtime network route is introduced.
 
-- retains the original typed `YtDlpMediaSourceUrl`;
-- derives artifact path and byte size only from `CompletedMediaArtifactReceipt`;
-- exposes no child-process handle or proxy/Tor internals;
-- has deterministic display-facing fields for source URL, canonical artifact path, and byte size;
-- adds no network, process, or filesystem side effect during result construction.
+The source proof explicitly records that FFmpeg publishes the upstream source while BtbN provides the
+cross-platform static binary build snapshot.
 
 ## Queued next task
 
-**T027 — Pin and prove the FFmpeg/ffprobe sidecar**
+**T028 — Add a typed local FFmpeg remux plan**
 
-Pin one exact official FFmpeg build source for Windows and Linux and prove local
-`ffmpeg -version` / `ffprobe -version` CLI availability before any post-processing is allowed.
+Create a pure-data FFmpeg remux plan that can take input only from `CompletedDownloadResult`,
+chooses an explicit local output path/container, and produces deterministic local-only argv without
+spawning FFmpeg.
 
 ## Do not do yet
 
+- no FFmpeg process execution or media transformation;
 - no desktop UI implementation;
-- no FFmpeg media transformation;
 - no AI provider;
 - no arbitrary user URL execution;
 - no direct-network fallback.
 
 ## Success
 
-The future desktop UI can consume one stable typed completed-download value without learning about
-process supervision or privacy-route internals.
+Both Windows and Linux prove the exact verified FFmpeg/ffprobe sidecar CLI before PULQVA is allowed
+to introduce any FFmpeg media-processing side effect.
