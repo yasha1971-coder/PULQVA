@@ -2,53 +2,55 @@
 
 ## Current verified state
 
-T029 is complete.
+T030 is complete.
 
-PULQVA now has a controlled FFmpeg process boundary:
+PULQVA now proves one real bounded local FFmpeg stream-copy remux:
 
-- launcher accepts only `FfmpegRemuxPlan`;
-- executable and argv come only from the typed local-only plan;
-- FFmpeg is spawned directly with no shell;
-- `RunningFfmpeg` owns the child handle;
-- deterministic `try_wait` and stop/wait cleanup exist;
-- Windows/Linux tests use a local fixture that records exact argv;
-- the fixture performs no network and creates no media output.
+- exact pinned FFmpeg/ffprobe archives are verified before execution;
+- the immutable local MP4 fixture is verified before use;
+- input enters through the validated `CompletedDownloadResult` boundary;
+- real execution starts only from `FfmpegRemuxPlan`;
+- `-protocol_whitelist file` keeps FFmpeg input local;
+- `-c copy` preserves stream-copy behavior with no re-encoding;
+- non-media hint/data tracks are dropped explicitly;
+- Windows and Linux complete the same real-remux proof;
+- pinned ffprobe validates the resulting local Matroska file.
 
 Verified PR head:
-`0e11a4612a334b777ee7161db4bea010f043185f`
+`378ef54cb5bf9cec834e40f826a89b5ffb0913fa`
 
 ## Active atomic task
 
-**T030 — Prove one real local FFmpeg remux**
+**T031 — Bootstrap the Tauri 2 desktop shell**
 
-T030 adds a dedicated ignored proof test plus Windows/Linux CI:
+T031 adds the first Windows/Linux desktop shell:
 
-- exact pinned FFmpeg/ffprobe archives are SHA-256 verified before execution;
-- the immutable T024 MP4 fixture is verified by Git blob identity and exact byte size;
-- test-only crate-internal setup converts that local fixture into the same validated
-  `CompletedDownloadResult` type without widening any production constructor;
-- real execution starts only from `FfmpegRemuxPlan`;
-- FFmpeg receives `-protocol_whitelist file` and stream-copy `-c copy`;
-- execution is bounded;
-- output must be a distinct, non-empty regular Matroska file;
-- real pinned ffprobe validates the local remuxed output.
+- Tauri is pinned to 2.11.6 and tauri-build to 2.6.3;
+- the desktop crate is isolated from the root Rust workspace so existing locked core checks remain unchanged;
+- the Rust backend links `pulqva-core` and exposes one typed `app_status` command;
+- the frontend calls only Tauri IPC through `window.__TAURI__.core.invoke`;
+- frontend assets are entirely local;
+- CSP permits only local content plus the Tauri IPC endpoints;
+- CI rejects fetch/XHR/WebSocket/EventSource/sendBeacon and remote HTTP(S) URLs in frontend code;
+- Windows and Linux compile checks are defined.
 
 ## Queued next task
 
-**T031 — Bootstrap the Tauri 2 desktop shell**
+**T032 — Add the typed desktop intent-input boundary**
 
-Create the first Windows/Linux desktop shell and a minimal typed Rust command boundary while keeping
-the frontend unable to own external network access.
+Add the first user text input to the local desktop UI and send it only through a typed Tauri command
+that constructs `SearchIntent` in Rust. No AI provider, search backend, URL execution, or frontend
+Internet access yet.
 
 ## Do not do yet
 
-- no transcoding/re-encoding;
-- no arbitrary user URL execution from the UI;
 - no AI provider;
-- no frontend Internet access;
+- no external search from the frontend;
+- no arbitrary user URL execution;
+- no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-The actual pinned FFmpeg sidecar performs one bounded local stream-copy remux on a validated local
-artifact and the actual pinned ffprobe accepts the result, with no FFmpeg network input.
+PULQVA has a compiling Windows/Linux Tauri 2 shell whose frontend is local-only and can learn app
+status solely through the typed Rust command boundary.

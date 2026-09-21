@@ -1,0 +1,17 @@
+[package]
+name = "pulqva-desktop"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.91"
+publish = false
+build = "build.rs"
+
+[workspace]
+
+[dependencies]
+pulqva-core = { path = "../../../crates/pulqva-core" }
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "=2.11.6" }
+
+[build-dependencies]
+tauri-build = { version = "=2.6.3", features = [] }
