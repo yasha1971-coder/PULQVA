@@ -2,51 +2,48 @@
 
 ## Current verified state
 
-T015 is complete.
+T016 is complete.
 
-PULQVA now has a controlled child-process launcher behind the prepared-runtime capability:
-
-- launcher accepts `PreparedArtiRuntime`, not a raw runtime plan;
-- executable path and argument vector come only from the prepared runtime;
-- child is spawned directly with `std::process::Command`, never through a shell;
-- `RunningArti` retains the child handle and PID;
-- deterministic stop/wait cleanup exists;
-- Windows and Linux tests use a local network-free fixture process;
-- no SOCKS request, DNS request, or external network request is made by the test path;
-- no Tor bootstrap is intentionally triggered.
+The real pinned Arti 2.6.0 sidecar has been started and stopped through PULQVA's prepared-runtime
+path on Windows and Linux with `application.defer_bootstrap = true`.
 
 Verified PR head:
-`ab86bbadc91c09cedc77ac09547212ddd30e073d`
+`1326fe255304fa72899d876f0b842260cac3f6b6`
 
 Verified checks:
 
+- arti-lifecycle-check: success;
 - arti-materialization-check: success;
 - rust-check: success;
 - continuity-guard: success;
 - arti-config-contract: success;
 - arti-sidecar-check: success.
 
-## Next atomic task
+## Active atomic task
 
-**T016 — Prove the real pinned Arti sidecar can start and stop with deferred bootstrap**
+**T017 — Add a readiness-gated Tor transport capability**
 
-Use the actual pinned Arti 2.6.0 sidecar in a bounded Windows/Linux lifecycle proof.
+External-network code must not be able to turn a raw SOCKS port into an approved route.
 
-The proof must:
+T017 introduces a public `ReadyTorTransport` capability with no public constructor. The raw
+`TorSocksEndpoint` remains useful as internal runtime data, but its proxy URL is no longer exposed
+as a public network-routing API.
 
-- use the existing prepared-runtime path and real Arti executable;
-- use the verified config with `defer_bootstrap = true`;
-- start the real child directly, without a shell;
-- perform no SOCKS request, DNS request, or readiness probe;
-- send no user workload that can trigger bootstrap;
-- stop and reap the child deterministically;
-- preserve fail-closed privacy invariants.
+A future readiness verifier inside `pulqva-privacy` will be the only path that can mint the ready
+capability.
+
+## Queued next task
+
+**T018 — Add bounded Tor readiness verification**
+
+This will be the only implementation allowed to mint `ReadyTorTransport`, and it will remain
+fail-closed with no direct-network fallback.
 
 ## Do not do yet
 
-- no Tor bootstrap trigger;
-- no external request through Tor;
-- no SOCKS readiness probing;
+- no Tor bootstrap trigger in T017;
+- no external request in T017;
+- no SOCKS readiness probe in T017;
 - no dynamic port discovery;
 - no yt-dlp/FFmpeg;
 - no AI;
@@ -54,5 +51,5 @@ The proof must:
 
 ## Success
 
-The real pinned Arti sidecar can be started and stopped under PULQVA control on Windows and Linux
-without any client request that could trigger bootstrap, and all existing checks remain green.
+Future external-network adapters can be designed to require `ReadyTorTransport`, while callers
+outside the privacy crate cannot manufacture that capability from raw endpoint data.

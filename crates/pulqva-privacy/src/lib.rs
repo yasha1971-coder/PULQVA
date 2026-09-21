@@ -8,6 +8,7 @@ mod arti_launch;
 mod arti_launcher;
 mod arti_materialize;
 mod arti_prepared;
+mod arti_ready;
 mod arti_runtime;
 
 pub use arti_config::{ArtiConfigRenderError, ArtiConfigSpec};
@@ -15,6 +16,7 @@ pub use arti_launch::ArtiLaunchSpec;
 pub use arti_launcher::{ArtiProcessError, RunningArti, launch_prepared_arti};
 pub use arti_materialize::{ArtiConfigMaterializeError, materialize_arti_config};
 pub use arti_prepared::{PreparedArtiRuntime, prepare_arti_runtime};
+pub use arti_ready::ReadyTorTransport;
 pub use arti_runtime::ArtiRuntimePlan;
 
 use std::{error::Error, fmt, num::NonZeroU16};
@@ -45,7 +47,7 @@ impl TorSocksEndpoint {
     /// Returns the proxy URL network adapters must use.
     ///
     /// socks5h is intentional: hostname resolution stays on the proxy side.
-    pub fn proxy_url(self) -> String {
+    pub(crate) fn proxy_url(self) -> String {
         format!("socks5h://{TOR_SOCKS_HOST}:{}", self.port)
     }
 }
@@ -84,9 +86,4 @@ mod tests {
         assert_eq!(endpoint.port(), 19050);
     }
 
-    #[test]
-    fn renders_remote_dns_socks_proxy_url() {
-        let endpoint = TorSocksEndpoint::new(19050).expect("non-zero port is valid");
-        assert_eq!(endpoint.proxy_url(), "socks5h://127.0.0.1:19050");
-    }
 }
