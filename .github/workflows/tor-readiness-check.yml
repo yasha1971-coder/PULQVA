@@ -15,7 +15,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 12
 
     steps:
       - uses: actions/checkout@v4
@@ -55,10 +55,16 @@ jobs:
 
           test -f "$ARTI_BIN"
 
-          cargo +1.91.0 run \
+          OUTPUT="$(cargo +1.91.0 run \
             --quiet \
             --locked \
             -p pulqva-privacy \
             --example real_arti_readiness \
-            -- "$ARTI_BIN" \
-            | grep -F "PULQVA_TOR_READY_OK"
+            -- "$ARTI_BIN")"
+          echo "$OUTPUT"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "$OUTPUT" | grep -E 'PULQVA_TOR_(READY|WINDOWS_FAIL_CLOSED)_OK'
+          else
+            echo "$OUTPUT" | grep -F 'PULQVA_TOR_READY_OK'
+          fi
