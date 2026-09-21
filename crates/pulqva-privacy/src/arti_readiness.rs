@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    ReadyTorTransport, RunningArti,
+    ArtiProcessError, ReadyTorTransport, RunningArti,
     arti_ready::certify_tor_ready,
 };
 
@@ -18,8 +18,9 @@ const READINESS_PORT: u16 = 443;
 const ATTEMPT_SLICE: Duration = Duration::from_secs(12);
 const RETRY_DELAY: Duration = Duration::from_millis(100);
 
-/// Verifies that the running Tor transport can establish an outbound TCP
-/// connection through its local SOCKS endpoint within an explicit deadline.
+/// Explicitly activates bootstrap for a previously deferred Arti child, then
+/// verifies that the Tor transport can establish an outbound TCP connection
+/// through its local SOCKS endpoint within an explicit deadline.
 ///
 /// The verifier itself opens only a loopback TCP connection. The external
 /// destination is encoded as a SOCKS5 domain-name request, so hostname
@@ -32,6 +33,10 @@ pub fn verify_tor_readiness(
     if timeout.is_zero() {
         return Err(TorReadinessError::Timeout);
     }
+
+    running
+        .activate_bootstrap()
+        .map_err(TorReadinessError::BootstrapActivation)?;
 
     let deadline = Instant::now()
         .checked_add(timeout)
@@ -163,6 +168,7 @@ enum SocksProbeError {
 #[derive(Debug)]
 pub enum TorReadinessError {
     Timeout,
+    BootstrapActivation(ArtiProcessError),
     ChildExited(ExitStatus),
     Protocol(&'static str),
     Io {
@@ -175,6 +181,9 @@ impl fmt::Display for TorReadinessError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Timeout => f.write_str("Tor readiness verification timed out"),
+            Self::BootstrapActivation(source) => {
+                write!(f, "failed to activate Tor bootstrap: {source}")
+            }
             Self::ChildExited(status) => {
                 write!(f, "Arti child exited before Tor became ready: {status}")
             }
@@ -187,6 +196,7 @@ impl fmt::Display for TorReadinessError {
 impl Error for TorReadinessError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            Self::BootstrapActivation(source) => Some(source),
             Self::Io { source, .. } => Some(source),
             Self::Timeout | Self::ChildExited(_) | Self::Protocol(_) => None,
         }
