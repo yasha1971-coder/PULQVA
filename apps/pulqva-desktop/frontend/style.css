@@ -140,7 +140,8 @@ button:disabled {
 }
 
 .intent-state,
-.candidate-note {
+.candidate-note,
+.download-plan-note {
   margin: 0;
   color: #8e98a4;
   font-size: 13px;
@@ -155,7 +156,8 @@ button:disabled {
 }
 
 .intent-result,
-.selection-result {
+.selection-result,
+.download-plan-result {
   display: grid;
   gap: 12px;
   margin: 18px 0 0;
@@ -163,12 +165,14 @@ button:disabled {
 
 .intent-result[hidden],
 .candidate-panel[hidden],
-.selection-panel[hidden] {
+.selection-panel[hidden],
+.download-plan-panel[hidden] {
   display: none;
 }
 
 .intent-result > div,
 .selection-result > div,
+.download-plan-result > div,
 .candidate-item {
   padding: 14px 16px;
   border-radius: 12px;
@@ -176,13 +180,15 @@ button:disabled {
 }
 
 .candidate-panel,
-.selection-panel {
+.selection-panel,
+.download-plan-panel {
   margin-top: 26px;
   padding-top: 24px;
   border-top: 1px solid #252a31;
 }
 
-.candidate-heading {
+.candidate-heading,
+.selection-heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -227,6 +233,15 @@ button:disabled {
   border: 1px solid #3a414a;
   color: #f3f5f7;
   background: #171c21;
+}
+
+#download-action {
+  flex: 0 0 auto;
+}
+
+.download-plan-note {
+  margin-top: 14px;
+  line-height: 1.5;
 }
 
 .status-row {
@@ -308,6 +323,7 @@ dd {
 
   .intent-actions,
   .candidate-heading,
+  .selection-heading,
   .candidate-item {
     align-items: stretch;
     flex-direction: column;

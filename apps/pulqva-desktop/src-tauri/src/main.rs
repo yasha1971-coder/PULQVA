@@ -123,6 +123,41 @@ impl From<SearchCandidateError> for CandidateSelectionError {
     }
 }
 
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct DownloadAction {
+    intent_query: String,
+    title: String,
+    locator: String,
+    action: &'static str,
+    stage: &'static str,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct DownloadActionError {
+    code: &'static str,
+    message: String,
+}
+
+impl From<SearchIntentError> for DownloadActionError {
+    fn from(source: SearchIntentError) -> Self {
+        Self {
+            code: "invalid-search-intent",
+            message: source.to_string(),
+        }
+    }
+}
+
+impl From<SearchCandidateError> for DownloadActionError {
+    fn from(source: SearchCandidateError) -> Self {
+        Self {
+            code: "invalid-local-candidate",
+            message: source.to_string(),
+        }
+    }
+}
+
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
     Ok(vec![
         SearchCandidate::new(
@@ -134,6 +169,14 @@ fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError
             "local:test:candidate:archive-performance",
         )?,
     ])
+}
+
+fn local_candidate_by_locator(
+    locator: &str,
+) -> Result<Option<SearchCandidate>, SearchCandidateError> {
+    Ok(local_candidate_source()?
+        .into_iter()
+        .find(|candidate| candidate.locator() == locator))
 }
 
 #[tauri::command]
@@ -179,11 +222,8 @@ fn select_local_candidate(
     locator: String,
 ) -> Result<CandidateSelection, CandidateSelectionError> {
     let intent = SearchIntent::new(query).map_err(CandidateSelectionError::from)?;
-    let candidates = local_candidate_source().map_err(CandidateSelectionError::from)?;
-
-    let candidate = candidates
-        .iter()
-        .find(|candidate| candidate.locator() == locator)
+    let candidate = local_candidate_by_locator(&locator)
+        .map_err(CandidateSelectionError::from)?
         .ok_or_else(|| CandidateSelectionError {
             code: "candidate-not-found",
             message: "candidate locator is not present in the validated local candidate set".to_owned(),
@@ -197,13 +237,40 @@ fn select_local_candidate(
     })
 }
 
+/// Data-only Download boundary.
+///
+/// The opaque locator is revalidated against the deterministic local candidate
+/// set and is deliberately not interpreted as a URL or executable instruction.
+#[tauri::command]
+fn plan_local_download(
+    query: String,
+    locator: String,
+) -> Result<DownloadAction, DownloadActionError> {
+    let intent = SearchIntent::new(query).map_err(DownloadActionError::from)?;
+    let candidate = local_candidate_by_locator(&locator)
+        .map_err(DownloadActionError::from)?
+        .ok_or_else(|| DownloadActionError {
+            code: "candidate-not-found",
+            message: "candidate locator is not present in the validated local candidate set".to_owned(),
+        })?;
+
+    Ok(DownloadAction {
+        intent_query: intent.query().to_owned(),
+        title: candidate.title().to_owned(),
+        locator: candidate.locator().to_owned(),
+        action: "download",
+        stage: "download-action-planned",
+    })
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             app_status,
             submit_intent,
             list_local_candidates,
-            select_local_candidate
+            select_local_candidate,
+            plan_local_download
         ])
         .run(tauri::generate_context!())
         .expect("PULQVA desktop shell failed to start");
@@ -212,7 +279,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        app_status, list_local_candidates, select_local_candidate, submit_intent,
+        app_status, list_local_candidates, plan_local_download, select_local_candidate,
+        submit_intent,
     };
 
     #[test]
@@ -308,6 +376,48 @@ mod tests {
             "local:test:candidate:official-live".to_owned(),
         )
         .expect_err("blank intent must fail before selection");
+
+        assert_eq!(error.code, "invalid-search-intent");
+        assert_eq!(error.message, "search query must not be empty");
+    }
+
+    #[test]
+    fn download_action_revalidates_candidate_and_returns_data_only_plan() {
+        let action = plan_local_download(
+            "find the official live performance".to_owned(),
+            "local:test:candidate:official-live".to_owned(),
+        )
+        .expect("known validated candidate can produce a download action");
+
+        assert_eq!(action.intent_query, "find the official live performance");
+        assert_eq!(action.title, "Official live performance");
+        assert_eq!(action.locator, "local:test:candidate:official-live");
+        assert_eq!(action.action, "download");
+        assert_eq!(action.stage, "download-action-planned");
+    }
+
+    #[test]
+    fn download_action_rejects_unknown_locator_fail_closed() {
+        let error = plan_local_download(
+            "find the official live performance".to_owned(),
+            "https://example.invalid/not-a-validated-candidate".to_owned(),
+        )
+        .expect_err("arbitrary locator must not cross the Download boundary");
+
+        assert_eq!(error.code, "candidate-not-found");
+        assert_eq!(
+            error.message,
+            "candidate locator is not present in the validated local candidate set"
+        );
+    }
+
+    #[test]
+    fn download_action_rejects_blank_intent_before_candidate_lookup() {
+        let error = plan_local_download(
+            " \n ".to_owned(),
+            "local:test:candidate:official-live".to_owned(),
+        )
+        .expect_err("blank intent must fail before planning Download");
 
         assert_eq!(error.code, "invalid-search-intent");
         assert_eq!(error.message, "search query must not be empty");

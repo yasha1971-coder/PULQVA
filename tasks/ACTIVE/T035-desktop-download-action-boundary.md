@@ -1,7 +1,7 @@
 # T035 — Add the typed desktop Download action boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
