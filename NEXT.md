@@ -2,55 +2,50 @@
 
 ## Current verified state
 
-T024 is complete.
+T025 is complete.
 
-PULQVA now proves one real media object across the full typed Tor-only yt-dlp path:
+PULQVA now has a completion-gated `CompletedMediaArtifactReceipt`:
 
-- actual pinned Arti 2.6.0 and yt-dlp 2026.08.19 are used;
-- `ReadyTorTransport` is required before the media plan exists;
-- source is pinned to one immutable public MP4 object;
-- execution is bounded;
-- Linux writes exactly one 5,510,872-byte regular artifact;
-- Windows remains bounded and fail-closed when Tor readiness is unavailable;
-- no FFmpeg or direct fallback is involved.
+- only a successful yt-dlp child can enter artifact validation;
+- the exact output root is retained by the running typed request;
+- exactly one regular non-empty file is required;
+- symlinks, parent traversal, path escape, empty output, multiple files, and zero-byte artifacts are rejected;
+- the receipt exposes only the canonical artifact path and byte size;
+- Windows/Linux filesystem checks are green.
 
 Verified PR head:
-`ea371388699f4fc9347815681c065299c31efe23`
+`3e03bd96302f7458947c661f38a65a762e5129b3`
 
 ## Active atomic task
 
-**T025 — Add a typed completed-media artifact receipt**
+**T026 — Add a completed download result for UI handoff**
 
-A successful yt-dlp child can now be consumed into `CompletedMediaArtifactReceipt`.
+A successful validated completion can now be consumed into `CompletedDownloadResult`.
 
-The receipt boundary requires:
+The result:
 
-- successful child completion before validation;
-- the exact output root retained by the launched typed request;
-- exactly one regular file;
-- no symlinks;
-- no lexical parent-directory traversal in the root;
-- canonical artifact path contained by the canonical output root;
-- non-zero byte size.
-
-The receipt exposes only the canonical artifact path and byte size.
+- retains the original typed `YtDlpMediaSourceUrl`;
+- derives artifact path and byte size only from `CompletedMediaArtifactReceipt`;
+- exposes no child-process handle or proxy/Tor internals;
+- has deterministic display-facing fields for source URL, canonical artifact path, and byte size;
+- adds no network, process, or filesystem side effect during result construction.
 
 ## Queued next task
 
-**T026 — Add a completed download result for UI handoff**
+**T027 — Pin and prove the FFmpeg/ffprobe sidecar**
 
-Combine source metadata and `CompletedMediaArtifactReceipt` into a stable typed result that the
-future desktop UI can display/download without exposing process internals.
+Pin one exact official FFmpeg build source for Windows and Linux and prove local
+`ffmpeg -version` / `ffprobe -version` CLI availability before any post-processing is allowed.
 
 ## Do not do yet
 
-- no arbitrary user URL execution;
-- no FFmpeg;
+- no desktop UI implementation;
+- no FFmpeg media transformation;
 - no AI provider;
-- no UI;
+- no arbitrary user URL execution;
 - no direct-network fallback.
 
 ## Success
 
-Only a successfully completed yt-dlp child can produce a typed receipt for one validated,
-non-empty artifact contained inside its explicit output root.
+The future desktop UI can consume one stable typed completed-download value without learning about
+process supervision or privacy-route internals.

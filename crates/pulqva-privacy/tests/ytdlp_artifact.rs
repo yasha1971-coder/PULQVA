@@ -80,6 +80,39 @@ fn receipt_is_created_only_after_successful_child_completion() {
 }
 
 #[test]
+fn completed_download_result_retains_typed_source_and_validated_artifact_only() {
+    let root = test_root("download-result");
+    let output_root = root.join("downloads");
+    let (arti, ready) = ready_transport(&root);
+
+    let launch = YtDlpLaunchPlan::new(ytdlp_fixture(), ready);
+    let source_url = "https://example.invalid/success";
+    let source = YtDlpMediaSourceUrl::parse(source_url).expect("valid URL");
+    let request =
+        YtDlpMediaRequestPlan::new(launch, source, &output_root).expect("valid request");
+
+    let running = launch_ytdlp_request(request).expect("fixture launch succeeds");
+    let result = running
+        .complete_download()
+        .expect("successful child yields completed download result");
+
+    let canonical_artifact = fs::canonicalize(output_root.join("artifact.bin"))
+        .expect("artifact canonicalization succeeds");
+
+    assert_eq!(result.source_url(), source_url);
+    assert_eq!(result.artifact_path(), canonical_artifact);
+    assert_eq!(result.byte_size(), 6);
+
+    let fields = result.display_fields();
+    assert_eq!(fields.source_url(), source_url);
+    assert_eq!(fields.artifact_path(), canonical_artifact);
+    assert_eq!(fields.byte_size(), 6);
+
+    let _ = arti.stop_and_wait().expect("Arti fixture shutdown succeeds");
+    fs::remove_dir_all(root).expect("cleanup succeeds");
+}
+
+#[test]
 fn failed_child_never_yields_receipt() {
     let root = test_root("failure");
     let output_root = root.join("downloads");
