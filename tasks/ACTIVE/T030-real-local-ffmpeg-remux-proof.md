@@ -16,7 +16,7 @@ media artifact and prove a bounded stream-copy remux.
 - real FFmpeg execution starts only from `FfmpegRemuxPlan`;
 - input is a local regular file;
 - argv retains `-protocol_whitelist file`;
-- remux retains `-c copy` and performs no re-encoding;
+- remux retains `-c copy`, drops non-media RTP hint/data tracks with `-dn`, and performs no re-encoding;
 - execution is bounded by an explicit timeout;
 - output is a non-empty regular file distinct from input;
 - actual pinned ffprobe validates the local Matroska output;
