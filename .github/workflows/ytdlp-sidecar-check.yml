@@ -41,14 +41,20 @@ jobs:
 
           curl --fail --location --retry 3 --retry-delay 2 --output "$BIN" "$URL"
 
-          ACTUAL="$(sha256sum "$BIN" | awk '{print $1}')"
-          test "$ACTUAL" = "$EXPECTED"
-
-          if [ "$RUNNER_OS" != "Windows" ]; then
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ACTUAL="$(powershell.exe -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath '$BIN').Hash.ToLowerInvariant()" | tr -d '\r\n')"
+            EXEC_BIN="$(cygpath -u "$BIN")"
+          else
+            ACTUAL="$(sha256sum "$BIN" | awk '{print $1}')"
             chmod +x "$BIN"
+            EXEC_BIN="$BIN"
           fi
 
-          echo "YTDLP_BIN=$BIN" >> "$GITHUB_ENV"
+          echo "expected sha256: $EXPECTED"
+          echo "actual   sha256: $ACTUAL"
+          test "$ACTUAL" = "$EXPECTED"
+
+          echo "YTDLP_BIN=$EXEC_BIN" >> "$GITHUB_ENV"
           echo "YTDLP_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Verify exact version and local CLI only
