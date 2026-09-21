@@ -89,6 +89,40 @@ impl From<SearchCandidateError> for CandidateListError {
     }
 }
 
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CandidateSelection {
+    intent_query: String,
+    title: String,
+    locator: String,
+    stage: &'static str,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CandidateSelectionError {
+    code: &'static str,
+    message: String,
+}
+
+impl From<SearchIntentError> for CandidateSelectionError {
+    fn from(source: SearchIntentError) -> Self {
+        Self {
+            code: "invalid-search-intent",
+            message: source.to_string(),
+        }
+    }
+}
+
+impl From<SearchCandidateError> for CandidateSelectionError {
+    fn from(source: SearchCandidateError) -> Self {
+        Self {
+            code: "invalid-local-candidate",
+            message: source.to_string(),
+        }
+    }
+}
+
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
     Ok(vec![
         SearchCandidate::new(
@@ -139,12 +173,37 @@ fn list_local_candidates(query: String) -> Result<CandidateList, CandidateListEr
     })
 }
 
+#[tauri::command]
+fn select_local_candidate(
+    query: String,
+    locator: String,
+) -> Result<CandidateSelection, CandidateSelectionError> {
+    let intent = SearchIntent::new(query).map_err(CandidateSelectionError::from)?;
+    let candidates = local_candidate_source().map_err(CandidateSelectionError::from)?;
+
+    let candidate = candidates
+        .iter()
+        .find(|candidate| candidate.locator() == locator)
+        .ok_or_else(|| CandidateSelectionError {
+            code: "candidate-not-found",
+            message: "candidate locator is not present in the validated local candidate set".to_owned(),
+        })?;
+
+    Ok(CandidateSelection {
+        intent_query: intent.query().to_owned(),
+        title: candidate.title().to_owned(),
+        locator: candidate.locator().to_owned(),
+        stage: "candidate-selected",
+    })
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             app_status,
             submit_intent,
-            list_local_candidates
+            list_local_candidates,
+            select_local_candidate
         ])
         .run(tauri::generate_context!())
         .expect("PULQVA desktop shell failed to start");
@@ -152,7 +211,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{app_status, list_local_candidates, submit_intent};
+    use super::{
+        app_status, list_local_candidates, select_local_candidate, submit_intent,
+    };
 
     #[test]
     fn typed_status_contract_reports_linked_core_and_kernel() {
@@ -206,6 +267,47 @@ mod tests {
     fn local_candidate_command_rejects_blank_intent() {
         let error =
             list_local_candidates(" \n ".to_owned()).expect_err("blank intent must fail first");
+
+        assert_eq!(error.code, "invalid-search-intent");
+        assert_eq!(error.message, "search query must not be empty");
+    }
+
+    #[test]
+    fn local_candidate_selection_requires_exact_validated_locator_match() {
+        let selected = select_local_candidate(
+            "find the official live performance".to_owned(),
+            "local:test:candidate:official-live".to_owned(),
+        )
+        .expect("known local candidate must select");
+
+        assert_eq!(selected.intent_query, "find the official live performance");
+        assert_eq!(selected.title, "Official live performance");
+        assert_eq!(selected.locator, "local:test:candidate:official-live");
+        assert_eq!(selected.stage, "candidate-selected");
+    }
+
+    #[test]
+    fn local_candidate_selection_rejects_unknown_locator() {
+        let error = select_local_candidate(
+            "find the official live performance".to_owned(),
+            "local:test:candidate:not-returned".to_owned(),
+        )
+        .expect_err("unknown locator must fail closed");
+
+        assert_eq!(error.code, "candidate-not-found");
+        assert_eq!(
+            error.message,
+            "candidate locator is not present in the validated local candidate set"
+        );
+    }
+
+    #[test]
+    fn local_candidate_selection_rejects_blank_intent_before_matching_locator() {
+        let error = select_local_candidate(
+            "  \t ".to_owned(),
+            "local:test:candidate:official-live".to_owned(),
+        )
+        .expect_err("blank intent must fail before selection");
 
         assert_eq!(error.code, "invalid-search-intent");
         assert_eq!(error.message, "search query must not be empty");
