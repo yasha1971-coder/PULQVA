@@ -2,54 +2,47 @@
 
 ## Current verified state
 
-T016 is complete.
+T017 is complete.
 
-The real pinned Arti 2.6.0 sidecar has been started and stopped through PULQVA's prepared-runtime
-path on Windows and Linux with `application.defer_bootstrap = true`.
+PULQVA now exposes external-network routing only through a readiness-gated
+`ReadyTorTransport` capability. Raw `TorSocksEndpoint` data cannot expose a public proxy URL.
 
 Verified PR head:
-`1326fe255304fa72899d876f0b842260cac3f6b6`
-
-Verified checks:
-
-- arti-lifecycle-check: success;
-- arti-materialization-check: success;
-- rust-check: success;
-- continuity-guard: success;
-- arti-config-contract: success;
-- arti-sidecar-check: success.
+`7009058db21c86a442ce466bc200f6b035e5919a`
 
 ## Active atomic task
 
-**T017 — Add a readiness-gated Tor transport capability**
+**T018 — Add bounded Tor readiness verification**
 
-External-network code must not be able to turn a raw SOCKS port into an approved route.
+The privacy layer now owns the only path allowed to mint `ReadyTorTransport`.
 
-T017 introduces a public `ReadyTorTransport` capability with no public constructor. The raw
-`TorSocksEndpoint` remains useful as internal runtime data, but its proxy URL is no longer exposed
-as a public network-routing API.
+The verifier:
 
-A future readiness verifier inside `pulqva-privacy` will be the only path that can mint the ready
-capability.
+- accepts a running Arti child owned by the privacy layer;
+- uses only the local loopback SOCKS endpoint;
+- sends a SOCKS5 domain-name CONNECT request so DNS stays on the Tor side;
+- uses no direct/clearnet fallback;
+- is bounded by an explicit timeout;
+- returns no ready capability on timeout, child exit, or protocol failure.
+
+The Windows/Linux proof uses the actual pinned Arti 2.6.0 sidecar.
 
 ## Queued next task
 
-**T018 — Add bounded Tor readiness verification**
+**T019 — Pin and prove the yt-dlp standalone sidecar**
 
-This will be the only implementation allowed to mint `ReadyTorTransport`, and it will remain
-fail-closed with no direct-network fallback.
+Source-verify the current official standalone yt-dlp release, pin it, and prove the exact binary
+CLI on Windows and Linux before adding any media-network request.
 
 ## Do not do yet
 
-- no Tor bootstrap trigger in T017;
-- no external request in T017;
-- no SOCKS readiness probe in T017;
-- no dynamic port discovery;
-- no yt-dlp/FFmpeg;
-- no AI;
+- no user download request;
+- no direct-network fallback;
+- no FFmpeg integration;
+- no AI provider;
 - no UI.
 
 ## Success
 
-Future external-network adapters can be designed to require `ReadyTorTransport`, while callers
-outside the privacy crate cannot manufacture that capability from raw endpoint data.
+Only a successfully verified Tor route can produce `ReadyTorTransport`, and the proof is bounded,
+fail-closed, remote-DNS-safe, and green on Windows and Linux.
