@@ -13,7 +13,7 @@ use std::{
 };
 
 const METADATA_SOURCE: &str =
-    "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4";
+    "https://raw.githubusercontent.com/mediaelement/mediaelement-files/4d21a042353022326071acb0251ab75cd6bae114/big_buck_bunny.mp4";
 const TOR_READY_TIMEOUT: Duration = Duration::from_secs(90);
 const YTDLP_TIMEOUT: Duration = Duration::from_secs(45);
 

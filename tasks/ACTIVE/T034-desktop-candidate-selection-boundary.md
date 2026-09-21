@@ -1,7 +1,7 @@
 # T034 — Add the typed desktop candidate-selection boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
@@ -10,14 +10,15 @@ its opaque locator inert.
 
 ## Acceptance criteria
 
-- frontend exposes one explicit select action per displayed candidate;
-- selection sends only the validated intent text plus an opaque candidate locator through Tauri IPC;
+- frontend exposes one explicit Select action per displayed candidate;
+- selection sends only validated intent text plus opaque candidate locator through Tauri IPC;
 - Rust reconstructs the same deterministic local candidate set;
 - requested locator must exactly match one validated `SearchCandidate`;
-- typed selection response contains deterministic title/locator/stage fields;
+- unknown locators fail closed;
+- typed selection response contains deterministic intent/title/locator/stage fields;
 - frontend renders selection result as inert text;
 - no locator interpretation or execution exists;
-- no search provider, AI provider, shell, URL, or media process is invoked;
+- no search provider, AI provider, shell, URL, filesystem, or media process is invoked;
 - frontend retains no external Internet API;
 - Windows and Linux desktop checks remain green;
 - all existing privacy/media checks remain green.
