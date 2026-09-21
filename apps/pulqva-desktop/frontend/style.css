@@ -65,10 +65,18 @@ h1 {
   letter-spacing: -0.04em;
 }
 
-h2 {
+h2,
+h3 {
   margin: 0;
-  font-size: 24px;
   letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 24px;
+}
+
+h3 {
+  font-size: 18px;
 }
 
 .subtitle {
@@ -131,7 +139,8 @@ button:disabled {
   opacity: 0.55;
 }
 
-.intent-state {
+.intent-state,
+.candidate-note {
   margin: 0;
   color: #8e98a4;
   font-size: 13px;
@@ -151,14 +160,52 @@ button:disabled {
   margin: 18px 0 0;
 }
 
-.intent-result[hidden] {
+.intent-result[hidden],
+.candidate-panel[hidden] {
   display: none;
 }
 
-.intent-result > div {
+.intent-result > div,
+.candidate-item {
   padding: 14px 16px;
   border-radius: 12px;
   background: #101419;
+}
+
+.candidate-panel {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid #252a31;
+}
+
+.candidate-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.candidate-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.candidate-item {
+  display: grid;
+  gap: 8px;
+}
+
+.candidate-name {
+  font-size: 15px;
+}
+
+.candidate-locator {
+  color: #8e98a4;
+  overflow-wrap: anywhere;
+  user-select: text;
 }
 
 .status-row {
@@ -238,7 +285,8 @@ dd {
     flex-direction: column;
   }
 
-  .intent-actions {
+  .intent-actions,
+  .candidate-heading {
     align-items: stretch;
     flex-direction: column;
   }
