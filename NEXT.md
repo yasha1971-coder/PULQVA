@@ -2,52 +2,53 @@
 
 ## Current verified state
 
-T028 is complete.
+T029 is complete.
 
-PULQVA now has a pure-data local-only `FfmpegRemuxPlan`:
+PULQVA now has a controlled FFmpeg process boundary:
 
-- explicit FFmpeg executable path;
-- input copied only from `CompletedDownloadResult`;
-- typed MP4/Matroska output container;
-- explicit output path distinct from the validated input;
-- parent traversal is rejected;
-- deterministic argv contains `-nostdin`, `-y`, `-protocol_whitelist file`, `-map 0`, and `-c copy`;
-- no URL, proxy, shell, process spawn, or runtime network surface exists in the plan.
+- launcher accepts only `FfmpegRemuxPlan`;
+- executable and argv come only from the typed local-only plan;
+- FFmpeg is spawned directly with no shell;
+- `RunningFfmpeg` owns the child handle;
+- deterministic `try_wait` and stop/wait cleanup exist;
+- Windows/Linux tests use a local fixture that records exact argv;
+- the fixture performs no network and creates no media output.
 
 Verified PR head:
-`33c5ef60429f88842967a1677256e2f44d5aaf96`
+`0e11a4612a334b777ee7161db4bea010f043185f`
 
 ## Active atomic task
 
-**T029 — Add a controlled FFmpeg child-process launcher**
+**T030 — Prove one real local FFmpeg remux**
 
-The first FFmpeg process side effect is now behind `FfmpegRemuxPlan`:
+T030 adds a dedicated ignored proof test plus Windows/Linux CI:
 
-- launcher accepts only the typed remux plan;
-- executable and argv come only from that plan;
-- child is spawned directly with no shell;
-- `RunningFfmpeg` owns the child handle;
-- deterministic stop/wait cleanup exists;
-- a local fixture records exact argv;
-- the fixture performs no network and creates no media output;
-- Windows/Linux package tests exercise the fixture path.
+- exact pinned FFmpeg/ffprobe archives are SHA-256 verified before execution;
+- the immutable T024 MP4 fixture is verified by Git blob identity and exact byte size;
+- test-only crate-internal setup converts that local fixture into the same validated
+  `CompletedDownloadResult` type without widening any production constructor;
+- real execution starts only from `FfmpegRemuxPlan`;
+- FFmpeg receives `-protocol_whitelist file` and stream-copy `-c copy`;
+- execution is bounded;
+- output must be a distinct, non-empty regular Matroska file;
+- real pinned ffprobe validates the local remuxed output.
 
 ## Queued next task
 
-**T030 — Prove one real local FFmpeg remux**
+**T031 — Bootstrap the Tauri 2 desktop shell**
 
-Use the actual pinned FFmpeg sidecar on one validated local media artifact, perform a bounded
-stream-copy remux with the typed process path, and verify the resulting file locally with ffprobe.
+Create the first Windows/Linux desktop shell and a minimal typed Rust command boundary while keeping
+the frontend unable to own external network access.
 
 ## Do not do yet
 
 - no transcoding/re-encoding;
-- no desktop UI implementation;
+- no arbitrary user URL execution from the UI;
 - no AI provider;
-- no arbitrary user URL execution;
+- no frontend Internet access;
 - no direct-network fallback.
 
 ## Success
 
-A typed local-only remux plan can cross the process boundary with exact argv and deterministic child
-ownership while the proof remains network-free and transformation-free.
+The actual pinned FFmpeg sidecar performs one bounded local stream-copy remux on a validated local
+artifact and the actual pinned ffprobe accepts the result, with no FFmpeg network input.
