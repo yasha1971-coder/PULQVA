@@ -1,7 +1,7 @@
 # T033 — Add the typed desktop candidate-list boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
@@ -11,10 +11,12 @@ existing `pulqva_core::SearchCandidate` type.
 ## Acceptance criteria
 
 - typed desktop candidate DTO exists;
-- candidate title/locator values originate from validated `SearchCandidate`;
-- desktop Rust command returns a deterministic candidate list for a validated intent;
+- candidate title/locator values originate only from validated `SearchCandidate`;
+- Rust command validates the incoming intent with `SearchIntent`;
+- desktop Rust command returns a deterministic ordered candidate list;
 - this task uses only a local/test candidate source;
-- frontend renders candidate titles and opaque locators without interpreting or executing locators;
+- frontend renders candidate titles and opaque locators only as inert text;
+- frontend does not interpret, navigate, select, or execute candidate locators;
 - no search provider is contacted;
 - no AI provider is contacted;
 - no URL/shell/media execution is introduced;
