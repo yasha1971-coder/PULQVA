@@ -91,6 +91,7 @@ pub struct YtDlpMediaRequestPlan {
     launch: YtDlpLaunchPlan,
     source: YtDlpMediaSourceUrl,
     output_root: PathBuf,
+    metadata_only: bool,
 }
 
 impl YtDlpMediaRequestPlan {
@@ -109,7 +110,31 @@ impl YtDlpMediaRequestPlan {
             launch,
             source,
             output_root,
+            metadata_only: false,
         })
+    }
+
+    pub fn new_metadata_only(
+        launch: YtDlpLaunchPlan,
+        source: YtDlpMediaSourceUrl,
+        output_root: impl Into<PathBuf>,
+    ) -> Result<Self, YtDlpMediaRequestError> {
+        let output_root = output_root.into();
+
+        if output_root.as_os_str().is_empty() {
+            return Err(YtDlpMediaRequestError::MissingOutputRoot);
+        }
+
+        Ok(Self {
+            launch,
+            source,
+            output_root,
+            metadata_only: true,
+        })
+    }
+
+    pub fn is_metadata_only(&self) -> bool {
+        self.metadata_only
     }
 
     pub fn executable(&self) -> &Path {
@@ -130,6 +155,13 @@ impl YtDlpMediaRequestPlan {
     /// the explicit output root and validated HTTP(S) source are appended.
     pub fn arguments(&self) -> Vec<OsString> {
         let mut arguments = self.launch.arguments();
+
+        if self.metadata_only {
+            arguments.push(OsString::from("--skip-download"));
+            arguments.push(OsString::from("--dump-single-json"));
+            arguments.push(OsString::from("--no-playlist"));
+        }
+
         arguments.push(OsString::from("--paths"));
         arguments.push(self.output_root.as_os_str().to_os_string());
         arguments.push(OsString::from(self.source.as_str()));
@@ -227,6 +259,31 @@ mod tests {
             YtDlpMediaRequestPlan::new(launch_plan(), source, "")
                 .unwrap_err(),
             YtDlpMediaRequestError::MissingOutputRoot
+        );
+    }
+
+    #[test]
+    fn metadata_only_request_is_explicit_and_never_requests_media_payload() {
+        let launch = launch_plan();
+        let source =
+            YtDlpMediaSourceUrl::parse("https://example.com/video").expect("valid source");
+        let request = YtDlpMediaRequestPlan::new_metadata_only(launch, source, "downloads")
+            .expect("metadata request is valid");
+
+        assert!(request.is_metadata_only());
+        assert_eq!(
+            request.arguments(),
+            vec![
+                OsString::from("--ignore-config"),
+                OsString::from("--proxy"),
+                OsString::from("socks5h://127.0.0.1:19050"),
+                OsString::from("--skip-download"),
+                OsString::from("--dump-single-json"),
+                OsString::from("--no-playlist"),
+                OsString::from("--paths"),
+                OsString::from("downloads"),
+                OsString::from("https://example.com/video"),
+            ]
         );
     }
 
