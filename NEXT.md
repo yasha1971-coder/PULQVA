@@ -19,6 +19,7 @@ The privacy layer now owns the only path allowed to mint `ReadyTorTransport`.
 The verifier:
 
 - accepts a running Arti child owned by the privacy layer;
+- explicitly transitions the deferred Arti config into bootstrap-enabled mode and restarts the same pinned child;
 - uses only the local loopback SOCKS endpoint;
 - sends a SOCKS5 domain-name CONNECT request so DNS stays on the Tor side;
 - uses no direct/clearnet fallback;
