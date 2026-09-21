@@ -1,7 +1,7 @@
 # T029 — Add a controlled FFmpeg child-process launcher
 
 Parent: MEDIA FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
@@ -13,11 +13,12 @@ local and media-transformation-free.
 - launcher accepts only `FfmpegRemuxPlan`;
 - executable and argv come only from the typed plan;
 - process is spawned directly, never through a shell;
-- typed running-process capability owns the child handle;
-- deterministic stop/wait cleanup exists;
-- Windows and Linux tests use a local fixture executable that records argv;
-- fixture proves local-only/remux argv is passed unchanged;
-- fixture performs no network and no media transformation;
+- typed `RunningFfmpeg` owns the child handle;
+- deterministic `try_wait` and stop/wait cleanup exist;
+- Windows and Linux package tests use a local fixture executable;
+- fixture records and proves exact local-only/remux argv;
+- fixture performs no network;
+- fixture creates no remux/media output;
 - no direct-network fallback exists;
 - all existing checks remain green.
 

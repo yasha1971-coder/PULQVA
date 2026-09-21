@@ -2,46 +2,46 @@
 
 ## Current verified state
 
-T027 is complete.
+T028 is complete.
 
-PULQVA now pins and proves the FFmpeg/ffprobe sidecar before any media transformation is allowed:
+PULQVA now has a pure-data local-only `FfmpegRemuxPlan`:
 
-- upstream FFmpeg source commit is pinned to
-  `a5923073bfd8f25b7300d93af3f8e690174ebd30`;
-- version marker is `n9.0.2-3-ga5923073bf`;
-- Linux and Windows archives come from one dated BtbN build snapshot;
-- both archives are SHA-256 verified before extraction or execution;
-- `ffmpeg -version` and `ffprobe -version` are green on Windows and Linux;
-- no runtime network route or media transformation was introduced.
+- explicit FFmpeg executable path;
+- input copied only from `CompletedDownloadResult`;
+- typed MP4/Matroska output container;
+- explicit output path distinct from the validated input;
+- parent traversal is rejected;
+- deterministic argv contains `-nostdin`, `-y`, `-protocol_whitelist file`, `-map 0`, and `-c copy`;
+- no URL, proxy, shell, process spawn, or runtime network surface exists in the plan.
 
 Verified PR head:
-`84cd0dca0e6610cabec9f42a1f9905065856fe25`
+`33c5ef60429f88842967a1677256e2f44d5aaf96`
 
 ## Active atomic task
 
-**T028 — Add a typed local FFmpeg remux plan**
+**T029 — Add a controlled FFmpeg child-process launcher**
 
-T028 adds a pure-data `FfmpegRemuxPlan`:
+The first FFmpeg process side effect is now behind `FfmpegRemuxPlan`:
 
-- explicit FFmpeg executable path;
-- input path copied only from `CompletedDownloadResult`;
-- typed output container: MP4 or Matroska;
-- explicit non-empty output path;
-- output cannot equal the validated input artifact;
-- parent-directory traversal in output is rejected;
-- deterministic argv uses `-nostdin`, `-y`, `-protocol_whitelist file`, `-map 0`, and `-c copy`;
-- no shell, process spawn, URL input, proxy input, or network route exists in the plan.
+- launcher accepts only the typed remux plan;
+- executable and argv come only from that plan;
+- child is spawned directly with no shell;
+- `RunningFfmpeg` owns the child handle;
+- deterministic stop/wait cleanup exists;
+- a local fixture records exact argv;
+- the fixture performs no network and creates no media output;
+- Windows/Linux package tests exercise the fixture path.
 
 ## Queued next task
 
-**T029 — Add a controlled FFmpeg child-process launcher**
+**T030 — Prove one real local FFmpeg remux**
 
-Put the first FFmpeg process side effect behind `FfmpegRemuxPlan` and prove exact argv plus
-deterministic process cleanup with a local fixture before any real remux is executed.
+Use the actual pinned FFmpeg sidecar on one validated local media artifact, perform a bounded
+stream-copy remux with the typed process path, and verify the resulting file locally with ffprobe.
 
 ## Do not do yet
 
-- no real FFmpeg media transformation;
+- no transcoding/re-encoding;
 - no desktop UI implementation;
 - no AI provider;
 - no arbitrary user URL execution;
@@ -49,5 +49,5 @@ deterministic process cleanup with a local fixture before any real remux is exec
 
 ## Success
 
-A validated completed download can become a deterministic local-only remux plan without exposing any
-network input surface or creating an FFmpeg process.
+A typed local-only remux plan can cross the process boundary with exact argv and deterministic child
+ownership while the proof remains network-free and transformation-free.
