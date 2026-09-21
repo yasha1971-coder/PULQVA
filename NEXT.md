@@ -2,49 +2,50 @@
 
 ## Current verified state
 
-T018 is complete.
+T019 is complete.
 
-PULQVA now has a bounded, fail-closed Tor readiness gate:
+PULQVA now pins the official yt-dlp standalone release 2026.08.19:
 
-- only the privacy layer can mint `ReadyTorTransport`;
-- bootstrap is activated explicitly from the deferred state;
-- readiness probes only the local Tor SOCKS listener;
-- the external target is passed as a SOCKS5 domain name, so DNS stays on the Tor side;
-- no direct/clearnet fallback exists;
-- Linux proved a ready Tor route with the pinned Arti 2.6.0 sidecar;
-- Windows proved bounded fail-closed behavior on the hosted runner when Tor readiness timed out;
-- all existing checks are green.
+- Linux yt-dlp_linux and Windows yt-dlp.exe are pinned by exact SHA-256;
+- both binaries passed exact --version verification;
+- --ignore-config --help passed on Windows and Linux;
+- no media URL or product-runtime media request was used;
+- all privacy and continuity checks stayed green.
 
 Verified PR head:
-`490e6467ac2f56d69dcfdcb436775e216ebf3859`
+dea983cc546a2239612b6bf592ca49db4f2cb5f7
 
 ## Active atomic task
 
-**T019 — Pin and prove the yt-dlp standalone sidecar**
+**T020 — Add a typed yt-dlp launch plan gated by ReadyTorTransport**
 
-The official yt-dlp release observed on 2026-09-21 is pinned to `2026.08.19`.
+The pure-data launch plan requires ReadyTorTransport at construction time.
 
-T019 verifies the official Linux and Windows standalone release assets by exact SHA-256, then runs
-only `--version` and `--help`. No media URL is supplied and PULQVA performs no media download.
+It keeps the executable path explicit and deterministically emits only:
+
+- --ignore-config;
+- --proxy;
+- the verified socks5h:// route from ReadyTorTransport::proxy_url().
+
+There is no direct-route variant, shell command, process spawn, or media URL in T020.
 
 ## Queued next task
 
-**T020 — Add a typed yt-dlp launch plan gated by ReadyTorTransport**
+**T021 — Add a typed yt-dlp media request plan**
 
-Model the future yt-dlp invocation as typed data. The plan must require a verified
-`ReadyTorTransport` and must render a Tor-only proxy argument with no direct-network alternative.
-No yt-dlp process or media request will be started in T020.
+Add typed source/output request data on top of the Tor-gated launch plan while keeping the task
+pure-data and non-executing.
 
 ## Do not do yet
 
-- no media URL request;
-- no yt-dlp process from product runtime;
-- no FFmpeg integration;
+- no yt-dlp process spawn;
+- no media download;
+- no FFmpeg;
 - no AI provider;
 - no UI;
 - no direct-network fallback.
 
 ## Success
 
-The exact official yt-dlp standalone binaries are pinned and reproducibly verified on Windows and
-Linux before any media-network behavior is introduced.
+Future media execution cannot construct its base yt-dlp launch plan without a verified Tor
+transport, and deterministic arguments cannot silently inherit ambient yt-dlp configuration.
