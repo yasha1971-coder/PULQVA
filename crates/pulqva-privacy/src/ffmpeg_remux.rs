@@ -1,6 +1,6 @@
 use std::{
     error::Error,
-    ffi::{OsStr, OsString},
+    ffi::OsString,
     fmt,
     path::{Component, Path, PathBuf},
 };
@@ -148,7 +148,7 @@ mod tests {
         ytdlp_artifact::validate_completed_media_artifact,
     };
     use std::{
-        ffi::OsString,
+        ffi::{OsStr, OsString},
         fs,
         path::PathBuf,
         sync::atomic::{AtomicU64, Ordering},
