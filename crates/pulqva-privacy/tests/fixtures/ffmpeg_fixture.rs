@@ -11,7 +11,7 @@ use std::{
 fn main() {
     let args: Vec<_> = env::args_os().skip(1).collect();
 
-    if args.len() != 16 {
+    if args.len() != 17 {
         process::exit(2);
     }
 
@@ -26,9 +26,10 @@ fn main() {
         (7, "-i"),
         (9, "-map"),
         (10, "0"),
-        (11, "-c"),
-        (12, "copy"),
-        (13, "-f"),
+        (11, "-dn"),
+        (12, "-c"),
+        (13, "copy"),
+        (14, "-f"),
     ];
 
     for (index, value) in expected {
@@ -37,13 +38,13 @@ fn main() {
         }
     }
 
-    if args[14].as_os_str() != OsStr::new("mp4")
-        && args[14].as_os_str() != OsStr::new("matroska")
+    if args[15].as_os_str() != OsStr::new("mp4")
+        && args[15].as_os_str() != OsStr::new("matroska")
     {
         process::exit(4);
     }
 
-    let output = PathBuf::from(&args[15]);
+    let output = PathBuf::from(&args[16]);
     if let Some(parent) = output.parent() {
         if fs::create_dir_all(parent).is_err() {
             process::exit(5);
