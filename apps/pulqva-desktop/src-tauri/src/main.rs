@@ -2,11 +2,16 @@ use pulqva_core::{
     CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
 };
 use pulqva_privacy::{
-    ArtiConfigMaterializeError, ArtiRuntimePlan, PreparedArtiRuntime, TorSocksEndpoint,
-    TorSocksEndpointError, YtDlpMediaSourceError, YtDlpMediaSourceUrl, prepare_arti_runtime,
+    ArtiConfigMaterializeError, ArtiProcessError, ArtiRuntimePlan, PreparedArtiRuntime,
+    ReadyTorTransport, RunningArti, TorReadinessError, TorSocksEndpoint, TorSocksEndpointError,
+    YtDlpMediaSourceError, YtDlpMediaSourceUrl, launch_prepared_arti, prepare_arti_runtime,
+    verify_tor_readiness,
 };
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 const PRODUCT_NAME: &str = "PULQVA";
 const KERNEL_VERSION: &str =
@@ -196,6 +201,15 @@ impl From<ArtiConfigMaterializeError> for DownloadActionError {
     }
 }
 
+impl From<ArtiProcessError> for DownloadActionError {
+    fn from(source: ArtiProcessError) -> Self {
+        Self {
+            code: "arti-process-failed",
+            message: source.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DownloadPreflightInputs {
     arti_executable: PathBuf,
@@ -277,8 +291,7 @@ impl DownloadPreflightSpec {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PreparedDownloadRuntime {
     arti_runtime: PreparedArtiRuntime,
-    ytdlp_executable: PathBuf,
-    media_source: YtDlpMediaSourceUrl,
+    ytdlp_executable: PathBuf,    media_source: YtDlpMediaSourceUrl,
     output_root: PathBuf,
 }
 
@@ -297,6 +310,40 @@ impl PreparedDownloadRuntime {
 
     fn output_root(&self) -> &Path {
         &self.output_root
+    }
+}
+
+#[derive(Debug)]
+struct TorReadyDownloadRuntime {
+    running_arti: RunningArti,
+    transport: ReadyTorTransport,
+    ytdlp_executable: PathBuf,
+    media_source: YtDlpMediaSourceUrl,
+    output_root: PathBuf,
+}
+
+impl TorReadyDownloadRuntime {
+    fn transport(&self) -> ReadyTorTransport {
+        self.transport
+    }
+
+    fn ytdlp_executable(&self) -> &Path {
+        &self.ytdlp_executable
+    }
+
+    fn media_source(&self) -> &YtDlpMediaSourceUrl {
+        &self.media_source
+    }
+
+    fn output_root(&self) -> &Path {
+        &self.output_root
+    }
+
+    fn stop_and_wait(self) -> Result<(), DownloadActionError> {
+        self.running_arti
+            .stop_and_wait()
+            .map(|_| ())
+            .map_err(DownloadActionError::from)
     }
 }
 
@@ -370,6 +417,47 @@ fn prepare_download_runtime(
 
     Ok(PreparedDownloadRuntime {
         arti_runtime,
+        ytdlp_executable,
+        media_source,
+        output_root,
+    })
+}
+
+fn establish_tor_ready_download_runtime(
+    prepared: PreparedDownloadRuntime,
+    timeout: Duration,
+) -> Result<TorReadyDownloadRuntime, DownloadActionError> {
+    let PreparedDownloadRuntime {
+        arti_runtime,
+        ytdlp_executable,
+        media_source,
+        output_root,
+    } = prepared;
+
+    let mut running_arti = launch_prepared_arti(arti_runtime).map_err(DownloadActionError::from)?;
+
+    let transport = match verify_tor_readiness(&mut running_arti, timeout) {
+        Ok(transport) => transport,
+        Err(source) => {
+            let cleanup = running_arti.stop_and_wait();
+            return match cleanup {
+                Ok(_) => Err(DownloadActionError {
+                    code: "tor-readiness-failed",
+                    message: source.to_string(),
+                }),
+                Err(cleanup_error) => Err(DownloadActionError {
+                    code: "tor-readiness-cleanup-failed",
+                    message: format!(
+                        "Tor readiness failed: {source}; Arti cleanup failed: {cleanup_error}"
+                    ),
+                }),
+            };
+        }
+    };
+
+    Ok(TorReadyDownloadRuntime {
+        running_arti,
+        transport,
         ytdlp_executable,
         media_source,
         output_root,
@@ -493,13 +581,15 @@ mod tests {
     use super::{
         DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
         T024_PROOF_LOCATOR, app_status, build_download_preflight, list_local_candidates,
-        local_candidate_by_locator, plan_local_download, prepare_download_runtime,
-        resolve_backend_media_source, select_local_candidate, submit_intent,
+        establish_tor_ready_download_runtime, local_candidate_by_locator, plan_local_download,
+        prepare_download_runtime, resolve_backend_media_source, select_local_candidate,
+        submit_intent,
     };
     use std::{
         fs,
         path::{Path, PathBuf},
         sync::atomic::{AtomicU64, Ordering},
+        time::Duration,
     };
 
     static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -617,8 +707,7 @@ mod tests {
             .expect("supported proof candidate exists");
         let inputs = DownloadPreflightInputs::new(
             "bundle/arti",
-            "bundle/yt-dlp",
-            "state/arti/pulqva.toml",
+            "bundle/yt-dlp",            "state/arti/pulqva.toml",
             "state/arti/cache",
             "state/arti/state",
             "downloads",
@@ -639,6 +728,72 @@ mod tests {
         assert_eq!(preflight.ytdlp_executable(), Path::new("bundle/yt-dlp"));
         assert_eq!(preflight.media_source().as_str(), T024_MEDIA_SOURCE_URL);
         assert_eq!(preflight.output_root(), Path::new("downloads"));
+    }
+
+    #[test]
+    fn tor_ready_runtime_fails_closed_when_arti_cannot_launch() {
+        let root = test_root("tor-ready-launch-fail");
+        let candidate = local_candidate_by_locator(T024_PROOF_LOCATOR)
+            .expect("local proof candidates are valid")
+            .expect("supported proof candidate exists");
+        let inputs = DownloadPreflightInputs::new(
+            root.join("missing/arti"),
+            root.join("bin/yt-dlp"),
+            root.join("config/pulqva.toml"),
+            root.join("cache"),
+            root.join("state"),
+            root.join("downloads"),
+            DEFAULT_TOR_SOCKS_PORT,
+        )
+        .expect("explicit preflight inputs are valid");
+        let preflight = build_download_preflight(&candidate, inputs)
+            .expect("supported candidate builds preflight");
+        let prepared = prepare_download_runtime(preflight)
+            .expect("config preparation succeeds before launch");
+
+        let error = establish_tor_ready_download_runtime(prepared, Duration::from_secs(1))
+            .expect_err("missing Arti executable must fail closed");
+
+        assert_eq!(error.code, "arti-process-failed");
+        assert!(!root.join("cache").exists());
+        assert!(!root.join("state").exists());
+        assert!(!root.join("downloads").exists());
+
+        fs::remove_dir_all(root).expect("launch-fail test tree cleanup succeeds");
+    }
+
+    #[test]
+    fn tor_ready_runtime_zero_timeout_cleans_up_launched_child() {
+        let root = test_root("tor-ready-timeout");
+        let candidate = local_candidate_by_locator(T024_PROOF_LOCATOR)
+            .expect("local proof candidates are valid")
+            .expect("supported proof candidate exists");
+        let current_exe = std::env::current_exe().expect("test executable path is available");
+        let inputs = DownloadPreflightInputs::new(
+            current_exe,
+            root.join("bin/yt-dlp"),
+            root.join("config/pulqva.toml"),
+            root.join("cache"),
+            root.join("state"),
+            root.join("downloads"),
+            DEFAULT_TOR_SOCKS_PORT,
+        )
+        .expect("explicit preflight inputs are valid");
+        let preflight = build_download_preflight(&candidate, inputs)
+            .expect("supported candidate builds preflight");
+        let prepared = prepare_download_runtime(preflight)
+            .expect("config preparation succeeds before readiness");
+
+        let error = establish_tor_ready_download_runtime(prepared, Duration::ZERO)
+            .expect_err("zero readiness timeout must fail closed and clean up child");
+
+        assert_eq!(error.code, "tor-readiness-failed");
+        assert_eq!(error.message, "Tor readiness verification timed out");
+        assert!(!root.join("cache").exists());
+        assert!(!root.join("state").exists());
+        assert!(!root.join("downloads").exists());
+
+        fs::remove_dir_all(root).expect("timeout test tree cleanup succeeds");
     }
 
     #[test]
