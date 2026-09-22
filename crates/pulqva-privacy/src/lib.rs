@@ -13,6 +13,7 @@ mod arti_ready;
 mod arti_runtime;
 #[cfg(test)]
 mod ffmpeg_real_proof;
+mod ffmpeg_completed;
 mod ffmpeg_process;
 mod ffmpeg_remux;
 mod ytdlp_artifact;
@@ -29,7 +30,8 @@ pub use arti_prepared::{PreparedArtiRuntime, prepare_arti_runtime};
 pub use arti_readiness::{TorReadinessError, verify_tor_readiness};
 pub use arti_ready::ReadyTorTransport;
 pub use arti_runtime::ArtiRuntimePlan;
-pub use ffmpeg_process::{FfmpegProcessError, RunningFfmpeg, launch_ffmpeg_remux};
+pub use ffmpeg_completed::{CompletedFfmpegRemuxResult, FfmpegRemuxArtifactError};
+pub use ffmpeg_process::{FfmpegCompletionError, FfmpegProcessError, RunningFfmpeg, launch_ffmpeg_remux};
 pub use ffmpeg_remux::{FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError};
 pub use ytdlp_artifact::{CompletedMediaArtifactReceipt, MediaArtifactReceiptError};
 pub use ytdlp_completed::{CompletedDownloadDisplayFields, CompletedDownloadResult};

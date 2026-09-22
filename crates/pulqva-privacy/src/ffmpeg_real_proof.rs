@@ -83,9 +83,13 @@ fn real_pinned_ffmpeg_remuxes_validated_local_media() {
     let mut running = launch_ffmpeg_remux(plan).expect("real FFmpeg child launches directly");
     let deadline = Instant::now() + REMUX_TIMEOUT;
 
-    let status = loop {
-        if let Some(status) = running.try_wait().expect("FFmpeg child status query succeeds") {
-            break status;
+    loop {
+        if running
+            .try_wait()
+            .expect("FFmpeg child status query succeeds")
+            .is_some()
+        {
+            break;
         }
 
         if Instant::now() >= deadline {
@@ -94,18 +98,14 @@ fn real_pinned_ffmpeg_remuxes_validated_local_media() {
         }
 
         thread::sleep(Duration::from_millis(50));
-    };
+    }
 
-    assert!(status.success(), "real FFmpeg remux must succeed: {status}");
-
-    let output_meta = fs::symlink_metadata(&output).expect("remuxed output metadata exists");
-    assert!(!output_meta.file_type().is_symlink(), "remux output must not be a symlink");
-    assert!(output_meta.is_file(), "remux output must be a regular file");
-    assert!(output_meta.len() > 0, "remux output must be non-empty");
-    assert_ne!(
-        fs::canonicalize(&output).expect("output canonicalization succeeds"),
-        fs::canonicalize(completed.artifact_path()).expect("input canonicalization succeeds")
-    );
+    let completed_remux = running
+        .complete_remux()
+        .expect("real FFmpeg remux completes into a validated typed result");
+    assert_eq!(completed_remux.input(), completed.artifact_path());
+    assert_eq!(completed_remux.output(), output);
+    assert!(completed_remux.byte_size() > 0);
 
     let probe = Command::new(&ffprobe)
         .args([

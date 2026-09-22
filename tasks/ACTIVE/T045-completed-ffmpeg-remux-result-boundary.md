@@ -1,7 +1,7 @@
 # T045 — Add the backend-only completed FFmpeg remux result boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
