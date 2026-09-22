@@ -2,53 +2,53 @@
 
 ## Current verified state
 
-T036 is complete.
+T037 is complete.
 
-PULQVA now has a backend-only typed media-source resolution boundary:
+PULQVA now has a typed backend download preflight specification:
 
-- desktop Rust links the existing `pulqva-privacy` crate;
-- candidate locators are revalidated against the deterministic `SearchCandidate` set;
-- only `local:test:candidate:official-live` has an approved proof mapping;
-- the approved mapping resolves inside Rust to the immutable T024 media object;
-- the resolved value is constructed as `YtDlpMediaSourceUrl`;
-- validated but unsupported candidates fail closed;
-- unknown locators fail closed before resolution;
-- the frontend receives only inert readiness/stage data and never receives the media URL;
-- no Tor bootstrap, yt-dlp, FFmpeg, shell, network, or filesystem side effect starts.
+- input starts from a revalidated supported `SearchCandidate`;
+- media-source resolution reuses the backend-only T036 `YtDlpMediaSourceUrl` boundary;
+- Arti executable, yt-dlp executable, Tor config/cache/state directories, output root, and SOCKS port are explicit backend inputs;
+- the resulting typed Rust data contains an `ArtiRuntimePlan`, yt-dlp executable path, typed media source, and output root;
+- empty required paths and invalid SOCKS ports fail closed;
+- frontend receives no media URL, executable path, Tor directory, or output filesystem path;
+- no process spawn, Tor bootstrap, yt-dlp/FFmpeg execution, external network, or filesystem output occurs.
 
 Verified PR head:
-`510c737f4845bd4c40c1b2a1571b116bf59bcd66`
+`a82f326d82f117a6053f86bbde5d1eb7d23f29a2`
 
 All 11 required workflows passed for that exact head.
 
 ## Next atomic task
 
-**T037 — Add the typed desktop download preflight specification**
+**T038 — Add the backend-only prepared download runtime boundary**
 
-Create a pure-data backend preflight specification for the later real Download path. It must combine
-only already-validated local inputs needed by later runtime orchestration while keeping process and
-network execution out of scope.
+Convert the verified T037 preflight into a prepared backend runtime state using the existing privacy
+layer, while keeping process execution and external networking out of scope.
 
 Required boundary:
 
-- input is a revalidated supported candidate whose media source resolves through T036;
-- sidecar executable identities/paths are explicit backend inputs;
-- Tor runtime directories and download output root are explicit backend inputs;
-- no frontend media URL or executable path surface is introduced;
-- no process spawn, Tor bootstrap, yt-dlp/FFmpeg execution, external network, or filesystem output;
-- invalid or missing required inputs fail closed.
+- input is a verified T037 `DownloadPreflightSpec`;
+- Arti configuration materialization uses the existing typed `prepare_arti_runtime` path;
+- prepared state retains the explicit yt-dlp executable, typed media source, and output root;
+- frontend receives only inert readiness/stage data and no paths or media URL;
+- preparation failures fail closed;
+- no Arti process is spawned;
+- no Tor bootstrap/readiness probe occurs;
+- no yt-dlp or FFmpeg process is spawned;
+- no external network access occurs.
 
 ## Do not do yet
 
 - no external search provider;
 - no AI provider;
-- no real Download execution from the desktop UI;
-- no Tor bootstrap from the desktop UI;
-- no yt-dlp/FFmpeg process from the desktop UI;
+- no actual media download from the desktop UI;
+- no Arti process launch from the desktop UI;
+- no yt-dlp/FFmpeg execution from the desktop UI;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-The next backend boundary is a deterministic typed preflight specification that can later feed the
-existing Tor/yt-dlp runtime types without exposing privacy-sensitive or executable data to frontend code.
+A verified preflight can be converted into a typed prepared runtime state without exposing backend
+paths or source URLs to frontend code and without starting any process or network activity.

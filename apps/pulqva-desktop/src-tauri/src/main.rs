@@ -1,8 +1,12 @@
 use pulqva_core::{
     CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
 };
-use pulqva_privacy::{YtDlpMediaSourceError, YtDlpMediaSourceUrl};
+use pulqva_privacy::{
+    ArtiRuntimePlan, TorSocksEndpoint, TorSocksEndpointError, YtDlpMediaSourceError,
+    YtDlpMediaSourceUrl,
+};
 use serde::Serialize;
+use std::path::{Path, PathBuf};
 
 const PRODUCT_NAME: &str = "PULQVA";
 const KERNEL_VERSION: &str =
@@ -10,6 +14,7 @@ const KERNEL_VERSION: &str =
 const T024_MEDIA_SOURCE_URL: &str =
     "https://raw.githubusercontent.com/mediaelement/mediaelement-files/4d21a042353022326071acb0251ab75cd6bae114/big_buck_bunny.mp4";
 const T024_PROOF_LOCATOR: &str = "local:test:candidate:official-live";
+const DEFAULT_TOR_SOCKS_PORT: u16 = 19050;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -173,6 +178,93 @@ impl From<YtDlpMediaSourceError> for DownloadActionError {
     }
 }
 
+impl From<TorSocksEndpointError> for DownloadActionError {
+    fn from(source: TorSocksEndpointError) -> Self {
+        Self {
+            code: "invalid-tor-socks-endpoint",
+            message: source.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DownloadPreflightInputs {
+    arti_executable: PathBuf,
+    ytdlp_executable: PathBuf,
+    tor_config_file: PathBuf,
+    tor_cache_dir: PathBuf,
+    tor_state_dir: PathBuf,
+    output_root: PathBuf,
+    socks_port: u16,
+}
+
+impl DownloadPreflightInputs {
+    fn new(
+        arti_executable: impl Into<PathBuf>,
+        ytdlp_executable: impl Into<PathBuf>,
+        tor_config_file: impl Into<PathBuf>,
+        tor_cache_dir: impl Into<PathBuf>,
+        tor_state_dir: impl Into<PathBuf>,
+        output_root: impl Into<PathBuf>,
+        socks_port: u16,
+    ) -> Result<Self, DownloadActionError> {
+        let inputs = Self {
+            arti_executable: arti_executable.into(),
+            ytdlp_executable: ytdlp_executable.into(),
+            tor_config_file: tor_config_file.into(),
+            tor_cache_dir: tor_cache_dir.into(),
+            tor_state_dir: tor_state_dir.into(),
+            output_root: output_root.into(),
+            socks_port,
+        };
+
+        for (name, path) in [
+            ("arti executable", inputs.arti_executable.as_path()),
+            ("yt-dlp executable", inputs.ytdlp_executable.as_path()),
+            ("Tor config file", inputs.tor_config_file.as_path()),
+            ("Tor cache directory", inputs.tor_cache_dir.as_path()),
+            ("Tor state directory", inputs.tor_state_dir.as_path()),
+            ("download output root", inputs.output_root.as_path()),
+        ] {
+            if path.as_os_str().is_empty() {
+                return Err(DownloadActionError {
+                    code: "missing-preflight-path",
+                    message: format!("{name} must not be empty"),
+                });
+            }
+        }
+
+        TorSocksEndpoint::new(inputs.socks_port).map_err(DownloadActionError::from)?;
+        Ok(inputs)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DownloadPreflightSpec {
+    arti_runtime: ArtiRuntimePlan,
+    ytdlp_executable: PathBuf,
+    media_source: YtDlpMediaSourceUrl,
+    output_root: PathBuf,
+}
+
+impl DownloadPreflightSpec {
+    fn arti_runtime(&self) -> &ArtiRuntimePlan {
+        &self.arti_runtime
+    }
+
+    fn ytdlp_executable(&self) -> &Path {
+        &self.ytdlp_executable
+    }
+
+    fn media_source(&self) -> &YtDlpMediaSourceUrl {
+        &self.media_source
+    }
+
+    fn output_root(&self) -> &Path {
+        &self.output_root
+    }
+}
+
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
     Ok(vec![
         SearchCandidate::new(
@@ -205,6 +297,40 @@ fn resolve_backend_media_source(
     }
 
     YtDlpMediaSourceUrl::parse(T024_MEDIA_SOURCE_URL).map_err(DownloadActionError::from)
+}
+
+fn build_download_preflight(
+    candidate: &SearchCandidate,
+    inputs: DownloadPreflightInputs,
+) -> Result<DownloadPreflightSpec, DownloadActionError> {
+    let media_source = resolve_backend_media_source(candidate)?;
+    let socks = TorSocksEndpoint::new(inputs.socks_port).map_err(DownloadActionError::from)?;
+    let arti_runtime = ArtiRuntimePlan::new(
+        inputs.arti_executable,
+        inputs.tor_config_file,
+        inputs.tor_cache_dir,
+        inputs.tor_state_dir,
+        socks,
+    );
+
+    Ok(DownloadPreflightSpec {
+        arti_runtime,
+        ytdlp_executable: inputs.ytdlp_executable,
+        media_source,
+        output_root: inputs.output_root,
+    })
+}
+
+fn default_download_preflight_inputs() -> Result<DownloadPreflightInputs, DownloadActionError> {
+    DownloadPreflightInputs::new(
+        "runtime/arti",
+        "runtime/yt-dlp",
+        "runtime/arti/config/pulqva.toml",
+        "runtime/arti/cache",
+        "runtime/arti/state",
+        "downloads",
+        DEFAULT_TOR_SOCKS_PORT,
+    )
 }
 
 #[tauri::command]
@@ -281,7 +407,7 @@ fn plan_local_download(
             code: "candidate-not-found",
             message: "candidate locator is not present in the validated local candidate set".to_owned(),
         })?;
-    let _source = resolve_backend_media_source(&candidate)?;
+    let _preflight = build_download_preflight(&candidate, default_download_preflight_inputs()?)?;
 
     Ok(DownloadAction {
         intent_query: intent.query().to_owned(),
@@ -310,10 +436,12 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        T024_MEDIA_SOURCE_URL, T024_PROOF_LOCATOR, app_status, list_local_candidates,
+        DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
+        T024_PROOF_LOCATOR, app_status, build_download_preflight, list_local_candidates,
         local_candidate_by_locator, plan_local_download, resolve_backend_media_source,
         select_local_candidate, submit_intent,
     };
+    use std::path::Path;
 
     #[test]
     fn typed_status_contract_reports_linked_core_and_kernel() {
@@ -411,6 +539,71 @@ mod tests {
 
         assert_eq!(error.code, "invalid-search-intent");
         assert_eq!(error.message, "search query must not be empty");
+    }
+
+    #[test]
+    fn backend_download_preflight_is_typed_deterministic_and_side_effect_free() {
+        let candidate = local_candidate_by_locator(T024_PROOF_LOCATOR)
+            .expect("local proof candidates are valid")
+            .expect("supported proof candidate exists");
+        let inputs = DownloadPreflightInputs::new(
+            "bundle/arti",
+            "bundle/yt-dlp",
+            "state/arti/pulqva.toml",
+            "state/arti/cache",
+            "state/arti/state",
+            "downloads",
+            DEFAULT_TOR_SOCKS_PORT,
+        )
+        .expect("explicit preflight inputs are valid");
+        let preflight = build_download_preflight(&candidate, inputs)
+            .expect("supported candidate builds a pure-data preflight");
+
+        assert_eq!(preflight.arti_runtime().executable(), Path::new("bundle/arti"));
+        assert_eq!(
+            preflight.arti_runtime().config_file(),
+            Path::new("state/arti/pulqva.toml")
+        );
+        assert_eq!(preflight.arti_runtime().cache_dir(), Path::new("state/arti/cache"));
+        assert_eq!(preflight.arti_runtime().state_dir(), Path::new("state/arti/state"));
+        assert_eq!(preflight.arti_runtime().socks_endpoint().port(), DEFAULT_TOR_SOCKS_PORT);
+        assert_eq!(preflight.ytdlp_executable(), Path::new("bundle/yt-dlp"));
+        assert_eq!(preflight.media_source().as_str(), T024_MEDIA_SOURCE_URL);
+        assert_eq!(preflight.output_root(), Path::new("downloads"));
+    }
+
+    #[test]
+    fn backend_download_preflight_rejects_missing_required_path() {
+        let error = DownloadPreflightInputs::new(
+            "",
+            "bundle/yt-dlp",
+            "state/arti/pulqva.toml",
+            "state/arti/cache",
+            "state/arti/state",
+            "downloads",
+            DEFAULT_TOR_SOCKS_PORT,
+        )
+        .expect_err("missing executable must fail closed");
+
+        assert_eq!(error.code, "missing-preflight-path");
+        assert_eq!(error.message, "arti executable must not be empty");
+    }
+
+    #[test]
+    fn backend_download_preflight_rejects_zero_socks_port() {
+        let error = DownloadPreflightInputs::new(
+            "bundle/arti",
+            "bundle/yt-dlp",
+            "state/arti/pulqva.toml",
+            "state/arti/cache",
+            "state/arti/state",
+            "downloads",
+            0,
+        )
+        .expect_err("zero SOCKS port must fail closed");
+
+        assert_eq!(error.code, "invalid-tor-socks-endpoint");
+        assert_eq!(error.message, "Tor SOCKS port must be non-zero");
     }
 
     #[test]
