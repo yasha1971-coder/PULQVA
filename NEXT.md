@@ -2,51 +2,55 @@
 
 ## Current verified state
 
-T041 is complete.
+T042 is complete.
 
-PULQVA now has a backend-only controlled yt-dlp media execution boundary:
+PULQVA now has a backend-only completed download result boundary:
 
-- input is a verified T040 `TorGatedMediaRequestRuntime`;
-- yt-dlp launch reuses the existing typed `launch_ytdlp_request` boundary;
-- the resulting backend state owns both the live Arti child and the running yt-dlp child;
-- yt-dlp launch failure explicitly stops and waits for Arti before returning;
-- coordinated shutdown stops both yt-dlp and Arti and surfaces cleanup failures fail-closed;
-- no shell execution or direct-network fallback exists;
-- frontend IPC/output remains unchanged and exposes no executable path, filesystem path, SOCKS/proxy information, media URL, argv, or process identifiers;
-- FFmpeg and completion/result handling remain out of scope.
+- input is a T041 `RunningMediaDownloadRuntime`;
+- yt-dlp completion reuses `RunningYtDlp::complete_download`;
+- successful completion yields the existing typed `CompletedDownloadResult`;
+- Arti is stopped and waited after yt-dlp completion on both success and failure paths;
+- yt-dlp completion failures fail closed;
+- Arti cleanup failure after successful download invalidates the boundary result and fails closed;
+- combined completion and cleanup failure preserves both causes;
+- frontend IPC/output remains unchanged and exposes no backend paths, SOCKS/proxy data, media URL, argv, process identifiers, or raw completion internals;
+- no FFmpeg process is started;
+- no direct-network fallback exists.
 
 Verified PR head:
-`e9aa2b87dc6b8e88807a35ab464628ef5f5b2487`
+`2202145197ec65089de3452d36c000957b6eb521`
 
 All 11 required workflows passed for that exact head.
 
 ## Next atomic task
 
-**T042 — Add the backend-only completed download result boundary**
+**T043 — Add the backend-only FFmpeg remux planning boundary**
 
-Advance one running T041 media runtime through the existing yt-dlp completion and artifact-validation path while retaining deterministic cleanup of Arti.
+Convert one verified T042 `CompletedDownloadResult` into the existing typed local FFmpeg remux plan
+without starting FFmpeg.
 
 Required boundary:
 
-- input is a T041 `RunningMediaDownloadRuntime`;
-- yt-dlp completion reuses the existing typed `complete_download` boundary;
-- successful completion returns the existing `CompletedDownloadResult`;
-- Arti is stopped and waited after yt-dlp completion, on both success and failure paths;
-- yt-dlp completion failure and Arti cleanup failure are surfaced distinctly and fail closed;
-- frontend receives no backend path, proxy/SOCKS data, media URL, argv, process identifier, or raw completion internals;
-- FFmpeg remains out of scope;
-- no direct-network fallback exists.
+- input is a verified `CompletedDownloadResult`;
+- FFmpeg executable path is explicit backend input;
+- output path is derived inside the backend from the validated completed artifact;
+- `FfmpegRemuxPlan` is built through the existing typed privacy-layer API;
+- the plan is local-file-only and inherits the existing `file` protocol whitelist;
+- invalid executable/output/path traversal/equal-input cases fail closed;
+- frontend receives no executable path, input/output filesystem path, argv, source URL, or process identifier;
+- no FFmpeg process is started;
+- no external network access occurs.
 
 ## Do not do yet
 
+- no FFmpeg execution from the desktop UI;
+- no completed-result surfacing to frontend;
 - no external search provider;
 - no AI provider;
-- no FFmpeg execution from the desktop UI;
-- no completed-result surfacing to frontend yet;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-A running media download can complete through the existing typed artifact-validation path and produce a
-backend-only `CompletedDownloadResult` while Arti cleanup remains deterministic and fail-closed.
+A completed validated download can be converted into a deterministic typed local remux plan without
+starting FFmpeg or exposing backend runtime details to frontend code.
