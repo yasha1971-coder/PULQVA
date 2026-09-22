@@ -1,7 +1,7 @@
 # T044 — Add the backend-only controlled FFmpeg remux execution boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 

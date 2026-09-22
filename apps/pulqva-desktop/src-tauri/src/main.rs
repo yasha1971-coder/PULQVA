@@ -3,11 +3,12 @@ use pulqva_core::{
 };
 use pulqva_privacy::{
     ArtiConfigMaterializeError, ArtiProcessError, ArtiRuntimePlan, CompletedDownloadResult,
-    FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError, PreparedArtiRuntime,
-    ReadyTorTransport, RunningArti, RunningYtDlp, TorReadinessError, TorSocksEndpoint,
-    TorSocksEndpointError, YtDlpCompletionError, YtDlpMediaRequestError, YtDlpMediaRequestPlan,
-    YtDlpMediaSourceError, YtDlpMediaSourceUrl, YtDlpProcessError, launch_prepared_arti,
-    launch_ytdlp_request, prepare_arti_runtime, verify_tor_readiness,
+    FfmpegProcessError, FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError,
+    PreparedArtiRuntime, ReadyTorTransport, RunningArti, RunningFfmpeg, RunningYtDlp,
+    TorReadinessError, TorSocksEndpoint, TorSocksEndpointError, YtDlpCompletionError,
+    YtDlpMediaRequestError, YtDlpMediaRequestPlan, YtDlpMediaSourceError, YtDlpMediaSourceUrl,
+    YtDlpProcessError, launch_ffmpeg_remux, launch_prepared_arti, launch_ytdlp_request,
+    prepare_arti_runtime, verify_tor_readiness,
 };
 use serde::Serialize;
 use std::{
@@ -244,6 +245,15 @@ impl From<FfmpegRemuxPlanError> for DownloadActionError {
     fn from(source: FfmpegRemuxPlanError) -> Self {
         Self {
             code: "ffmpeg-remux-plan-failed",
+            message: source.to_string(),
+        }
+    }
+}
+
+impl From<FfmpegProcessError> for DownloadActionError {
+    fn from(source: FfmpegProcessError) -> Self {
+        Self {
+            code: "ffmpeg-process-failed",
             message: source.to_string(),
         }
     }
@@ -491,6 +501,27 @@ fn build_ffmpeg_remux_plan(
         FfmpegRemuxContainer::Mp4,
     )
     .map_err(DownloadActionError::from)
+}
+
+#[derive(Debug)]
+struct RunningFfmpegRemuxRuntime {
+    running_ffmpeg: RunningFfmpeg,
+}
+
+impl RunningFfmpegRemuxRuntime {
+    fn stop_and_wait(self) -> Result<(), DownloadActionError> {
+        self.running_ffmpeg
+            .stop_and_wait()
+            .map(|_| ())
+            .map_err(DownloadActionError::from)
+    }
+}
+
+fn launch_ffmpeg_remux_runtime(
+    plan: FfmpegRemuxPlan,
+) -> Result<RunningFfmpegRemuxRuntime, DownloadActionError> {
+    let running_ffmpeg = launch_ffmpeg_remux(plan).map_err(DownloadActionError::from)?;
+    Ok(RunningFfmpegRemuxRuntime { running_ffmpeg })
 }
 
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
