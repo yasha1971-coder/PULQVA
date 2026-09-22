@@ -41,6 +41,8 @@
  * @property {string} locator
  * @property {string} action
  * @property {string} stage
+ * @property {boolean} mediaSourceReady
+ * @property {string} mediaSourceStage
  */
 
 const invoke = window.__TAURI__.core.invoke;
@@ -113,6 +115,10 @@ function renderDownloadPlan(plan) {
   document.querySelector("#download-plan-title-value").textContent = plan.title;
   document.querySelector("#download-plan-locator").textContent = plan.locator;
   document.querySelector("#download-plan-stage").textContent = plan.stage;
+  document.querySelector("#download-plan-source-ready").textContent = plan.mediaSourceReady
+    ? "ready"
+    : "not ready";
+  document.querySelector("#download-plan-source-stage").textContent = plan.mediaSourceStage;
   document.querySelector("#download-plan-panel").hidden = false;
 }
 
@@ -203,7 +209,7 @@ function bindDownloadAction() {
 
       renderDownloadPlan(plan);
       state.dataset.kind = "success";
-      state.textContent = "Download action validated. No transfer has started yet.";
+      state.textContent = "Download action validated. Backend media source is typed and ready; no transfer has started yet.";
     } catch (error) {
       const message =
         error && typeof error === "object" && "message" in error

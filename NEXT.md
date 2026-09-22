@@ -4,37 +4,34 @@
 
 T035 is complete.
 
-PULQVA now has the explicit desktop Download action boundary required by the UX contract while the
-boundary remains data-only:
-
-- Download appears only after a candidate has been validated and selected;
-- frontend sends only validated intent text + the opaque selected locator through Tauri IPC;
-- Rust reconstructs and revalidates the deterministic `SearchCandidate` set;
-- locator matching is exact and fail-closed;
-- unknown locators are rejected;
-- the result contains deterministic intent/title/locator/action/stage data only;
-- the opaque locator is not interpreted or converted to a URL;
-- no yt-dlp, FFmpeg, shell, network, or filesystem side effect starts.
-
-Verified main commit:
+Verified functional checkpoint:
 `1f295ccee7631a699a3ecbd4922ee796b7a1f462`
 
-All 11 post-merge push workflows completed successfully for that exact commit.
+The bookkeeping closeout is merged on main at:
+`629ef51ba3efdd334899f8bfbf679ac17fd5b2ef`
 
-## Next atomic task
+## Active atomic task
 
 **T036 — Add the backend-only typed media-source resolution boundary**
 
-Resolve one revalidated local proof candidate to a typed `YtDlpMediaSourceUrl` entirely inside Rust,
-using an exact backend-only mapping to the immutable T024 media object.
+Implementation boundary:
 
-Required boundary:
+- desktop Rust links the existing `pulqva-privacy` crate;
+- raw frontend locators are first revalidated against the deterministic `SearchCandidate` set;
+- only the exact proof locator `local:test:candidate:official-live` is supported;
+- that typed candidate maps inside Rust to the immutable T024 media object;
+- the mapping is constructed as `YtDlpMediaSourceUrl`;
+- validated candidates without an approved mapping fail closed;
+- arbitrary/unknown locators still fail before media-source resolution;
+- the frontend receives only inert media-source readiness/stage data, never the URL;
+- no Tor bootstrap, yt-dlp, FFmpeg, shell, external network, or filesystem output is started.
 
-- only an exact revalidated local proof locator may enter resolution;
-- unknown or unsupported locators fail closed;
-- the frontend must never receive, construct, parse, or store the media URL;
-- the frontend may receive only inert readiness/stage data;
-- no Tor bootstrap, yt-dlp, FFmpeg, shell, external network, or filesystem output starts.
+Branch:
+`task/T036-backend-media-source-resolution`
+
+## Next task
+
+Not selected yet. T036 must be verified and closed before defining another implementation task.
 
 ## Do not do yet
 
@@ -48,5 +45,5 @@ Required boundary:
 
 ## Success
 
-The repository checkpoint truthfully records T035 as complete and leaves T036 as the single READY
-next task without starting it.
+Windows/Linux desktop checks and all existing privacy/media checks are green for the exact T036 head,
+with no media URL exposed to frontend code.

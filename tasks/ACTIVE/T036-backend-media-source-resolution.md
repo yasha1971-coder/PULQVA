@@ -1,7 +1,7 @@
 # T036 — Add the backend-only typed media-source resolution boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
