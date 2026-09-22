@@ -6,9 +6,9 @@
   "source_of_truth": "repository",
   "last_verified_commit": "e9aa2b87dc6b8e88807a35ab464628ef5f5b2487",
   "last_completed_task": "T041",
-  "active_task": null,
+  "active_task": "T042",
   "next_task": "T042",
-  "ci": "green",
+  "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [],
   "updated": "2026-09-22"

@@ -2,11 +2,11 @@ use pulqva_core::{
     CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
 };
 use pulqva_privacy::{
-    ArtiConfigMaterializeError, ArtiProcessError, ArtiRuntimePlan, PreparedArtiRuntime,
-    ReadyTorTransport, RunningArti, TorReadinessError, TorSocksEndpoint, TorSocksEndpointError,
-    RunningYtDlp, YtDlpMediaRequestError, YtDlpMediaRequestPlan, YtDlpMediaSourceError,
-    YtDlpMediaSourceUrl, YtDlpProcessError, launch_prepared_arti, launch_ytdlp_request,
-    prepare_arti_runtime, verify_tor_readiness,
+    ArtiConfigMaterializeError, ArtiProcessError, ArtiRuntimePlan, CompletedDownloadResult,
+    PreparedArtiRuntime, ReadyTorTransport, RunningArti, RunningYtDlp, TorReadinessError,
+    TorSocksEndpoint, TorSocksEndpointError, YtDlpCompletionError, YtDlpMediaRequestError,
+    YtDlpMediaRequestPlan, YtDlpMediaSourceError, YtDlpMediaSourceUrl, YtDlpProcessError,
+    launch_prepared_arti, launch_ytdlp_request, prepare_arti_runtime, verify_tor_readiness,
 };
 use serde::Serialize;
 use std::{
@@ -229,6 +229,15 @@ impl From<YtDlpProcessError> for DownloadActionError {
     }
 }
 
+impl From<YtDlpCompletionError> for DownloadActionError {
+    fn from(source: YtDlpCompletionError) -> Self {
+        Self {
+            code: "ytdlp-completion-failed",
+            message: source.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DownloadPreflightInputs {
     arti_executable: PathBuf,
@@ -412,6 +421,33 @@ impl RunningMediaDownloadRuntime {
                 ),
             }),
         }
+    }
+}
+
+fn complete_media_download(
+    runtime: RunningMediaDownloadRuntime,
+) -> Result<CompletedDownloadResult, DownloadActionError> {
+    let RunningMediaDownloadRuntime {
+        running_arti,
+        running_ytdlp,
+    } = runtime;
+
+    let completion = running_ytdlp.complete_download();
+    let arti_cleanup = running_arti.stop_and_wait();
+
+    match (completion, arti_cleanup) {
+        (Ok(result), Ok(_)) => Ok(result),
+        (Err(source), Ok(_)) => Err(DownloadActionError::from(source)),
+        (Ok(_), Err(cleanup_error)) => Err(DownloadActionError {
+            code: "arti-cleanup-after-download-failed",
+            message: cleanup_error.to_string(),
+        }),
+        (Err(completion_error), Err(cleanup_error)) => Err(DownloadActionError {
+            code: "download-completion-cleanup-failed",
+            message: format!(
+                "yt-dlp completion failed: {completion_error}; Arti cleanup failed: {cleanup_error}"
+            ),
+        }),
     }
 }
 

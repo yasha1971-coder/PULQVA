@@ -1,7 +1,7 @@
 # T042 — Add the backend-only completed download result boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
