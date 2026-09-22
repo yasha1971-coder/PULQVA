@@ -4,39 +4,33 @@
 
 T037 is complete.
 
-PULQVA now has a typed backend download preflight specification:
-
-- input starts from a revalidated supported `SearchCandidate`;
-- media-source resolution reuses the backend-only T036 `YtDlpMediaSourceUrl` boundary;
-- Arti executable, yt-dlp executable, Tor config/cache/state directories, output root, and SOCKS port are explicit backend inputs;
-- the resulting typed Rust data contains an `ArtiRuntimePlan`, yt-dlp executable path, typed media source, and output root;
-- empty required paths and invalid SOCKS ports fail closed;
-- frontend receives no media URL, executable path, Tor directory, or output filesystem path;
-- no process spawn, Tor bootstrap, yt-dlp/FFmpeg execution, external network, or filesystem output occurs.
-
-Verified PR head:
+Verified T037 implementation head:
 `a82f326d82f117a6053f86bbde5d1eb7d23f29a2`
 
-All 11 required workflows passed for that exact head.
+Merged T037 main:
+`9cac8b97ec0ee8990853a49c48cc232aa6aa03fc`
 
-## Next atomic task
+## Active atomic task
 
 **T038 — Add the backend-only prepared download runtime boundary**
 
-Convert the verified T037 preflight into a prepared backend runtime state using the existing privacy
-layer, while keeping process execution and external networking out of scope.
+T038 converts the typed T037 preflight into a prepared backend runtime state:
 
-Required boundary:
+- input is a verified `DownloadPreflightSpec`;
+- Arti configuration materialization reuses `prepare_arti_runtime`;
+- prepared state retains `PreparedArtiRuntime`, explicit yt-dlp executable path, typed `YtDlpMediaSourceUrl`, and output root;
+- preparation errors fail closed and return no prepared runtime;
+- only the Arti configuration is materialized; no sidecar executable, cache/state directory, media output, or download output is created by this boundary;
+- frontend behavior and IPC output remain unchanged, so no backend paths or media URL are exposed;
+- no Arti/yt-dlp/FFmpeg process is spawned;
+- no Tor bootstrap/readiness probe or external network access occurs.
 
-- input is a verified T037 `DownloadPreflightSpec`;
-- Arti configuration materialization uses the existing typed `prepare_arti_runtime` path;
-- prepared state retains the explicit yt-dlp executable, typed media source, and output root;
-- frontend receives only inert readiness/stage data and no paths or media URL;
-- preparation failures fail closed;
-- no Arti process is spawned;
-- no Tor bootstrap/readiness probe occurs;
-- no yt-dlp or FFmpeg process is spawned;
-- no external network access occurs.
+Branch:
+`task/T038-prepared-download-runtime-boundary`
+
+## Next task
+
+T038 remains the next task until its exact head is verified green and closed.
 
 ## Do not do yet
 
@@ -50,5 +44,4 @@ Required boundary:
 
 ## Success
 
-A verified preflight can be converted into a typed prepared runtime state without exposing backend
-paths or source URLs to frontend code and without starting any process or network activity.
+Windows/Linux desktop checks and all existing privacy/media checks are green for the exact T038 head.
