@@ -1,7 +1,7 @@
 # T037 — Add the typed desktop download preflight specification
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
