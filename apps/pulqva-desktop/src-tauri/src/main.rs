@@ -4,8 +4,9 @@ use pulqva_core::{
 use pulqva_privacy::{
     ArtiConfigMaterializeError, ArtiProcessError, ArtiRuntimePlan, PreparedArtiRuntime,
     ReadyTorTransport, RunningArti, TorReadinessError, TorSocksEndpoint, TorSocksEndpointError,
-    YtDlpMediaRequestError, YtDlpMediaRequestPlan, YtDlpMediaSourceError, YtDlpMediaSourceUrl,
-    launch_prepared_arti, prepare_arti_runtime, verify_tor_readiness,
+    RunningYtDlp, YtDlpMediaRequestError, YtDlpMediaRequestPlan, YtDlpMediaSourceError,
+    YtDlpMediaSourceUrl, YtDlpProcessError, launch_prepared_arti, launch_ytdlp_request,
+    prepare_arti_runtime, verify_tor_readiness,
 };
 use serde::Serialize;
 use std::{
@@ -219,6 +220,15 @@ impl From<YtDlpMediaRequestError> for DownloadActionError {
     }
 }
 
+impl From<YtDlpProcessError> for DownloadActionError {
+    fn from(source: YtDlpProcessError) -> Self {
+        Self {
+            code: "ytdlp-process-failed",
+            message: source.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DownloadPreflightInputs {
     arti_executable: PathBuf,
@@ -375,6 +385,36 @@ impl TorGatedMediaRequestRuntime {
     }
 }
 
+#[derive(Debug)]
+struct RunningMediaDownloadRuntime {
+    running_arti: RunningArti,
+    running_ytdlp: RunningYtDlp,
+}
+
+impl RunningMediaDownloadRuntime {
+    fn stop_and_wait(self) -> Result<(), DownloadActionError> {
+        let RunningMediaDownloadRuntime {
+            running_arti,
+            running_ytdlp,
+        } = self;
+
+        let ytdlp_result = running_ytdlp.stop_and_wait();
+        let arti_result = running_arti.stop_and_wait();
+
+        match (ytdlp_result, arti_result) {
+            (Ok(_), Ok(_)) => Ok(()),
+            (Err(source), Ok(_)) => Err(DownloadActionError::from(source)),
+            (Ok(_), Err(source)) => Err(DownloadActionError::from(source)),
+            (Err(ytdlp_error), Err(arti_error)) => Err(DownloadActionError {
+                code: "media-runtime-cleanup-failed",
+                message: format!(
+                    "yt-dlp cleanup failed: {ytdlp_error}; Arti cleanup failed: {arti_error}"
+                ),
+            }),
+        }
+    }
+}
+
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
     Ok(vec![
         SearchCandidate::new(
@@ -521,6 +561,34 @@ fn build_tor_gated_media_request(
                     code: "media-request-cleanup-failed",
                     message: format!(
                         "media request planning failed: {source}; Arti cleanup failed: {cleanup_error}"
+                    ),
+                }),
+            }
+        }
+    }
+}
+
+fn launch_tor_gated_media_request(
+    runtime: TorGatedMediaRequestRuntime,
+) -> Result<RunningMediaDownloadRuntime, DownloadActionError> {
+    let TorGatedMediaRequestRuntime {
+        running_arti,
+        request,
+    } = runtime;
+
+    match launch_ytdlp_request(request) {
+        Ok(running_ytdlp) => Ok(RunningMediaDownloadRuntime {
+            running_arti,
+            running_ytdlp,
+        }),
+        Err(source) => {
+            let cleanup = running_arti.stop_and_wait();
+            match cleanup {
+                Ok(_) => Err(DownloadActionError::from(source)),
+                Err(cleanup_error) => Err(DownloadActionError {
+                    code: "ytdlp-launch-cleanup-failed",
+                    message: format!(
+                        "yt-dlp launch failed: {source}; Arti cleanup failed: {cleanup_error}"
                     ),
                 }),
             }

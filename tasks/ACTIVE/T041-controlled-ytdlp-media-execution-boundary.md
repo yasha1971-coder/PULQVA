@@ -1,7 +1,7 @@
 # T041 — Add the backend-only controlled yt-dlp media execution boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
