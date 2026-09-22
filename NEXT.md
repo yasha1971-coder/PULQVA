@@ -2,46 +2,38 @@
 
 ## Current verified state
 
-T043 is complete.
+T042 is the last closed task.
 
-PULQVA now has a backend-only FFmpeg remux planning boundary:
+T043 implementation head `7eb8834b4dc0bb07ac8e10dde4dea7fa5ffbb0ab` previously passed all 11
+required workflows, but the later closeout head repeatedly failed the Ubuntu real-media proof. T043
+is therefore active again until the repaired exact head is green.
 
-- input is a verified `CompletedDownloadResult`;
-- FFmpeg executable path is explicit backend input;
-- remux output is derived from the validated artifact as a sibling `pulqva-remux-*.mp4` path without UTF-8 filename assumptions;
-- the typed plan reuses `FfmpegRemuxPlan` with explicit `FfmpegRemuxContainer::Mp4`;
-- existing typed validation remains fail-closed for missing executable/output, traversal, and output-equals-input;
-- plan arguments retain the existing local-only `file` protocol whitelist;
-- frontend IPC/output remains unchanged and exposes no executable path, input/output filesystem path, argv, source URL, or process identifier;
-- no FFmpeg process is spawned;
-- no external network access occurs.
+## Active recovery
 
-Verified PR head:
-`7eb8834b4dc0bb07ac8e10dde4dea7fa5ffbb0ab`
+**T043 — backend-only FFmpeg remux planning boundary**
 
-All 11 required workflows passed for that exact head.
+The FFmpeg planning implementation is unchanged. Recovery is limited to the external Tor media proof:
 
-## Next atomic task
+- previous proof fixture: immutable GitHub raw media URL;
+- observed closeout failures: one timeout, then two Ubuntu yt-dlp exit-status 1 failures;
+- Windows remained green;
+- all non-media workflows remained green;
+- replacement proof fixture: the 239,482-byte Wikimedia Commons original
+  `Five-second_counter.webm`;
+- Tor gating, typed yt-dlp request construction, bounded execution, artifact-size verification, and
+  fail-closed behavior remain unchanged;
+- no direct-network fallback is added.
 
-**T044 — Add the backend-only controlled FFmpeg remux execution boundary**
+Branch:
+`task/T043-ffmpeg-remux-planning-boundary`
 
-Advance one verified T043 `FfmpegRemuxPlan` into a controlled running FFmpeg child through the
-existing typed local launcher.
+## Next task
 
-Required boundary:
-
-- input is a verified T043 typed remux plan;
-- FFmpeg launch reuses the existing `launch_ffmpeg_remux` boundary;
-- no shell command string is constructed;
-- no URL/proxy/network input exists;
-- launch failures fail closed;
-- backend owns the running FFmpeg child until explicit completion or cleanup;
-- frontend receives no executable path, input/output filesystem path, argv, source URL, or process identifier;
-- no external network access occurs;
-- completion/result surfacing remains out of scope.
+T043 remains next until this repaired exact head is verified green.
 
 ## Do not do yet
 
+- do not queue or start T044 until T043 closes green;
 - no completed remux result surfacing to frontend;
 - no external search provider;
 - no AI provider;
@@ -50,5 +42,4 @@ Required boundary:
 
 ## Success
 
-A verified local remux plan can launch FFmpeg through the existing controlled typed process boundary
-without shell execution or any network-capable path.
+All 11 required workflows are green for the exact repaired T043 head.

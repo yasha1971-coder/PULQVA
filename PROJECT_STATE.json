@@ -5,11 +5,13 @@
   "phase": "implementation",
   "source_of_truth": "repository",
   "last_verified_commit": "7eb8834b4dc0bb07ac8e10dde4dea7fa5ffbb0ab",
-  "last_completed_task": "T043",
-  "active_task": null,
-  "next_task": "T044",
-  "ci": "green",
+  "last_completed_task": "T042",
+  "active_task": "T043",
+  "next_task": "T043",
+  "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
-  "known_blockers": [],
+  "known_blockers": [
+    "T043 closeout recovery: Ubuntu real-media proof failed twice against the previous GitHub raw fixture"
+  ],
   "updated": "2026-09-22"
 }
