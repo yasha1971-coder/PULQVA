@@ -1,7 +1,7 @@
 # T043 — Add the backend-only FFmpeg remux planning boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 

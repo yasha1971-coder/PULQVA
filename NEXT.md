@@ -4,42 +4,34 @@
 
 T042 is complete.
 
-PULQVA now has a backend-only completed download result boundary:
-
-- input is a T041 `RunningMediaDownloadRuntime`;
-- yt-dlp completion reuses `RunningYtDlp::complete_download`;
-- successful completion yields the existing typed `CompletedDownloadResult`;
-- Arti is stopped and waited after yt-dlp completion on both success and failure paths;
-- yt-dlp completion failures fail closed;
-- Arti cleanup failure after successful download invalidates the boundary result and fails closed;
-- combined completion and cleanup failure preserves both causes;
-- frontend IPC/output remains unchanged and exposes no backend paths, SOCKS/proxy data, media URL, argv, process identifiers, or raw completion internals;
-- no FFmpeg process is started;
-- no direct-network fallback exists.
-
-Verified PR head:
+Verified T042 implementation head:
 `2202145197ec65089de3452d36c000957b6eb521`
 
-All 11 required workflows passed for that exact head.
+Merged T042 main:
+`5c7de5186e7b8152310de5ddc40805c7bd4311f3`
 
-## Next atomic task
+## Active atomic task
 
 **T043 — Add the backend-only FFmpeg remux planning boundary**
 
-Convert one verified T042 `CompletedDownloadResult` into the existing typed local FFmpeg remux plan
-without starting FFmpeg.
-
-Required boundary:
+T043 converts a verified completed download into a deterministic local remux plan:
 
 - input is a verified `CompletedDownloadResult`;
-- FFmpeg executable path is explicit backend input;
-- output path is derived inside the backend from the validated completed artifact;
-- `FfmpegRemuxPlan` is built through the existing typed privacy-layer API;
-- the plan is local-file-only and inherits the existing `file` protocol whitelist;
-- invalid executable/output/path traversal/equal-input cases fail closed;
-- frontend receives no executable path, input/output filesystem path, argv, source URL, or process identifier;
-- no FFmpeg process is started;
+- FFmpeg executable path is an explicit backend input;
+- remux output is derived from the validated artifact as a sibling `pulqva-remux-*.mp4` path without UTF-8 filename assumptions;
+- the typed plan reuses `FfmpegRemuxPlan` with explicit `FfmpegRemuxContainer::Mp4`;
+- existing typed plan validation rejects missing executable/output, traversal, and output-equals-input cases fail-closed;
+- plan arguments retain the existing local-only `file` protocol whitelist;
+- frontend IPC/output remains unchanged and exposes no executable path, input/output filesystem path, argv, source URL, or process identifier;
+- no FFmpeg process is spawned;
 - no external network access occurs.
+
+Branch:
+`task/T043-ffmpeg-remux-planning-boundary`
+
+## Next task
+
+T043 remains the next task until its exact head is verified green and closed.
 
 ## Do not do yet
 
@@ -52,5 +44,4 @@ Required boundary:
 
 ## Success
 
-A completed validated download can be converted into a deterministic typed local remux plan without
-starting FFmpeg or exposing backend runtime details to frontend code.
+Windows/Linux desktop checks and all existing privacy/media checks are green for the exact T043 head.
