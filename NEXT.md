@@ -2,56 +2,55 @@
 
 ## Current verified state
 
-T039 is complete.
+T040 is complete.
 
-PULQVA now has a backend-only Tor-ready download runtime boundary:
+PULQVA now has a backend-only Tor-gated media request boundary:
 
-- input is a prepared T038 runtime;
-- Arti launch reuses the existing controlled `launch_prepared_arti` boundary;
-- Tor readiness reuses the bounded `verify_tor_readiness` boundary;
-- success retains the running Arti child, a `ReadyTorTransport`, yt-dlp executable path, typed media source, and output root;
-- Arti launch failures fail closed;
-- Tor readiness failures explicitly stop and wait for the Arti child;
+- input is a T039 `TorReadyDownloadRuntime`;
+- `YtDlpMediaRequestPlan::new_tor_gated` derives its launch plan only from verified `ReadyTorTransport`;
+- the request uses the retained typed media source and output root;
+- the resulting backend state retains ownership of the running Arti child with the typed media request plan;
+- request-planning failures stop and wait for Arti before returning;
 - cleanup failures are surfaced separately and fail closed;
-- frontend IPC/output remains unchanged and exposes no backend path, SOCKS endpoint, proxy URL, or media URL;
+- frontend IPC/output remains unchanged and exposes no executable path, output path, SOCKS/proxy data, media URL, or argv;
 - no yt-dlp or FFmpeg process is started;
 - no media download is started;
 - no direct-network fallback exists.
 
 Verified PR head:
-`0821cfc0bb70b9f43388fecdaf50e253d72a22ad`
+`021994420b8e3ee393785e6dc4ef3685150efdd6`
 
 All 11 required workflows passed for that exact head.
 
 ## Next atomic task
 
-**T040 — Add the backend-only Tor-gated media request boundary**
+**T041 — Add the backend-only controlled yt-dlp media execution boundary**
 
-Convert one T039 Tor-ready runtime into a typed yt-dlp media request plan without starting yt-dlp.
+Advance one verified T040 Tor-gated media request state into a controlled running yt-dlp child while
+retaining ownership of the live Arti child.
 
 Required boundary:
 
-- input is a T039 `TorReadyDownloadRuntime`;
-- construct `YtDlpLaunchPlan` only from its verified `ReadyTorTransport`;
-- construct `YtDlpMediaRequestPlan` from the retained typed media source and output root;
-- retain ownership of the running Arti child so the Tor capability stays live;
-- frontend receives no executable path, output path, proxy URL, SOCKS endpoint, media URL, or argv;
-- plan-construction failures stop and clean up Arti and fail closed;
-- no yt-dlp or FFmpeg process is started;
-- no media download is started;
-- no direct-network fallback exists.
+- input is a T040 Tor-gated media request runtime;
+- yt-dlp launch reuses the existing controlled `launch_ytdlp_request` boundary;
+- the running Arti child remains owned by the backend for the full yt-dlp child lifetime;
+- yt-dlp launch failure stops and waits for Arti before returning failure;
+- no shell execution;
+- no direct-network fallback;
+- frontend receives only inert running/stage data and no executable path, output path, proxy/SOCKS data, media URL, argv, or process identifiers;
+- FFmpeg remains out of scope;
+- completion/result handling remains out of scope.
 
 ## Do not do yet
 
 - no external search provider;
 - no AI provider;
-- no yt-dlp execution from the desktop UI;
 - no FFmpeg execution from the desktop UI;
-- no actual media download;
+- no completion receipt/result surfacing;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-A Tor-ready runtime can be converted into a typed, Tor-gated yt-dlp media request plan while keeping
-the Arti child owned by the backend and without executing media retrieval.
+A verified Tor-gated media request can launch yt-dlp through the existing controlled process boundary
+while Arti remains backend-owned and no private runtime details cross into frontend code.
