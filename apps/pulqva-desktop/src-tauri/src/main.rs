@@ -269,6 +269,49 @@ impl From<FfmpegCompletionError> for DownloadActionError {
     }
 }
 
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CompletedFileView {
+    file_name: String,
+    byte_size: u64,
+    stage: &'static str,
+}
+
+fn sanitized_completed_file_view(
+    completed: &CompletedFfmpegRemuxResult,
+) -> Result<CompletedFileView, DownloadActionError> {
+    let file_name = completed
+        .output()
+        .file_name()
+        .ok_or_else(|| DownloadActionError {
+            code: "completed-file-name-missing",
+            message: "validated completed remux output must include a file name".to_owned(),
+        })?
+        .to_string_lossy()
+        .chars()
+        .map(|ch| {
+            if ch.is_control() || matches!(ch, '/' | '\\') {
+                '_'
+            } else {
+                ch
+            }
+        })
+        .collect::<String>();
+
+    if file_name.is_empty() {
+        return Err(DownloadActionError {
+            code: "completed-file-name-missing",
+            message: "validated completed remux output must include a file name".to_owned(),
+        });
+    }
+
+    Ok(CompletedFileView {
+        file_name,
+        byte_size: completed.byte_size(),
+        stage: "completed-file-ready",
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DownloadPreflightInputs {
     arti_executable: PathBuf,

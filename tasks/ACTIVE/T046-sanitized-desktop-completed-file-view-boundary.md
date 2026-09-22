@@ -1,7 +1,7 @@
 # T046 — Add a sanitized desktop completed-file view boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
