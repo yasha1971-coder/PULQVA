@@ -3,13 +3,15 @@ use pulqva_core::{
 };
 use pulqva_privacy::{
     ArtiConfigMaterializeError, ArtiProcessError, ArtiRuntimePlan, CompletedDownloadResult,
-    PreparedArtiRuntime, ReadyTorTransport, RunningArti, RunningYtDlp, TorReadinessError,
-    TorSocksEndpoint, TorSocksEndpointError, YtDlpCompletionError, YtDlpMediaRequestError,
-    YtDlpMediaRequestPlan, YtDlpMediaSourceError, YtDlpMediaSourceUrl, YtDlpProcessError,
-    launch_prepared_arti, launch_ytdlp_request, prepare_arti_runtime, verify_tor_readiness,
+    FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError, PreparedArtiRuntime,
+    ReadyTorTransport, RunningArti, RunningYtDlp, TorReadinessError, TorSocksEndpoint,
+    TorSocksEndpointError, YtDlpCompletionError, YtDlpMediaRequestError, YtDlpMediaRequestPlan,
+    YtDlpMediaSourceError, YtDlpMediaSourceUrl, YtDlpProcessError, launch_prepared_arti,
+    launch_ytdlp_request, prepare_arti_runtime, verify_tor_readiness,
 };
 use serde::Serialize;
 use std::{
+    ffi::OsString,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -238,6 +240,15 @@ impl From<YtDlpCompletionError> for DownloadActionError {
     }
 }
 
+impl From<FfmpegRemuxPlanError> for DownloadActionError {
+    fn from(source: FfmpegRemuxPlanError) -> Self {
+        Self {
+            code: "ffmpeg-remux-plan-failed",
+            message: source.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DownloadPreflightInputs {
     arti_executable: PathBuf,
@@ -449,6 +460,37 @@ fn complete_media_download(
             ),
         }),
     }
+}
+
+fn derive_ffmpeg_remux_output_path(
+    completed: &CompletedDownloadResult,
+) -> Result<PathBuf, DownloadActionError> {
+    let input = completed.artifact_path();
+    let file_name = input.file_name().ok_or_else(|| DownloadActionError {
+        code: "ffmpeg-output-derivation-failed",
+        message: "validated completed artifact path must include a file name".to_owned(),
+    })?;
+
+    let mut output_name = OsString::from("pulqva-remux-");
+    output_name.push(file_name);
+    let mut output = input.with_file_name(output_name);
+    output.set_extension("mp4");
+    Ok(output)
+}
+
+fn build_ffmpeg_remux_plan(
+    completed: &CompletedDownloadResult,
+    ffmpeg_executable: impl Into<PathBuf>,
+) -> Result<FfmpegRemuxPlan, DownloadActionError> {
+    let output = derive_ffmpeg_remux_output_path(completed)?;
+
+    FfmpegRemuxPlan::new(
+        ffmpeg_executable,
+        completed,
+        output,
+        FfmpegRemuxContainer::Mp4,
+    )
+    .map_err(DownloadActionError::from)
 }
 
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {

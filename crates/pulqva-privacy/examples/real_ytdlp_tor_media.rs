@@ -13,8 +13,8 @@ use std::{
 };
 
 const MEDIA_SOURCE: &str =
-    "https://raw.githubusercontent.com/mediaelement/mediaelement-files/4d21a042353022326071acb0251ab75cd6bae114/big_buck_bunny.mp4";
-const EXPECTED_MEDIA_BYTES: u64 = 5_510_872;
+    "https://upload.wikimedia.org/wikipedia/commons/5/55/Five-second_counter.webm";
+const EXPECTED_MEDIA_BYTES: u64 = 239_482;
 const TOR_READY_TIMEOUT: Duration = Duration::from_secs(90);
 const YTDLP_TIMEOUT: Duration = Duration::from_secs(180);
 

@@ -2,49 +2,48 @@
 
 ## Current verified state
 
-T042 is complete.
+T043 is complete.
 
-PULQVA now has a backend-only completed download result boundary:
+PULQVA now has a backend-only FFmpeg remux planning boundary:
 
-- input is a T041 `RunningMediaDownloadRuntime`;
-- yt-dlp completion reuses `RunningYtDlp::complete_download`;
-- successful completion yields the existing typed `CompletedDownloadResult`;
-- Arti is stopped and waited after yt-dlp completion on both success and failure paths;
-- yt-dlp completion failures fail closed;
-- Arti cleanup failure after successful download invalidates the boundary result and fails closed;
-- combined completion and cleanup failure preserves both causes;
-- frontend IPC/output remains unchanged and exposes no backend paths, SOCKS/proxy data, media URL, argv, process identifiers, or raw completion internals;
-- no FFmpeg process is started;
-- no direct-network fallback exists.
+- input is a verified `CompletedDownloadResult`;
+- FFmpeg executable path is explicit backend input;
+- remux output is derived from the validated artifact as a sibling `pulqva-remux-*.mp4` path without UTF-8 filename assumptions;
+- the typed plan reuses `FfmpegRemuxPlan` with explicit `FfmpegRemuxContainer::Mp4`;
+- existing typed validation remains fail-closed for missing executable/output, traversal, and output-equals-input;
+- plan arguments retain the existing local-only `file` protocol whitelist;
+- frontend IPC/output remains unchanged and exposes no executable path, input/output filesystem path, argv, source URL, or process identifier;
+- no FFmpeg process is spawned;
+- no external network access occurs;
+- the Ubuntu real-media proof fixture was recovered to a stable small Wikimedia Commons asset while preserving the same Tor-gated yt-dlp path and bounded artifact verification.
 
 Verified PR head:
-`2202145197ec65089de3452d36c000957b6eb521`
+`3c67ce313e29a291138f97a75c9bbae85eb9d207`
 
 All 11 required workflows passed for that exact head.
 
 ## Next atomic task
 
-**T043 — Add the backend-only FFmpeg remux planning boundary**
+**T044 — Add the backend-only controlled FFmpeg remux execution boundary**
 
-Convert one verified T042 `CompletedDownloadResult` into the existing typed local FFmpeg remux plan
-without starting FFmpeg.
+Advance one verified T043 `FfmpegRemuxPlan` into a controlled running FFmpeg child through the
+existing typed local launcher.
 
 Required boundary:
 
-- input is a verified `CompletedDownloadResult`;
-- FFmpeg executable path is explicit backend input;
-- output path is derived inside the backend from the validated completed artifact;
-- `FfmpegRemuxPlan` is built through the existing typed privacy-layer API;
-- the plan is local-file-only and inherits the existing `file` protocol whitelist;
-- invalid executable/output/path traversal/equal-input cases fail closed;
+- input is a verified T043 typed remux plan;
+- FFmpeg launch reuses the existing `launch_ffmpeg_remux` boundary;
+- no shell command string is constructed;
+- no URL/proxy/network input exists;
+- launch failures fail closed;
+- backend owns the running FFmpeg child until explicit completion or cleanup;
 - frontend receives no executable path, input/output filesystem path, argv, source URL, or process identifier;
-- no FFmpeg process is started;
-- no external network access occurs.
+- no external network access occurs;
+- completion/result surfacing remains out of scope.
 
 ## Do not do yet
 
-- no FFmpeg execution from the desktop UI;
-- no completed-result surfacing to frontend;
+- no completed remux result surfacing to frontend;
 - no external search provider;
 - no AI provider;
 - no packaging/release installers;
@@ -52,5 +51,5 @@ Required boundary:
 
 ## Success
 
-A completed validated download can be converted into a deterministic typed local remux plan without
-starting FFmpeg or exposing backend runtime details to frontend code.
+A verified local remux plan can launch FFmpeg through the existing controlled typed process boundary
+without shell execution or any network-capable path.
