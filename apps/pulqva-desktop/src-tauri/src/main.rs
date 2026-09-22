@@ -2,8 +2,8 @@ use pulqva_core::{
     CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
 };
 use pulqva_privacy::{
-    ArtiRuntimePlan, TorSocksEndpoint, TorSocksEndpointError, YtDlpMediaSourceError,
-    YtDlpMediaSourceUrl,
+    ArtiConfigMaterializeError, ArtiRuntimePlan, PreparedArtiRuntime, TorSocksEndpoint,
+    TorSocksEndpointError, YtDlpMediaSourceError, YtDlpMediaSourceUrl, prepare_arti_runtime,
 };
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -187,6 +187,15 @@ impl From<TorSocksEndpointError> for DownloadActionError {
     }
 }
 
+impl From<ArtiConfigMaterializeError> for DownloadActionError {
+    fn from(source: ArtiConfigMaterializeError) -> Self {
+        Self {
+            code: "arti-runtime-preparation-failed",
+            message: source.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DownloadPreflightInputs {
     arti_executable: PathBuf,
@@ -265,6 +274,32 @@ impl DownloadPreflightSpec {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PreparedDownloadRuntime {
+    arti_runtime: PreparedArtiRuntime,
+    ytdlp_executable: PathBuf,
+    media_source: YtDlpMediaSourceUrl,
+    output_root: PathBuf,
+}
+
+impl PreparedDownloadRuntime {
+    fn arti_runtime(&self) -> &PreparedArtiRuntime {
+        &self.arti_runtime
+    }
+
+    fn ytdlp_executable(&self) -> &Path {
+        &self.ytdlp_executable
+    }
+
+    fn media_source(&self) -> &YtDlpMediaSourceUrl {
+        &self.media_source
+    }
+
+    fn output_root(&self) -> &Path {
+        &self.output_root
+    }
+}
+
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
     Ok(vec![
         SearchCandidate::new(
@@ -318,6 +353,26 @@ fn build_download_preflight(
         ytdlp_executable: inputs.ytdlp_executable,
         media_source,
         output_root: inputs.output_root,
+    })
+}
+
+fn prepare_download_runtime(
+    preflight: DownloadPreflightSpec,
+) -> Result<PreparedDownloadRuntime, DownloadActionError> {
+    let DownloadPreflightSpec {
+        arti_runtime,
+        ytdlp_executable,
+        media_source,
+        output_root,
+    } = preflight;
+
+    let arti_runtime = prepare_arti_runtime(arti_runtime).map_err(DownloadActionError::from)?;
+
+    Ok(PreparedDownloadRuntime {
+        arti_runtime,
+        ytdlp_executable,
+        media_source,
+        output_root,
     })
 }
 
@@ -438,10 +493,24 @@ mod tests {
     use super::{
         DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
         T024_PROOF_LOCATOR, app_status, build_download_preflight, list_local_candidates,
-        local_candidate_by_locator, plan_local_download, resolve_backend_media_source,
-        select_local_candidate, submit_intent,
+        local_candidate_by_locator, plan_local_download, prepare_download_runtime,
+        resolve_backend_media_source, select_local_candidate, submit_intent,
     };
-    use std::path::Path;
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        sync::atomic::{AtomicU64, Ordering},
+    };
+
+    static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    fn test_root(label: &str) -> PathBuf {
+        let sequence = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!(
+            "pulqva-desktop-{label}-{}-{sequence}",
+            std::process::id()
+        ))
+    }
 
     #[test]
     fn typed_status_contract_reports_linked_core_and_kernel() {
@@ -570,6 +639,87 @@ mod tests {
         assert_eq!(preflight.ytdlp_executable(), Path::new("bundle/yt-dlp"));
         assert_eq!(preflight.media_source().as_str(), T024_MEDIA_SOURCE_URL);
         assert_eq!(preflight.output_root(), Path::new("downloads"));
+    }
+
+    #[test]
+    fn prepared_download_runtime_materializes_only_arti_config_and_retains_typed_state() {
+        let root = test_root("prepared-runtime");
+        let candidate = local_candidate_by_locator(T024_PROOF_LOCATOR)
+            .expect("local proof candidates are valid")
+            .expect("supported proof candidate exists");
+        let inputs = DownloadPreflightInputs::new(
+            root.join("bin/arti"),
+            root.join("bin/yt-dlp"),
+            root.join("config/pulqva.toml"),
+            root.join("cache"),
+            root.join("state"),
+            root.join("downloads"),
+            DEFAULT_TOR_SOCKS_PORT,
+        )
+        .expect("explicit preflight inputs are valid");
+        let preflight = build_download_preflight(&candidate, inputs)
+            .expect("supported candidate builds preflight");
+        let expected_config = preflight
+            .arti_runtime()
+            .render_config()
+            .expect("test paths are UTF-8");
+
+        let prepared = prepare_download_runtime(preflight)
+            .expect("Arti config preparation succeeds without launching a process");
+
+        assert_eq!(
+            fs::read(prepared.arti_runtime().plan().config_file())
+                .expect("prepared config exists"),
+            expected_config.as_bytes()
+        );
+        assert_eq!(
+            prepared.arti_runtime().plan().socks_endpoint().port(),
+            DEFAULT_TOR_SOCKS_PORT
+        );
+        assert_eq!(prepared.ytdlp_executable(), root.join("bin/yt-dlp"));
+        assert_eq!(prepared.media_source().as_str(), T024_MEDIA_SOURCE_URL);
+        assert_eq!(prepared.output_root(), root.join("downloads"));
+        assert!(!prepared.arti_runtime().plan().executable().exists());
+        assert!(!prepared.arti_runtime().plan().cache_dir().exists());
+        assert!(!prepared.arti_runtime().plan().state_dir().exists());
+        assert!(!prepared.ytdlp_executable().exists());
+        assert!(!prepared.output_root().exists());
+
+        fs::remove_dir_all(root).expect("prepared test tree cleanup succeeds");
+    }
+
+    #[test]
+    fn prepared_download_runtime_fails_closed_when_config_cannot_be_materialized() {
+        let root = test_root("prepared-runtime-fail");
+        fs::create_dir_all(&root).expect("test root creation succeeds");
+        let blocked_parent = root.join("blocked-parent");
+        fs::write(&blocked_parent, b"not a directory").expect("blocking file creation succeeds");
+
+        let candidate = local_candidate_by_locator(T024_PROOF_LOCATOR)
+            .expect("local proof candidates are valid")
+            .expect("supported proof candidate exists");
+        let inputs = DownloadPreflightInputs::new(
+            root.join("bin/arti"),
+            root.join("bin/yt-dlp"),
+            blocked_parent.join("pulqva.toml"),
+            root.join("cache"),
+            root.join("state"),
+            root.join("downloads"),
+            DEFAULT_TOR_SOCKS_PORT,
+        )
+        .expect("preflight paths are syntactically valid");
+        let preflight = build_download_preflight(&candidate, inputs)
+            .expect("supported candidate builds preflight");
+
+        let error = prepare_download_runtime(preflight)
+            .expect_err("materialization failure must return no prepared runtime");
+
+        assert_eq!(error.code, "arti-runtime-preparation-failed");
+        assert!(!root.join("cache").exists());
+        assert!(!root.join("state").exists());
+        assert!(!root.join("downloads").exists());
+
+        fs::remove_dir_all(root).expect("failed preparation tree cleanup succeeds");
     }
 
     #[test]
