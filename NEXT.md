@@ -2,47 +2,55 @@
 
 ## Current verified state
 
-T041 is complete.
+T042 is complete.
 
-Verified T041 implementation head:
-`e9aa2b87dc6b8e88807a35ab464628ef5f5b2487`
+PULQVA now has a backend-only completed download result boundary:
 
-Merged T041 main:
-`b7885f2d62f72d02f4063dcd394e87508d18e6e4`
-
-## Active atomic task
-
-**T042 — Add the backend-only completed download result boundary**
-
-T042 completes a running T041 media runtime through the existing typed completion path:
-
-- input is a `RunningMediaDownloadRuntime`;
+- input is a T041 `RunningMediaDownloadRuntime`;
 - yt-dlp completion reuses `RunningYtDlp::complete_download`;
-- successful completion yields the existing `CompletedDownloadResult`;
+- successful completion yields the existing typed `CompletedDownloadResult`;
 - Arti is stopped and waited after yt-dlp completion on both success and failure paths;
-- yt-dlp completion failure is surfaced fail-closed;
-- Arti cleanup failure after a successful download invalidates the boundary result and fails closed;
-- combined completion and Arti cleanup failure preserves both causes;
+- yt-dlp completion failures fail closed;
+- Arti cleanup failure after successful download invalidates the boundary result and fails closed;
+- combined completion and cleanup failure preserves both causes;
 - frontend IPC/output remains unchanged and exposes no backend paths, SOCKS/proxy data, media URL, argv, process identifiers, or raw completion internals;
 - no FFmpeg process is started;
 - no direct-network fallback exists.
 
-Branch:
-`task/T042-completed-download-result-boundary`
+Verified PR head:
+`2202145197ec65089de3452d36c000957b6eb521`
 
-## Next task
+All 11 required workflows passed for that exact head.
 
-T042 remains the next task until its exact head is verified green and closed.
+## Next atomic task
+
+**T043 — Add the backend-only FFmpeg remux planning boundary**
+
+Convert one verified T042 `CompletedDownloadResult` into the existing typed local FFmpeg remux plan
+without starting FFmpeg.
+
+Required boundary:
+
+- input is a verified `CompletedDownloadResult`;
+- FFmpeg executable path is explicit backend input;
+- output path is derived inside the backend from the validated completed artifact;
+- `FfmpegRemuxPlan` is built through the existing typed privacy-layer API;
+- the plan is local-file-only and inherits the existing `file` protocol whitelist;
+- invalid executable/output/path traversal/equal-input cases fail closed;
+- frontend receives no executable path, input/output filesystem path, argv, source URL, or process identifier;
+- no FFmpeg process is started;
+- no external network access occurs.
 
 ## Do not do yet
 
+- no FFmpeg execution from the desktop UI;
+- no completed-result surfacing to frontend;
 - no external search provider;
 - no AI provider;
-- no FFmpeg execution from the desktop UI;
-- no completed-result surfacing to frontend yet;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-Windows/Linux desktop checks and all existing privacy/media checks are green for the exact T042 head.
+A completed validated download can be converted into a deterministic typed local remux plan without
+starting FFmpeg or exposing backend runtime details to frontend code.
