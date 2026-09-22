@@ -95,6 +95,16 @@ pub struct YtDlpMediaRequestPlan {
 }
 
 impl YtDlpMediaRequestPlan {
+    pub fn new_tor_gated(
+        executable: impl Into<PathBuf>,
+        transport: crate::ReadyTorTransport,
+        source: YtDlpMediaSourceUrl,
+        output_root: impl Into<PathBuf>,
+    ) -> Result<Self, YtDlpMediaRequestError> {
+        let launch = YtDlpLaunchPlan::new(executable, transport);
+        Self::new(launch, source, output_root)
+    }
+
     pub fn new(
         launch: YtDlpLaunchPlan,
         source: YtDlpMediaSourceUrl,
@@ -247,6 +257,38 @@ mod tests {
         assert_eq!(
             YtDlpMediaSourceUrl::parse("https://example.com/a b").unwrap_err(),
             YtDlpMediaSourceError::WhitespaceOrControl
+        );
+    }
+
+    #[test]
+    fn tor_gated_constructor_derives_request_from_verified_transport() {
+        let ready = certify_tor_ready(
+            TorSocksEndpoint::new(19050).expect("test SOCKS port is non-zero"),
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+        );
+        let source =
+            YtDlpMediaSourceUrl::parse("https://example.com/video").expect("valid source");
+        let request = YtDlpMediaRequestPlan::new_tor_gated(
+            "runtime/yt-dlp",
+            ready,
+            source,
+            "downloads",
+        )
+        .expect("verified transport builds request");
+
+        assert_eq!(request.executable(), Path::new("runtime/yt-dlp"));
+        assert_eq!(request.source().as_str(), "https://example.com/video");
+        assert_eq!(request.output_root(), Path::new("downloads"));
+        assert_eq!(
+            request.arguments(),
+            vec![
+                OsString::from("--ignore-config"),
+                OsString::from("--proxy"),
+                OsString::from("socks5h://127.0.0.1:19050"),
+                OsString::from("--paths"),
+                OsString::from("downloads"),
+                OsString::from("https://example.com/video"),
+            ]
         );
     }
 

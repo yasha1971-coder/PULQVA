@@ -1,7 +1,7 @@
 # T040 — Add the backend-only Tor-gated media request boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 

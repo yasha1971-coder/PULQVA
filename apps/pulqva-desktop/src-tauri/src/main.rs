@@ -4,8 +4,8 @@ use pulqva_core::{
 use pulqva_privacy::{
     ArtiConfigMaterializeError, ArtiProcessError, ArtiRuntimePlan, PreparedArtiRuntime,
     ReadyTorTransport, RunningArti, TorReadinessError, TorSocksEndpoint, TorSocksEndpointError,
-    YtDlpMediaSourceError, YtDlpMediaSourceUrl, launch_prepared_arti, prepare_arti_runtime,
-    verify_tor_readiness,
+    YtDlpMediaRequestError, YtDlpMediaRequestPlan, YtDlpMediaSourceError, YtDlpMediaSourceUrl,
+    launch_prepared_arti, prepare_arti_runtime, verify_tor_readiness,
 };
 use serde::Serialize;
 use std::{
@@ -210,6 +210,15 @@ impl From<ArtiProcessError> for DownloadActionError {
     }
 }
 
+impl From<YtDlpMediaRequestError> for DownloadActionError {
+    fn from(source: YtDlpMediaRequestError) -> Self {
+        Self {
+            code: "media-request-plan-failed",
+            message: source.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DownloadPreflightInputs {
     arti_executable: PathBuf,
@@ -347,6 +356,25 @@ impl TorReadyDownloadRuntime {
     }
 }
 
+#[derive(Debug)]
+struct TorGatedMediaRequestRuntime {
+    running_arti: RunningArti,
+    request: YtDlpMediaRequestPlan,
+}
+
+impl TorGatedMediaRequestRuntime {
+    fn request(&self) -> &YtDlpMediaRequestPlan {
+        &self.request
+    }
+
+    fn stop_and_wait(self) -> Result<(), DownloadActionError> {
+        self.running_arti
+            .stop_and_wait()
+            .map(|_| ())
+            .map_err(DownloadActionError::from)
+    }
+}
+
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
     Ok(vec![
         SearchCandidate::new(
@@ -462,6 +490,42 @@ fn establish_tor_ready_download_runtime(
         media_source,
         output_root,
     })
+}
+
+fn build_tor_gated_media_request(
+    runtime: TorReadyDownloadRuntime,
+) -> Result<TorGatedMediaRequestRuntime, DownloadActionError> {
+    let TorReadyDownloadRuntime {
+        running_arti,
+        transport,
+        ytdlp_executable,
+        media_source,
+        output_root,
+    } = runtime;
+
+    match YtDlpMediaRequestPlan::new_tor_gated(
+        ytdlp_executable,
+        transport,
+        media_source,
+        output_root,
+    ) {
+        Ok(request) => Ok(TorGatedMediaRequestRuntime {
+            running_arti,
+            request,
+        }),
+        Err(source) => {
+            let cleanup = running_arti.stop_and_wait();
+            match cleanup {
+                Ok(_) => Err(DownloadActionError::from(source)),
+                Err(cleanup_error) => Err(DownloadActionError {
+                    code: "media-request-cleanup-failed",
+                    message: format!(
+                        "media request planning failed: {source}; Arti cleanup failed: {cleanup_error}"
+                    ),
+                }),
+            }
+        }
+    }
 }
 
 fn default_download_preflight_inputs() -> Result<DownloadPreflightInputs, DownloadActionError> {
