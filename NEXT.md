@@ -2,46 +2,54 @@
 
 ## Current verified state
 
-T037 is complete.
+T038 is complete.
 
-Verified T037 implementation head:
-`a82f326d82f117a6053f86bbde5d1eb7d23f29a2`
+PULQVA now has a backend-only prepared download runtime boundary:
 
-Merged T037 main:
-`9cac8b97ec0ee8990853a49c48cc232aa6aa03fc`
-
-## Active atomic task
-
-**T038 — Add the backend-only prepared download runtime boundary**
-
-T038 converts the typed T037 preflight into a prepared backend runtime state:
-
-- input is a verified `DownloadPreflightSpec`;
-- Arti configuration materialization reuses `prepare_arti_runtime`;
-- prepared state retains `PreparedArtiRuntime`, explicit yt-dlp executable path, typed `YtDlpMediaSourceUrl`, and output root;
-- preparation errors fail closed and return no prepared runtime;
-- only the Arti configuration is materialized; no sidecar executable, cache/state directory, media output, or download output is created by this boundary;
-- frontend behavior and IPC output remain unchanged, so no backend paths or media URL are exposed;
-- no Arti/yt-dlp/FFmpeg process is spawned;
+- input is a verified T037 `DownloadPreflightSpec`;
+- Arti configuration preparation reuses `prepare_arti_runtime`;
+- prepared state retains `PreparedArtiRuntime`, the explicit yt-dlp executable path, typed `YtDlpMediaSourceUrl`, and output root;
+- preparation failures fail closed;
+- only the deterministic Arti configuration is materialized;
+- frontend IPC/output remains unchanged and exposes no backend paths or media URL;
+- no Arti, yt-dlp, or FFmpeg process is spawned;
 - no Tor bootstrap/readiness probe or external network access occurs.
 
-Branch:
-`task/T038-prepared-download-runtime-boundary`
+Verified PR head:
+`78f814e1c183d13a937d609e620537e0a8fcc173`
 
-## Next task
+All 11 required workflows passed for that exact head.
 
-T038 remains the next task until its exact head is verified green and closed.
+## Next atomic task
+
+**T039 — Add the backend-only Tor-ready download runtime boundary**
+
+Advance one prepared T038 runtime to a Tor-ready backend capability using only the existing controlled
+Arti launcher and readiness verifier.
+
+Required boundary:
+
+- input is a prepared T038 runtime;
+- launch only the prepared Arti runtime through the existing controlled launcher;
+- verify Tor readiness through the existing bounded readiness boundary;
+- retain yt-dlp executable, typed media source, and output root only after Tor readiness succeeds;
+- failures stop and clean up the Arti child and fail closed;
+- frontend receives only inert readiness/stage data and no paths, SOCKS endpoint, or media URL;
+- no yt-dlp or FFmpeg process is started;
+- no media download is started;
+- no direct-network fallback is introduced.
 
 ## Do not do yet
 
 - no external search provider;
 - no AI provider;
-- no actual media download from the desktop UI;
-- no Arti process launch from the desktop UI;
-- no yt-dlp/FFmpeg execution from the desktop UI;
+- no yt-dlp execution from the desktop UI;
+- no FFmpeg execution from the desktop UI;
+- no actual media download;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-Windows/Linux desktop checks and all existing privacy/media checks are green for the exact T038 head.
+A prepared download runtime can become a typed Tor-ready backend capability with bounded failure and
+cleanup, while media execution remains out of scope.
