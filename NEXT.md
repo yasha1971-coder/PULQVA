@@ -2,50 +2,48 @@
 
 ## Current verified state
 
-T044 is complete.
+T045 is complete.
 
-PULQVA now has a backend-only controlled FFmpeg remux execution boundary:
+PULQVA now has a backend-only completed FFmpeg remux result boundary:
 
-- input is a verified `FfmpegRemuxPlan`;
-- launch reuses the existing typed `launch_ffmpeg_remux` boundary;
-- executable and argv come only from the typed plan;
-- no shell command string is constructed;
-- no URL, proxy, SOCKS endpoint, or network-capable field is introduced;
-- launch failure maps to a typed fail-closed backend error;
-- the private `RunningFfmpegRemuxRuntime` owns the live `RunningFfmpeg` child;
-- explicit backend cleanup reuses `RunningFfmpeg::stop_and_wait`;
+- `RunningFfmpeg` retains the verified remux input/output paths from the typed plan;
+- `RunningFfmpeg::complete_remux` waits for process completion and fails closed on non-zero exit;
+- successful process completion validates the expected local output;
+- output must exist, be a regular non-symlink file, be non-empty, and remain distinct from the validated input;
+- successful completion returns typed `CompletedFfmpegRemuxResult`;
+- process exit, artifact validation, and wait I/O failures remain distinguishable;
+- the desktop backend completion boundary consumes the T044 runtime and returns the typed remux result;
+- the dedicated real FFmpeg remux proof exercises this completed-result path;
 - frontend IPC/output remains unchanged and exposes no executable path, input/output filesystem path,
-  argv, source URL, or process identifier;
-- no external network access occurs.
+  argv, source URL, process identifier, or raw completion internals;
+- no shell or external network path is introduced.
 
 Verified PR head:
-`a1031df085949eef0df246a70dd2fecd9c434a0e`
+`e6d17692de4a164c3e202bd307a4afcdf1502216`
 
-All 11 required workflows passed for that exact head.
+All 12 triggered workflows passed for that exact head, including `ffmpeg-real-remux-check`.
 
 ## Next atomic task
 
-**T045 — Add the backend-only completed FFmpeg remux result boundary**
+**T046 — Add a sanitized desktop completed-file view boundary**
 
-Advance one running T044 FFmpeg remux runtime through deterministic process completion and validate
-the local remux artifact before it can become a backend result.
+Convert a verified T045 `CompletedFfmpegRemuxResult` into a data-only desktop success value that can
+later be surfaced to the UI without exposing backend filesystem/runtime internals.
 
 Required boundary:
 
-- input is a T044 `RunningFfmpegRemuxRuntime`;
-- FFmpeg completion waits for the owned child and fails closed on non-zero exit;
-- the expected output path comes only from the verified T043 remux plan, never from frontend input;
-- successful completion validates that the output exists, is a regular non-symlink file, is non-empty,
-  and is distinct from the validated input artifact;
-- completion returns a typed backend-only remux result;
-- no shell, URL, proxy, SOCKS endpoint, or network field is introduced;
-- frontend receives no executable path, input/output filesystem path, argv, source URL, process
-  identifier, or raw completion internals;
-- no external network access occurs.
+- input is a verified `CompletedFfmpegRemuxResult`;
+- output contains only a safe display filename, byte size, and stable completion stage;
+- filename is derived only from the validated completed output path;
+- no absolute or parent filesystem path is serialized;
+- no executable path, argv, source URL, proxy/SOCKS data, process identifier, or raw result internals
+  are serialized;
+- frontend command wiring remains out of scope;
+- no new process or external network access occurs.
 
 ## Do not do yet
 
-- no completed remux result surfacing to frontend;
+- no live desktop command wiring for completed results;
 - no external search provider;
 - no AI provider;
 - no packaging/release installers;
@@ -53,5 +51,5 @@ Required boundary:
 
 ## Success
 
-A running local FFmpeg remux can complete into a validated typed backend result while preserving
-local-file-only execution and fail-closed artifact validation.
+A verified completed remux can be converted into a deterministic data-only desktop success value
+without exposing backend paths or runtime internals.

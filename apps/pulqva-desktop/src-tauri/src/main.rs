@@ -3,7 +3,8 @@ use pulqva_core::{
 };
 use pulqva_privacy::{
     ArtiConfigMaterializeError, ArtiProcessError, ArtiRuntimePlan, CompletedDownloadResult,
-    FfmpegProcessError, FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError,
+    CompletedFfmpegRemuxResult, FfmpegCompletionError, FfmpegProcessError, FfmpegRemuxContainer,
+    FfmpegRemuxPlan, FfmpegRemuxPlanError,
     PreparedArtiRuntime, ReadyTorTransport, RunningArti, RunningFfmpeg, RunningYtDlp,
     TorReadinessError, TorSocksEndpoint, TorSocksEndpointError, YtDlpCompletionError,
     YtDlpMediaRequestError, YtDlpMediaRequestPlan, YtDlpMediaSourceError, YtDlpMediaSourceUrl,
@@ -254,6 +255,15 @@ impl From<FfmpegProcessError> for DownloadActionError {
     fn from(source: FfmpegProcessError) -> Self {
         Self {
             code: "ffmpeg-process-failed",
+            message: source.to_string(),
+        }
+    }
+}
+
+impl From<FfmpegCompletionError> for DownloadActionError {
+    fn from(source: FfmpegCompletionError) -> Self {
+        Self {
+            code: "ffmpeg-completion-failed",
             message: source.to_string(),
         }
     }
@@ -522,6 +532,15 @@ fn launch_ffmpeg_remux_runtime(
 ) -> Result<RunningFfmpegRemuxRuntime, DownloadActionError> {
     let running_ffmpeg = launch_ffmpeg_remux(plan).map_err(DownloadActionError::from)?;
     Ok(RunningFfmpegRemuxRuntime { running_ffmpeg })
+}
+
+fn complete_ffmpeg_remux_runtime(
+    runtime: RunningFfmpegRemuxRuntime,
+) -> Result<CompletedFfmpegRemuxResult, DownloadActionError> {
+    runtime
+        .running_ffmpeg
+        .complete_remux()
+        .map_err(DownloadActionError::from)
 }
 
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
