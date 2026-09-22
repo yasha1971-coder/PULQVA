@@ -2,55 +2,51 @@
 
 ## Current verified state
 
-T040 is complete.
+T041 is complete.
 
-PULQVA now has a backend-only Tor-gated media request boundary:
+PULQVA now has a backend-only controlled yt-dlp media execution boundary:
 
-- input is a T039 `TorReadyDownloadRuntime`;
-- `YtDlpMediaRequestPlan::new_tor_gated` derives its launch plan only from verified `ReadyTorTransport`;
-- the request uses the retained typed media source and output root;
-- the resulting backend state retains ownership of the running Arti child with the typed media request plan;
-- request-planning failures stop and wait for Arti before returning;
-- cleanup failures are surfaced separately and fail closed;
-- frontend IPC/output remains unchanged and exposes no executable path, output path, SOCKS/proxy data, media URL, or argv;
-- no yt-dlp or FFmpeg process is started;
-- no media download is started;
-- no direct-network fallback exists.
+- input is a verified T040 `TorGatedMediaRequestRuntime`;
+- yt-dlp launch reuses the existing typed `launch_ytdlp_request` boundary;
+- the resulting backend state owns both the live Arti child and the running yt-dlp child;
+- yt-dlp launch failure explicitly stops and waits for Arti before returning;
+- coordinated shutdown stops both yt-dlp and Arti and surfaces cleanup failures fail-closed;
+- no shell execution or direct-network fallback exists;
+- frontend IPC/output remains unchanged and exposes no executable path, filesystem path, SOCKS/proxy information, media URL, argv, or process identifiers;
+- FFmpeg and completion/result handling remain out of scope.
 
 Verified PR head:
-`021994420b8e3ee393785e6dc4ef3685150efdd6`
+`e9aa2b87dc6b8e88807a35ab464628ef5f5b2487`
 
 All 11 required workflows passed for that exact head.
 
 ## Next atomic task
 
-**T041 — Add the backend-only controlled yt-dlp media execution boundary**
+**T042 — Add the backend-only completed download result boundary**
 
-Advance one verified T040 Tor-gated media request state into a controlled running yt-dlp child while
-retaining ownership of the live Arti child.
+Advance one running T041 media runtime through the existing yt-dlp completion and artifact-validation path while retaining deterministic cleanup of Arti.
 
 Required boundary:
 
-- input is a T040 Tor-gated media request runtime;
-- yt-dlp launch reuses the existing controlled `launch_ytdlp_request` boundary;
-- the running Arti child remains owned by the backend for the full yt-dlp child lifetime;
-- yt-dlp launch failure stops and waits for Arti before returning failure;
-- no shell execution;
-- no direct-network fallback;
-- frontend receives only inert running/stage data and no executable path, output path, proxy/SOCKS data, media URL, argv, or process identifiers;
+- input is a T041 `RunningMediaDownloadRuntime`;
+- yt-dlp completion reuses the existing typed `complete_download` boundary;
+- successful completion returns the existing `CompletedDownloadResult`;
+- Arti is stopped and waited after yt-dlp completion, on both success and failure paths;
+- yt-dlp completion failure and Arti cleanup failure are surfaced distinctly and fail closed;
+- frontend receives no backend path, proxy/SOCKS data, media URL, argv, process identifier, or raw completion internals;
 - FFmpeg remains out of scope;
-- completion/result handling remains out of scope.
+- no direct-network fallback exists.
 
 ## Do not do yet
 
 - no external search provider;
 - no AI provider;
 - no FFmpeg execution from the desktop UI;
-- no completion receipt/result surfacing;
+- no completed-result surfacing to frontend yet;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-A verified Tor-gated media request can launch yt-dlp through the existing controlled process boundary
-while Arti remains backend-owned and no private runtime details cross into frontend code.
+A running media download can complete through the existing typed artifact-validation path and produce a
+backend-only `CompletedDownloadResult` while Arti cleanup remains deterministic and fail-closed.
