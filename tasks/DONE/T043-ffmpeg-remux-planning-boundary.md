@@ -1,12 +1,8 @@
 # T043 — Add the backend-only FFmpeg remux planning boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: ACTIVE  
-## Recovery
-
-The implementation head remains previously verified, but T043 is active again because the closeout
-head repeatedly failed the Ubuntu real-media proof. Recovery replaces only the external proof fixture
-with a small stable Wikimedia Commons media file while preserving the same Tor-gated yt-dlp path.
+Status: DONE  
+Date: 2026-09-22
 
 ## Result
 
@@ -24,10 +20,14 @@ output, traversal, and output-equals-input cases.
 Frontend IPC/output is unchanged and exposes no executable path, input/output filesystem path, argv,
 source URL, or process identifier. No FFmpeg process is started and no external network access occurs.
 
+Recovery also replaced the flaky external GitHub raw real-media proof fixture with a small stable
+Wikimedia Commons asset while preserving the same Tor-gated yt-dlp path, bounded execution, artifact
+verification, and fail-closed behavior.
+
 ## Verification
 
 PR #43 verified head:
-`7eb8834b4dc0bb07ac8e10dde4dea7fa5ffbb0ab`
+`3c67ce313e29a291138f97a75c9bbae85eb9d207`
 
 All 11 required workflows passed:
 
