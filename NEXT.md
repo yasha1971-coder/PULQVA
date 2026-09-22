@@ -2,51 +2,53 @@
 
 ## Current verified state
 
-T035 is complete.
+T036 is complete.
 
-PULQVA now has the explicit desktop Download action boundary required by the UX contract while the
-boundary remains data-only:
+PULQVA now has a backend-only typed media-source resolution boundary:
 
-- Download appears only after a candidate has been validated and selected;
-- frontend sends only validated intent text + the opaque selected locator through Tauri IPC;
-- Rust reconstructs and revalidates the deterministic `SearchCandidate` set;
-- locator matching is exact and fail-closed;
-- unknown locators are rejected;
-- the result contains deterministic intent/title/locator/action/stage data only;
-- the opaque locator is not interpreted or converted to a URL;
-- no yt-dlp, FFmpeg, shell, network, or filesystem side effect starts.
+- desktop Rust links the existing `pulqva-privacy` crate;
+- candidate locators are revalidated against the deterministic `SearchCandidate` set;
+- only `local:test:candidate:official-live` has an approved proof mapping;
+- the approved mapping resolves inside Rust to the immutable T024 media object;
+- the resolved value is constructed as `YtDlpMediaSourceUrl`;
+- validated but unsupported candidates fail closed;
+- unknown locators fail closed before resolution;
+- the frontend receives only inert readiness/stage data and never receives the media URL;
+- no Tor bootstrap, yt-dlp, FFmpeg, shell, network, or filesystem side effect starts.
 
-Verified main commit:
-`1f295ccee7631a699a3ecbd4922ee796b7a1f462`
+Verified PR head:
+`510c737f4845bd4c40c1b2a1571b116bf59bcd66`
 
-All 11 post-merge push workflows completed successfully for that exact commit.
+All 11 required workflows passed for that exact head.
 
 ## Next atomic task
 
-**T036 — Add the backend-only typed media-source resolution boundary**
+**T037 — Add the typed desktop download preflight specification**
 
-Resolve one revalidated local proof candidate to a typed `YtDlpMediaSourceUrl` entirely inside Rust,
-using an exact backend-only mapping to the immutable T024 media object.
+Create a pure-data backend preflight specification for the later real Download path. It must combine
+only already-validated local inputs needed by later runtime orchestration while keeping process and
+network execution out of scope.
 
 Required boundary:
 
-- only an exact revalidated local proof locator may enter resolution;
-- unknown or unsupported locators fail closed;
-- the frontend must never receive, construct, parse, or store the media URL;
-- the frontend may receive only inert readiness/stage data;
-- no Tor bootstrap, yt-dlp, FFmpeg, shell, external network, or filesystem output starts.
+- input is a revalidated supported candidate whose media source resolves through T036;
+- sidecar executable identities/paths are explicit backend inputs;
+- Tor runtime directories and download output root are explicit backend inputs;
+- no frontend media URL or executable path surface is introduced;
+- no process spawn, Tor bootstrap, yt-dlp/FFmpeg execution, external network, or filesystem output;
+- invalid or missing required inputs fail closed.
 
 ## Do not do yet
 
 - no external search provider;
 - no AI provider;
-- no actual download execution from the desktop UI;
+- no real Download execution from the desktop UI;
+- no Tor bootstrap from the desktop UI;
 - no yt-dlp/FFmpeg process from the desktop UI;
-- no filesystem output from the desktop UI;
 - no packaging/release installers;
 - no direct-network fallback.
 
 ## Success
 
-The repository checkpoint truthfully records T035 as complete and leaves T036 as the single READY
-next task without starting it.
+The next backend boundary is a deterministic typed preflight specification that can later feed the
+existing Tor/yt-dlp runtime types without exposing privacy-sensitive or executable data to frontend code.

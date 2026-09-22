@@ -1,11 +1,15 @@
 use pulqva_core::{
     CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
 };
+use pulqva_privacy::{YtDlpMediaSourceError, YtDlpMediaSourceUrl};
 use serde::Serialize;
 
 const PRODUCT_NAME: &str = "PULQVA";
 const KERNEL_VERSION: &str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../kernel/KERNEL_VERSION"));
+const T024_MEDIA_SOURCE_URL: &str =
+    "https://raw.githubusercontent.com/mediaelement/mediaelement-files/4d21a042353022326071acb0251ab75cd6bae114/big_buck_bunny.mp4";
+const T024_PROOF_LOCATOR: &str = "local:test:candidate:official-live";
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -131,6 +135,8 @@ struct DownloadAction {
     locator: String,
     action: &'static str,
     stage: &'static str,
+    media_source_ready: bool,
+    media_source_stage: &'static str,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -158,6 +164,15 @@ impl From<SearchCandidateError> for DownloadActionError {
     }
 }
 
+impl From<YtDlpMediaSourceError> for DownloadActionError {
+    fn from(source: YtDlpMediaSourceError) -> Self {
+        Self {
+            code: "invalid-media-source",
+            message: source.to_string(),
+        }
+    }
+}
+
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
     Ok(vec![
         SearchCandidate::new(
@@ -177,6 +192,19 @@ fn local_candidate_by_locator(
     Ok(local_candidate_source()?
         .into_iter()
         .find(|candidate| candidate.locator() == locator))
+}
+
+fn resolve_backend_media_source(
+    candidate: &SearchCandidate,
+) -> Result<YtDlpMediaSourceUrl, DownloadActionError> {
+    if candidate.locator() != T024_PROOF_LOCATOR {
+        return Err(DownloadActionError {
+            code: "media-source-unsupported",
+            message: "validated candidate has no approved backend media-source mapping".to_owned(),
+        });
+    }
+
+    YtDlpMediaSourceUrl::parse(T024_MEDIA_SOURCE_URL).map_err(DownloadActionError::from)
 }
 
 #[tauri::command]
@@ -253,6 +281,7 @@ fn plan_local_download(
             code: "candidate-not-found",
             message: "candidate locator is not present in the validated local candidate set".to_owned(),
         })?;
+    let _source = resolve_backend_media_source(&candidate)?;
 
     Ok(DownloadAction {
         intent_query: intent.query().to_owned(),
@@ -260,6 +289,8 @@ fn plan_local_download(
         locator: candidate.locator().to_owned(),
         action: "download",
         stage: "download-action-planned",
+        media_source_ready: true,
+        media_source_stage: "backend-media-source-resolved",
     })
 }
 
@@ -279,8 +310,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        app_status, list_local_candidates, plan_local_download, select_local_candidate,
-        submit_intent,
+        T024_MEDIA_SOURCE_URL, T024_PROOF_LOCATOR, app_status, list_local_candidates,
+        local_candidate_by_locator, plan_local_download, resolve_backend_media_source,
+        select_local_candidate, submit_intent,
     };
 
     #[test]
@@ -394,6 +426,34 @@ mod tests {
         assert_eq!(action.locator, "local:test:candidate:official-live");
         assert_eq!(action.action, "download");
         assert_eq!(action.stage, "download-action-planned");
+        assert!(action.media_source_ready);
+        assert_eq!(action.media_source_stage, "backend-media-source-resolved");
+    }
+
+    #[test]
+    fn backend_media_resolution_constructs_the_typed_immutable_t024_source() {
+        let candidate = local_candidate_by_locator(T024_PROOF_LOCATOR)
+            .expect("local proof candidates are valid")
+            .expect("T024 proof candidate exists");
+        let source = resolve_backend_media_source(&candidate)
+            .expect("supported proof candidate resolves to typed media source");
+
+        assert_eq!(source.as_str(), T024_MEDIA_SOURCE_URL);
+    }
+
+    #[test]
+    fn download_action_rejects_validated_but_unsupported_locator_fail_closed() {
+        let error = plan_local_download(
+            "find an archive performance".to_owned(),
+            "local:test:candidate:archive-performance".to_owned(),
+        )
+        .expect_err("candidate without an approved media mapping must fail closed");
+
+        assert_eq!(error.code, "media-source-unsupported");
+        assert_eq!(
+            error.message,
+            "validated candidate has no approved backend media-source mapping"
+        );
     }
 
     #[test]
