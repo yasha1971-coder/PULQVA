@@ -1,7 +1,7 @@
 # T039 — Add the backend-only Tor-ready download runtime boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
