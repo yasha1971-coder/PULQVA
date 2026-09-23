@@ -1,7 +1,7 @@
 # T053 — Resolve packaged sidecar source root from the Tauri resource directory
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 

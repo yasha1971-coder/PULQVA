@@ -4,49 +4,45 @@
 
 T052 is complete.
 
-PULQVA now has a typed, backend-owned, side-effect-free sidecar materialization plan:
+Verified T052 closeout head:
+`e693f3e0d095fdca39c0cff55b396043e91f590d`
 
-- exactly Arti, yt-dlp, and FFmpeg are represented;
-- logical packaged-resource identifiers are backend constants and never frontend input;
-- pinned versions come from repository sidecar VERSION files;
-- yt-dlp and FFmpeg identities include the repository-pinned SHA-256 values;
-- runtime destinations derive only from `AppRuntimeLayout`;
-- destinations are direct children of `runtime/bin`;
-- Windows destinations use `.exe`, Linux destinations remain extensionless;
-- source identifiers and runtime destinations are required to differ;
-- planning creates no file/directory, copies no bytes, launches no process, builds no shell command, and performs no network access;
-- Tauri bundle resources remain inactive.
+All 11 required workflows passed for that exact head. T052 is merged on main at
+`7205d3a6d07645fd05b670c393686609384d0288`.
 
-Verified PR head:
-`d21e589bac124426514f930f81b079cd5baf4050`
-
-All 11 required workflows passed for that exact head.
-
-## Next atomic task
+## Active atomic task
 
 **T053 — Resolve packaged sidecar source root from the Tauri resource directory**
 
-Bind the T052 logical packaged-resource identifiers to one backend-owned OS package resource root
-without copying bytes yet.
+T053 binds the T052 logical packaged-resource identifiers to one backend-owned package resource root:
 
-Required boundary:
-
-- resolve the package resource directory only from Tauri's injected `AppHandle`;
+- the real command resolves the resource root only through injected `AppHandle` using
+  `app.path().resource_dir()`;
 - frontend supplies no resource/filesystem path;
-- join T052 logical source identifiers beneath that resolved resource root;
-- reject parent traversal and any source path that escapes the verified resource root;
-- preserve the T052 pinned identity/version metadata;
-- keep runtime destinations unchanged under `runtime/bin/*`;
-- produce typed source filesystem paths only;
-- no file copy/materialization;
-- no chmod;
-- no process launch;
-- no external network access;
-- no direct-network fallback.
+- logical T052 resource identifiers remain backend-owned relative paths;
+- a pure typed resolver joins each logical identifier beneath the resource root;
+- empty/traversing resource roots and non-normal logical resource paths fail closed;
+- every resolved source must remain beneath the verified resource root;
+- resolved source and runtime destination must differ;
+- T052 kind/version/SHA-256 identity data is preserved unchanged;
+- runtime destinations remain direct children of `runtime/bin`;
+- this boundary does not require source files to exist and performs no copy/write/chmod/process/network operation;
+- no bundle resources are activated by this task.
+
+The Tauri 2 resource-directory API used here is the documented backend `PathResolver::resource_dir`
+surface; no frontend path API is used.
+
+Branch:
+`task/T053-resolve-packaged-sidecar-source-root`
+
+## Next task
+
+T053 remains next until its exact head is verified green and closed.
 
 ## Do not do yet
 
 - no sidecar binary copy/materialization;
+- no Tauri bundle-resource activation;
 - no installer/release packaging;
 - no external search provider;
 - no AI provider;
@@ -54,6 +50,6 @@ Required boundary:
 
 ## Success
 
-The backend can deterministically resolve all three packaged sidecar source paths from the desktop
-application's own resource directory while retaining the T052 identities and app-owned runtime
-destinations, without frontend filesystem control or side effects.
+Windows/Linux desktop boundary tests and all existing privacy/media checks are green on the exact
+T053 head, with all three sidecar source filesystem paths derived solely from the app-owned Tauri
+resource directory and all runtime destinations still confined to `runtime/bin`.
