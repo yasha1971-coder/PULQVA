@@ -365,6 +365,35 @@ impl DownloadPreflightInputs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct CompletedFilePipelineInputs {
+    download: DownloadPreflightInputs,
+    ffmpeg_executable: PathBuf,
+    tor_ready_timeout: Duration,
+}
+
+impl CompletedFilePipelineInputs {
+    fn new(
+        download: DownloadPreflightInputs,
+        ffmpeg_executable: impl Into<PathBuf>,
+        tor_ready_timeout: Duration,
+    ) -> Result<Self, DownloadActionError> {
+        let ffmpeg_executable = ffmpeg_executable.into();
+        if ffmpeg_executable.as_os_str().is_empty() {
+            return Err(DownloadActionError {
+                code: "missing-ffmpeg-executable",
+                message: "FFmpeg executable must not be empty".to_owned(),
+            });
+        }
+
+        Ok(Self {
+            download,
+            ffmpeg_executable,
+            tor_ready_timeout,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct DownloadPreflightSpec {
     arti_runtime: ArtiRuntimePlan,
     ytdlp_executable: PathBuf,
@@ -584,6 +613,28 @@ fn complete_ffmpeg_remux_runtime(
         .running_ffmpeg
         .complete_remux()
         .map_err(DownloadActionError::from)
+}
+
+fn run_completed_file_pipeline(
+    candidate: &SearchCandidate,
+    inputs: CompletedFilePipelineInputs,
+) -> Result<CompletedFileView, DownloadActionError> {
+    let CompletedFilePipelineInputs {
+        download,
+        ffmpeg_executable,
+        tor_ready_timeout,
+    } = inputs;
+
+    let preflight = build_download_preflight(candidate, download)?;
+    let prepared = prepare_download_runtime(preflight)?;
+    let tor_ready = establish_tor_ready_download_runtime(prepared, tor_ready_timeout)?;
+    let media_request = build_tor_gated_media_request(tor_ready)?;
+    let running_download = launch_tor_gated_media_request(media_request)?;
+    let completed_download = complete_media_download(running_download)?;
+    let remux_plan = build_ffmpeg_remux_plan(&completed_download, ffmpeg_executable)?;
+    let running_remux = launch_ffmpeg_remux_runtime(remux_plan)?;
+    let completed_remux = complete_ffmpeg_remux_runtime(running_remux)?;
+    sanitized_completed_file_view(&completed_remux)
 }
 
 fn local_candidate_source() -> Result<Vec<SearchCandidate>, SearchCandidateError> {
