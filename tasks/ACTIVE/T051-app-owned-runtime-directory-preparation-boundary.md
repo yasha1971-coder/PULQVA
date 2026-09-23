@@ -1,7 +1,7 @@
 # T051 — Add app-owned runtime directory preparation boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
