@@ -25,6 +25,7 @@ const T024_MEDIA_SOURCE_URL: &str =
     "https://raw.githubusercontent.com/mediaelement/mediaelement-files/4d21a042353022326071acb0251ab75cd6bae114/big_buck_bunny.mp4";
 const T024_PROOF_LOCATOR: &str = "local:test:candidate:official-live";
 const DEFAULT_TOR_SOCKS_PORT: u16 = 19050;
+const DEFAULT_TOR_READY_TIMEOUT_SECS: u64 = 30;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -830,6 +831,33 @@ fn default_download_preflight_inputs() -> Result<DownloadPreflightInputs, Downlo
     )
 }
 
+fn default_completed_file_pipeline_inputs(
+) -> Result<CompletedFilePipelineInputs, DownloadActionError> {
+    CompletedFilePipelineInputs::new(
+        default_download_preflight_inputs()?,
+        "runtime/ffmpeg",
+        Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS),
+    )
+}
+
+fn prepare_completed_file_command(
+    query: String,
+    locator: String,
+) -> Result<(SearchCandidate, CompletedFilePipelineInputs), DownloadActionError> {
+    let _intent = SearchIntent::new(query).map_err(DownloadActionError::from)?;
+    let candidate = local_candidate_by_locator(&locator)
+        .map_err(DownloadActionError::from)?
+        .ok_or_else(|| DownloadActionError {
+            code: "candidate-not-found",
+            message: "candidate locator is not present in the validated local candidate set".to_owned(),
+        })?;
+
+    // Reject validated-but-unsupported candidates before any blocking/runtime work starts.
+    let _approved_source = resolve_backend_media_source(&candidate)?;
+    let inputs = default_completed_file_pipeline_inputs()?;
+    Ok((candidate, inputs))
+}
+
 #[tauri::command]
 fn app_status() -> AppStatus {
     AppStatus {
@@ -917,6 +945,21 @@ fn plan_local_download(
     })
 }
 
+#[tauri::command]
+async fn download_completed_file(
+    query: String,
+    locator: String,
+) -> Result<CompletedFileView, DownloadActionError> {
+    let (candidate, inputs) = prepare_completed_file_command(query, locator)?;
+
+    tauri::async_runtime::spawn_blocking(move || run_completed_file_pipeline(&candidate, inputs))
+        .await
+        .map_err(|source| DownloadActionError {
+            code: "completed-file-task-join-failed",
+            message: format!("completed-file backend task failed to join: {source}"),
+        })?
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -924,7 +967,8 @@ fn main() {
             submit_intent,
             list_local_candidates,
             select_local_candidate,
-            plan_local_download
+            plan_local_download,
+            download_completed_file
         ])
         .run(tauri::generate_context!())
         .expect("PULQVA desktop shell failed to start");
@@ -933,11 +977,11 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
-        T024_PROOF_LOCATOR, app_status, build_download_preflight, list_local_candidates,
-        establish_tor_ready_download_runtime, local_candidate_by_locator, plan_local_download,
-        prepare_download_runtime, resolve_backend_media_source, select_local_candidate,
-        submit_intent,
+        DEFAULT_TOR_READY_TIMEOUT_SECS, DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs,
+        T024_MEDIA_SOURCE_URL, T024_PROOF_LOCATOR, app_status, build_download_preflight,
+        establish_tor_ready_download_runtime, list_local_candidates, local_candidate_by_locator,
+        plan_local_download, prepare_completed_file_command, prepare_download_runtime,
+        resolve_backend_media_source, select_local_candidate, submit_intent,
     };
     use std::{
         fs,
@@ -1263,6 +1307,49 @@ mod tests {
 
         assert_eq!(error.code, "invalid-tor-socks-endpoint");
         assert_eq!(error.message, "Tor SOCKS port must be non-zero");
+    }
+
+    #[test]
+    fn completed_file_command_preflight_uses_backend_owned_runtime_inputs() {
+        let (candidate, inputs) = prepare_completed_file_command(
+            "find the official live performance".to_owned(),
+            T024_PROOF_LOCATOR.to_owned(),
+        )
+        .expect("supported candidate prepares backend-owned inputs");
+
+        assert_eq!(candidate.locator(), T024_PROOF_LOCATOR);
+        assert_eq!(inputs.download.arti_executable, Path::new("runtime/arti"));
+        assert_eq!(inputs.download.ytdlp_executable, Path::new("runtime/yt-dlp"));
+        assert_eq!(inputs.download.output_root, Path::new("downloads"));
+        assert_eq!(inputs.ffmpeg_executable, Path::new("runtime/ffmpeg"));
+        assert_eq!(
+            inputs.tor_ready_timeout,
+            Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS)
+        );
+    }
+
+    #[test]
+    fn completed_file_command_preflight_fails_before_runtime_for_invalid_input() {
+        let blank = prepare_completed_file_command(
+            "  \t ".to_owned(),
+            T024_PROOF_LOCATOR.to_owned(),
+        )
+        .expect_err("blank intent must fail before runtime work");
+        assert_eq!(blank.code, "invalid-search-intent");
+
+        let unknown = prepare_completed_file_command(
+            "find it".to_owned(),
+            "local:test:candidate:not-returned".to_owned(),
+        )
+        .expect_err("unknown locator must fail before runtime work");
+        assert_eq!(unknown.code, "candidate-not-found");
+
+        let unsupported = prepare_completed_file_command(
+            "find archive".to_owned(),
+            "local:test:candidate:archive-performance".to_owned(),
+        )
+        .expect_err("unsupported candidate must fail before runtime work");
+        assert_eq!(unsupported.code, "media-source-unsupported");
     }
 
     #[test]
