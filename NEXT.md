@@ -2,46 +2,58 @@
 
 ## Current verified state
 
-T050 is complete.
+T051 is complete.
 
-Merged T050 main:
-`7868040fe425822906a8f50e634f6eee6af33ecc`
-
-## Active atomic task
-
-**T051 — Add app-owned runtime directory preparation boundary**
-
-T051 prepares only the local directory tree needed before sidecar launch:
+PULQVA now has an app-owned runtime directory preparation boundary:
 
 - input is the verified `AppRuntimeLayout`;
-- runtime root, Tor config parent, Tor cache/state, and download output directories are created locally;
-- preparation is idempotent and rejects symlink/non-directory traversal inside the owned runtime tree;
+- the runtime root, Tor config parent, Tor cache/state, and download output directories are prepared locally;
+- preparation is idempotent;
+- symlink/non-directory traversal inside the owned runtime tree fails closed;
 - filesystem failures map to typed `runtime-directory-preparation-failed`;
-- directory preparation runs inside the existing blocking backend task before T047 can launch Arti;
-- no Arti, yt-dlp, or FFmpeg executable is created, copied, downloaded, or modified;
-- the executable layout collision found at T051 start is removed: sidecar executable paths now live under
-  `runtime/bin/*`, while Tor state remains under `runtime/arti/*`;
-- the `bin` directory itself is not created by T051;
-- frontend still supplies no filesystem/runtime path;
+- preparation runs in the backend blocking task before any sidecar launch;
+- Arti, yt-dlp, and FFmpeg executables are not created, copied, downloaded, or modified;
+- executable paths are separated under `runtime/bin/*`;
+- Tor state remains under `runtime/arti/*`;
+- T051 deliberately does not create `runtime/bin`;
+- frontend supplies no filesystem/runtime path;
 - no external network access, bundle activation, installer, or packaging work is introduced.
 
-Branch:
-`task/T051-app-owned-runtime-directory-preparation-boundary`
+Verified PR head:
+`e00fdc496468595e7d6b9897e18d7b0f44449ff0`
 
-## Next task
+All 11 required workflows passed for that exact head.
 
-T051 remains next until its exact head is verified green and closed.
+## Next atomic task
+
+**T052 — Add a typed local sidecar materialization plan boundary**
+
+Define, without copying binaries yet, the exact backend-owned mapping from verified packaged sidecar
+sources to the T051 `runtime/bin/*` destinations.
+
+Required boundary:
+
+- plan covers Arti, yt-dlp, and FFmpeg only;
+- each destination comes only from the verified `AppRuntimeLayout`;
+- each source is backend-owned packaged-resource metadata, never frontend input;
+- source and destination must be distinct;
+- destination must remain beneath `runtime/bin`;
+- no shell command is constructed;
+- no process launch occurs;
+- no external network access occurs;
+- no binary copy/materialization occurs yet;
+- no direct-network fallback is introduced.
 
 ## Do not do yet
 
-- no sidecar binary materialization;
+- no sidecar binary copy/materialization;
 - no packaging/release installers;
-- no Tauri bundle resources;
+- no active Tauri bundle resources;
 - no external search provider;
 - no AI provider;
 - no direct-network fallback.
 
 ## Success
 
-Desktop/privacy/media/remux checks are green for the exact T051 head and the app-owned runtime
-directory tree is prepared deterministically before any sidecar process launch without materializing binaries.
+The backend can produce one deterministic typed sidecar materialization plan for Arti, yt-dlp, and
+FFmpeg, with all runtime destinations confined to the app-owned runtime tree and no frontend control.
