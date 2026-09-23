@@ -4,50 +4,50 @@
 
 T050 is complete.
 
-PULQVA now resolves the app-owned runtime root through the desktop application's OS data directory:
-
-- `download_completed_file` receives Tauri's injected `AppHandle`;
-- `app.path().app_data_dir()` resolves the OS-appropriate application data directory;
-- resolution failure maps to typed `app-data-path-resolution-failed`;
-- a backend-owned `runtime` child is passed through the verified T049 `AppRuntimeLayout`;
-- Arti, yt-dlp, FFmpeg, Tor config/cache/state, and output paths continue to derive only from that layout;
-- frontend supplies no filesystem/runtime path;
-- completed-file output remains only sanitized data;
-- no network access, runtime binary materialization, bundle resource, installer, or packaging work is introduced.
+PULQVA resolves one backend-owned runtime root beneath the desktop application's OS application-data
+directory. Frontend input cannot supply any runtime, executable, Tor, output, or filesystem path.
 
 Verified PR head:
 `aa27bdaeb20a2db4f0c55f5a530aa7078964233d`
 
 All 11 required workflows passed for that exact head.
 
-## Next atomic task
+## Active atomic task
 
 **T051 — Add app-owned runtime directory preparation boundary**
 
-Prepare only the directory structure required by the verified runtime layout before any sidecar process launch.
+T051 prepares only the local directory tree required before future sidecar materialization:
 
-Required boundary:
+- input is the verified `AppRuntimeLayout`;
+- runtime root is created if missing;
+- only Tor config/cache/state directory structure and download output directory are created;
+- existing symlink and non-directory hazards inside the runtime root fail closed before creation;
+- prepared paths are canonicalized and verified beneath the runtime root;
+- repeated preparation is idempotent;
+- Arti, yt-dlp, and FFmpeg executables are not created, copied, downloaded, or modified;
+- executable destinations now live under `runtime/bin/*`, avoiding collision with the `runtime/arti/*`
+  Tor state/config directory tree;
+- desktop boundary tests execute on both Windows and Linux;
+- no process launch or external network access is added.
 
-- input is a verified `AppRuntimeLayout`;
-- create only the app-owned runtime root, Tor config/cache/state parent directories, and download output directory;
-- do not create, copy, download, or modify Arti, yt-dlp, or FFmpeg executables;
-- preparation is local-filesystem-only and performs no external network access;
-- preparation is idempotent;
-- any filesystem failure is typed and fail-closed;
-- all created directories must remain beneath the verified app-owned runtime root;
-- frontend supplies no filesystem path;
-- no process launch, bundle activation, installer, or packaging work is added.
+## Queued next task
+
+**T052 — Add typed bundled-sidecar materialization specification**
+
+Define the backend-only specification that maps pinned Arti, yt-dlp, and FFmpeg bundle resources to
+their verified `runtime/bin/*` destinations, including platform-specific names and expected
+identities. Keep T052 data-only: do not copy executable bytes or launch processes yet.
 
 ## Do not do yet
 
-- no sidecar binary materialization;
+- no sidecar binary copy/materialization;
+- no Tauri bundle-resource activation;
 - no packaging/release installers;
-- no Tauri bundle resources;
 - no external search provider;
 - no AI provider;
 - no direct-network fallback.
 
 ## Success
 
-The backend can prepare the verified app-owned runtime directory tree deterministically before future
-local sidecar materialization, without giving the frontend filesystem control.
+The backend can deterministically and idempotently prepare the app-owned runtime directory tree
+without creating executable files or allowing any path to escape the verified runtime root.
