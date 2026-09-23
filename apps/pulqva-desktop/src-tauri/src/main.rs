@@ -707,6 +707,111 @@ fn build_bundled_sidecar_materialization_plan(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct ResolvedBundledSidecarMaterializationItem {
+    kind: BundledSidecarKind,
+    source: PathBuf,
+    destination: PathBuf,
+    identity: BundledSidecarIdentity,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ResolvedBundledSidecarMaterializationPlan {
+    platform: &'static str,
+    resource_root: PathBuf,
+    bin_root: PathBuf,
+    items: Vec<ResolvedBundledSidecarMaterializationItem>,
+}
+
+fn resolve_bundled_sidecar_sources(
+    resource_root: impl Into<PathBuf>,
+    plan: BundledSidecarMaterializationPlan,
+) -> Result<ResolvedBundledSidecarMaterializationPlan, DownloadActionError> {
+    let resource_root = resource_root.into();
+
+    if resource_root.as_os_str().is_empty() {
+        return Err(DownloadActionError {
+            code: "package-resource-root-missing",
+            message: "application package resource root must not be empty".to_owned(),
+        });
+    }
+
+    if resource_root
+        .components()
+        .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err(DownloadActionError {
+            code: "package-resource-root-traversal",
+            message: "application package resource root must not contain parent-directory traversal"
+                .to_owned(),
+        });
+    }
+
+    let mut resolved_items = Vec::with_capacity(plan.items.len());
+    for item in plan.items {
+        if item.source_resource.as_os_str().is_empty()
+            || item
+                .source_resource
+                .components()
+                .any(|component| !matches!(component, Component::Normal(_)))
+        {
+            return Err(DownloadActionError {
+                code: "sidecar-resource-path-invalid",
+                message:
+                    "bundled sidecar resource must be a non-empty relative resource path".to_owned(),
+            });
+        }
+
+        let source = resource_root.join(&item.source_resource);
+        if !source.starts_with(&resource_root)
+            || source
+                .components()
+                .any(|component| matches!(component, Component::ParentDir))
+        {
+            return Err(DownloadActionError {
+                code: "sidecar-resource-path-escaped",
+                message: "resolved bundled sidecar source must remain beneath the package resource root"
+                    .to_owned(),
+            });
+        }
+
+        if source == item.destination {
+            return Err(DownloadActionError {
+                code: "sidecar-source-destination-collision",
+                message: "resolved bundled sidecar source and runtime destination must differ"
+                    .to_owned(),
+            });
+        }
+
+        resolved_items.push(ResolvedBundledSidecarMaterializationItem {
+            kind: item.kind,
+            source,
+            destination: item.destination,
+            identity: item.identity,
+        });
+    }
+
+    Ok(ResolvedBundledSidecarMaterializationPlan {
+        platform: plan.platform,
+        resource_root,
+        bin_root: plan.bin_root,
+        items: resolved_items,
+    })
+}
+
+fn resolve_packaged_sidecar_materialization_plan<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    layout: &AppRuntimeLayout,
+) -> Result<ResolvedBundledSidecarMaterializationPlan, DownloadActionError> {
+    let resource_root = app.path().resource_dir().map_err(|source| DownloadActionError {
+        code: "package-resource-path-resolution-failed",
+        message: format!("failed to resolve application package resource directory: {source}"),
+    })?;
+
+    let plan = build_bundled_sidecar_materialization_plan(layout)?;
+    resolve_bundled_sidecar_sources(resource_root, plan)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct PreparedAppRuntimeDirectories {
     layout: AppRuntimeLayout,
 }
@@ -1528,9 +1633,11 @@ async fn download_completed_file(
     app: tauri::AppHandle,
 ) -> Result<CompletedFileView, DownloadActionError> {
     let layout = resolve_app_runtime_layout(&app)?;
+    let sidecar_plan = resolve_packaged_sidecar_materialization_plan(&app, &layout)?;
     let (candidate, inputs) = prepare_completed_file_command(query, locator, &layout)?;
 
     tauri::async_runtime::spawn_blocking(move || {
+        let _sidecar_plan = sidecar_plan;
         let prepared_directories = prepare_app_runtime_directories(layout)?;
         let _verified_layout = prepared_directories.into_layout();
         run_completed_file_pipeline(&candidate, inputs)
@@ -1562,6 +1669,7 @@ mod tests {
         AppRuntimeLayout, BundledSidecarKind, DEFAULT_TOR_READY_TIMEOUT_SECS,
         DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
         T024_PROOF_LOCATOR, app_status, build_bundled_sidecar_materialization_plan,
+        resolve_bundled_sidecar_sources,
         build_download_preflight, establish_tor_ready_download_runtime, list_local_candidates,
         local_candidate_by_locator, plan_local_download, prepare_app_runtime_directories,
         prepare_completed_file_command, prepare_download_runtime, resolve_backend_media_source,
@@ -2088,6 +2196,53 @@ mod tests {
         }
 
         assert!(!layout.root().exists());
+    }
+
+    #[test]
+    fn bundled_sidecar_source_resolution_stays_beneath_backend_resource_root() {
+        let root = test_root("sidecar-resource-resolution");
+        let resource_root = root.join("package-resources");
+        let layout = AppRuntimeLayout::new(root.join("runtime")).expect("runtime layout is valid");
+        let logical = build_bundled_sidecar_materialization_plan(&layout)
+            .expect("supported platform produces logical sidecar plan");
+
+        let resolved = resolve_bundled_sidecar_sources(&resource_root, logical)
+            .expect("backend resource root resolves all sidecar sources");
+
+        assert_eq!(resolved.items.len(), 3);
+        assert_eq!(resolved.resource_root, resource_root);
+        assert_eq!(resolved.bin_root, layout.bin_root().expect("bin root derives"));
+
+        for item in &resolved.items {
+            assert!(item.source.starts_with(&resolved.resource_root));
+            assert!(item.destination.starts_with(&resolved.bin_root));
+            assert_eq!(item.destination.parent(), Some(resolved.bin_root.as_path()));
+            assert_ne!(item.source, item.destination);
+            assert!(!item.identity.version.is_empty());
+        }
+
+        assert_eq!(resolved.items[0].kind, BundledSidecarKind::Arti);
+        assert_eq!(resolved.items[1].kind, BundledSidecarKind::YtDlp);
+        assert_eq!(resolved.items[2].kind, BundledSidecarKind::Ffmpeg);
+        assert_eq!(resolved.items[0].identity.version, "2.6.0");
+        assert_eq!(resolved.items[1].identity.version, "2026.08.19");
+        assert_eq!(resolved.items[2].identity.version, "n9.0.2-3-ga5923073bf");
+        assert!(!root.exists());
+    }
+
+    #[test]
+    fn bundled_sidecar_source_resolution_rejects_traversing_resource_root() {
+        let layout = AppRuntimeLayout::new("runtime").expect("runtime layout is valid");
+        let logical = build_bundled_sidecar_materialization_plan(&layout)
+            .expect("supported platform produces logical sidecar plan");
+
+        let error = resolve_bundled_sidecar_sources(
+            PathBuf::from("package-resources").join("..").join("escape"),
+            logical,
+        )
+        .expect_err("resource root traversal must fail closed");
+
+        assert_eq!(error.code, "package-resource-root-traversal");
     }
 
     #[test]

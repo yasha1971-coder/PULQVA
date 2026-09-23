@@ -2,43 +2,48 @@
 
 ## Current verified state
 
-T052 is complete.
+T053 is complete.
 
-PULQVA now has a typed, backend-owned, side-effect-free sidecar materialization plan:
+PULQVA now resolves the T052 logical sidecar resource identifiers from the desktop application's own
+Tauri package resource directory:
 
-- exactly Arti, yt-dlp, and FFmpeg are represented;
-- logical packaged-resource identifiers are backend constants and never frontend input;
-- pinned versions come from repository sidecar VERSION files;
-- yt-dlp and FFmpeg identities include the repository-pinned SHA-256 values;
-- runtime destinations derive only from `AppRuntimeLayout`;
-- destinations are direct children of `runtime/bin`;
-- Windows destinations use `.exe`, Linux destinations remain extensionless;
-- source identifiers and runtime destinations are required to differ;
-- planning creates no file/directory, copies no bytes, launches no process, builds no shell command, and performs no network access;
-- Tauri bundle resources remain inactive.
+- the real command obtains the resource root only from injected `AppHandle` via
+  `app.path().resource_dir()`;
+- frontend supplies no resource/filesystem path;
+- logical sidecar source identifiers remain backend-owned relative paths;
+- empty/traversing package-resource roots fail closed;
+- non-normal logical resource paths fail closed;
+- resolved source paths must remain beneath the package resource root;
+- source and runtime destination must differ;
+- T052 sidecar kind/version/SHA-256 identity metadata is preserved;
+- runtime destinations remain direct children of `runtime/bin`;
+- no source file existence is assumed yet;
+- no file copy/write/chmod/process launch/network access or bundle-resource activation is introduced.
 
 Verified PR head:
-`d21e589bac124426514f930f81b079cd5baf4050`
+`fc0f1664e72b37f4d67de24d495d0f2a9c26c0bb`
 
 All 11 required workflows passed for that exact head.
 
 ## Next atomic task
 
-**T053 — Resolve packaged sidecar source root from the Tauri resource directory**
+**T054 — Validate packaged sidecar source artifacts before materialization**
 
-Bind the T052 logical packaged-resource identifiers to one backend-owned OS package resource root
-without copying bytes yet.
+Add a local-only typed validation boundary over the T053 resolved source paths before any executable
+bytes can be copied into `runtime/bin`.
 
 Required boundary:
 
-- resolve the package resource directory only from Tauri's injected `AppHandle`;
-- frontend supplies no resource/filesystem path;
-- join T052 logical source identifiers beneath that resolved resource root;
-- reject parent traversal and any source path that escapes the verified resource root;
-- preserve the T052 pinned identity/version metadata;
-- keep runtime destinations unchanged under `runtime/bin/*`;
-- produce typed source filesystem paths only;
-- no file copy/materialization;
+- input is the T053 resolved sidecar materialization plan;
+- each resolved source must exist as a real regular file;
+- symlinks and non-files fail closed;
+- canonical source paths must remain beneath the verified package resource root;
+- yt-dlp and FFmpeg content must match their already pinned SHA-256 identities before becoming valid
+  materialization inputs;
+- Arti retains the existing pinned version identity and must pass the same path/file-type containment
+  checks;
+- validation returns typed verified source artifacts while preserving destination and identity data;
+- no destination file is created or modified;
 - no chmod;
 - no process launch;
 - no external network access;
@@ -54,6 +59,5 @@ Required boundary:
 
 ## Success
 
-The backend can deterministically resolve all three packaged sidecar source paths from the desktop
-application's own resource directory while retaining the T052 identities and app-owned runtime
-destinations, without frontend filesystem control or side effects.
+The backend can fail closed on missing, symlinked, escaped, malformed, or hash-mismatched packaged
+sidecar inputs before any executable reaches the app-owned runtime directory.
