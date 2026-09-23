@@ -29,6 +29,16 @@ const T024_MEDIA_SOURCE_URL: &str =
 const T024_PROOF_LOCATOR: &str = "local:test:candidate:official-live";
 const DEFAULT_TOR_SOCKS_PORT: u16 = 19050;
 const DEFAULT_TOR_READY_TIMEOUT_SECS: u64 = 30;
+const ARTI_SIDECAR_VERSION: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/arti/VERSION"));
+const YTDLP_SIDECAR_VERSION: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/yt-dlp/VERSION"));
+const YTDLP_SIDECAR_SHA256SUMS: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/yt-dlp/SHA256SUMS"));
+const FFMPEG_SIDECAR_VERSION: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/ffmpeg/VERSION"));
+const FFMPEG_SIDECAR_SHA256SUMS: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/ffmpeg/SHA256SUMS"));
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -429,16 +439,41 @@ impl AppRuntimeLayout {
         Ok(derived)
     }
 
+    fn bin_root(&self) -> Result<PathBuf, DownloadActionError> {
+        self.derive("bin")
+    }
+
     fn arti_executable(&self) -> Result<PathBuf, DownloadActionError> {
-        self.derive("bin/arti")
+        #[cfg(target_os = "windows")]
+        {
+            return self.derive("bin/arti.exe");
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            self.derive("bin/arti")
+        }
     }
 
     fn ytdlp_executable(&self) -> Result<PathBuf, DownloadActionError> {
-        self.derive("bin/yt-dlp")
+        #[cfg(target_os = "windows")]
+        {
+            return self.derive("bin/yt-dlp.exe");
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            self.derive("bin/yt-dlp")
+        }
     }
 
     fn ffmpeg_executable(&self) -> Result<PathBuf, DownloadActionError> {
-        self.derive("bin/ffmpeg")
+        #[cfg(target_os = "windows")]
+        {
+            return self.derive("bin/ffmpeg.exe");
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            self.derive("bin/ffmpeg")
+        }
     }
 
     fn tor_config_file(&self) -> Result<PathBuf, DownloadActionError> {
@@ -478,6 +513,197 @@ impl AppRuntimeLayout {
             Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS),
         )
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BundledSidecarKind {
+    Arti,
+    YtDlp,
+    Ffmpeg,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BundledSidecarIdentity {
+    version: String,
+    pinned_source_sha256: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BundledSidecarMaterializationItem {
+    kind: BundledSidecarKind,
+    source_resource: PathBuf,
+    destination: PathBuf,
+    identity: BundledSidecarIdentity,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BundledSidecarMaterializationPlan {
+    platform: &'static str,
+    bin_root: PathBuf,
+    items: Vec<BundledSidecarMaterializationItem>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SidecarPlatformSpec {
+    platform: &'static str,
+    arti_resource: &'static str,
+    ytdlp_resource: &'static str,
+    ytdlp_digest_asset: &'static str,
+    ffmpeg_resource: &'static str,
+    ffmpeg_digest_asset: &'static str,
+}
+
+fn current_sidecar_platform_spec() -> Result<SidecarPlatformSpec, DownloadActionError> {
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    {
+        return Ok(SidecarPlatformSpec {
+            platform: "linux-x86_64",
+            arti_resource: "sidecars/arti/linux-x86_64/arti",
+            ytdlp_resource: "sidecars/yt-dlp/linux-x86_64/yt-dlp",
+            ytdlp_digest_asset: "yt-dlp_linux",
+            ffmpeg_resource: "sidecars/ffmpeg/linux-x86_64/ffmpeg",
+            ffmpeg_digest_asset: "ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz",
+        });
+    }
+
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    {
+        return Ok(SidecarPlatformSpec {
+            platform: "windows-x86_64",
+            arti_resource: "sidecars/arti/windows-x86_64/arti.exe",
+            ytdlp_resource: "sidecars/yt-dlp/windows-x86_64/yt-dlp.exe",
+            ytdlp_digest_asset: "yt-dlp.exe",
+            ffmpeg_resource: "sidecars/ffmpeg/windows-x86_64/ffmpeg.exe",
+            ffmpeg_digest_asset: "ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip",
+        });
+    }
+
+    #[allow(unreachable_code)]
+    Err(DownloadActionError {
+        code: "unsupported-sidecar-platform",
+        message: "bundled sidecar plan supports Windows x86_64 and Linux x86_64".to_owned(),
+    })
+}
+
+fn pinned_sha256_for_asset(
+    manifest: &str,
+    asset: &str,
+) -> Result<String, DownloadActionError> {
+    for line in manifest.lines() {
+        let mut fields = line.split_whitespace();
+        let Some(digest) = fields.next() else {
+            continue;
+        };
+        let Some(name) = fields.next() else {
+            continue;
+        };
+
+        if name == asset
+            && fields.next().is_none()
+            && digest.len() == 64
+            && digest.bytes().all(|byte| byte.is_ascii_hexdigit())
+        {
+            return Ok(digest.to_ascii_lowercase());
+        }
+    }
+
+    Err(DownloadActionError {
+        code: "sidecar-source-identity-missing",
+        message: format!("no pinned SHA-256 identity found for sidecar source asset {asset}"),
+    })
+}
+
+fn validate_bundled_sidecar_item(
+    bin_root: &Path,
+    item: &BundledSidecarMaterializationItem,
+) -> Result<(), DownloadActionError> {
+    if item.source_resource.as_os_str().is_empty()
+        || item
+            .source_resource
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err(DownloadActionError {
+            code: "sidecar-resource-path-invalid",
+            message: "bundled sidecar resource must be a non-empty relative resource path".to_owned(),
+        });
+    }
+
+    if !item.destination.starts_with(bin_root) || item.destination.parent() != Some(bin_root) {
+        return Err(DownloadActionError {
+            code: "sidecar-destination-escaped",
+            message: "sidecar runtime destination must be a direct child of runtime/bin".to_owned(),
+        });
+    }
+
+    if item.source_resource == item.destination {
+        return Err(DownloadActionError {
+            code: "sidecar-source-destination-collision",
+            message: "bundled sidecar source and runtime destination must differ".to_owned(),
+        });
+    }
+
+    if item.identity.version.is_empty() {
+        return Err(DownloadActionError {
+            code: "sidecar-source-identity-missing",
+            message: "bundled sidecar identity must include a pinned version".to_owned(),
+        });
+    }
+
+    Ok(())
+}
+
+fn build_bundled_sidecar_materialization_plan(
+    layout: &AppRuntimeLayout,
+) -> Result<BundledSidecarMaterializationPlan, DownloadActionError> {
+    let platform = current_sidecar_platform_spec()?;
+    let bin_root = layout.bin_root()?;
+
+    let items = vec![
+        BundledSidecarMaterializationItem {
+            kind: BundledSidecarKind::Arti,
+            source_resource: PathBuf::from(platform.arti_resource),
+            destination: layout.arti_executable()?,
+            identity: BundledSidecarIdentity {
+                version: ARTI_SIDECAR_VERSION.trim().to_owned(),
+                pinned_source_sha256: None,
+            },
+        },
+        BundledSidecarMaterializationItem {
+            kind: BundledSidecarKind::YtDlp,
+            source_resource: PathBuf::from(platform.ytdlp_resource),
+            destination: layout.ytdlp_executable()?,
+            identity: BundledSidecarIdentity {
+                version: YTDLP_SIDECAR_VERSION.trim().to_owned(),
+                pinned_source_sha256: Some(pinned_sha256_for_asset(
+                    YTDLP_SIDECAR_SHA256SUMS,
+                    platform.ytdlp_digest_asset,
+                )?),
+            },
+        },
+        BundledSidecarMaterializationItem {
+            kind: BundledSidecarKind::Ffmpeg,
+            source_resource: PathBuf::from(platform.ffmpeg_resource),
+            destination: layout.ffmpeg_executable()?,
+            identity: BundledSidecarIdentity {
+                version: FFMPEG_SIDECAR_VERSION.trim().to_owned(),
+                pinned_source_sha256: Some(pinned_sha256_for_asset(
+                    FFMPEG_SIDECAR_SHA256SUMS,
+                    platform.ffmpeg_digest_asset,
+                )?),
+            },
+        },
+    ];
+
+    for item in &items {
+        validate_bundled_sidecar_item(&bin_root, item)?;
+    }
+
+    Ok(BundledSidecarMaterializationPlan {
+        platform: platform.platform,
+        bin_root,
+        items,
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1333,8 +1559,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        AppRuntimeLayout, DEFAULT_TOR_READY_TIMEOUT_SECS, DEFAULT_TOR_SOCKS_PORT,
-        DownloadPreflightInputs, T024_MEDIA_SOURCE_URL, T024_PROOF_LOCATOR, app_status,
+        AppRuntimeLayout, BundledSidecarKind, DEFAULT_TOR_READY_TIMEOUT_SECS,
+        DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
+        T024_PROOF_LOCATOR, app_status, build_bundled_sidecar_materialization_plan,
         build_download_preflight, establish_tor_ready_download_runtime, list_local_candidates,
         local_candidate_by_locator, plan_local_download, prepare_app_runtime_directories,
         prepare_completed_file_command, prepare_download_runtime, resolve_backend_media_source,
@@ -1666,14 +1893,34 @@ mod tests {
         assert_eq!(error.message, "Tor SOCKS port must be non-zero");
     }
 
+    fn expected_runtime_executable(root: &Path, name: &str) -> PathBuf {
+        #[cfg(target_os = "windows")]
+        {
+            return root.join("bin").join(format!("{name}.exe"));
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            root.join("bin").join(name)
+        }
+    }
+
     #[test]
     fn app_runtime_layout_derives_every_backend_path_beneath_one_root() {
         let layout = AppRuntimeLayout::new("runtime").expect("runtime root is valid");
 
         assert_eq!(layout.root(), Path::new("runtime"));
-        assert_eq!(layout.arti_executable().unwrap(), Path::new("runtime/bin/arti"));
-        assert_eq!(layout.ytdlp_executable().unwrap(), Path::new("runtime/bin/yt-dlp"));
-        assert_eq!(layout.ffmpeg_executable().unwrap(), Path::new("runtime/bin/ffmpeg"));
+        assert_eq!(
+            layout.arti_executable().unwrap(),
+            expected_runtime_executable(Path::new("runtime"), "arti")
+        );
+        assert_eq!(
+            layout.ytdlp_executable().unwrap(),
+            expected_runtime_executable(Path::new("runtime"), "yt-dlp")
+        );
+        assert_eq!(
+            layout.ffmpeg_executable().unwrap(),
+            expected_runtime_executable(Path::new("runtime"), "ffmpeg")
+        );
         assert_eq!(
             layout.tor_config_file().unwrap(),
             Path::new("runtime/arti/config/pulqva.toml")
@@ -1734,8 +1981,14 @@ mod tests {
         .expect("supported candidate prepares backend-owned inputs");
 
         assert_eq!(candidate.locator(), T024_PROOF_LOCATOR);
-        assert_eq!(inputs.download.arti_executable, root.join("bin/arti"));
-        assert_eq!(inputs.download.ytdlp_executable, root.join("bin/yt-dlp"));
+        assert_eq!(
+            inputs.download.arti_executable,
+            expected_runtime_executable(&root, "arti")
+        );
+        assert_eq!(
+            inputs.download.ytdlp_executable,
+            expected_runtime_executable(&root, "yt-dlp")
+        );
         assert_eq!(
             inputs.download.tor_config_file,
             root.join("arti/config/pulqva.toml")
@@ -1743,11 +1996,98 @@ mod tests {
         assert_eq!(inputs.download.tor_cache_dir, root.join("arti/cache"));
         assert_eq!(inputs.download.tor_state_dir, root.join("arti/state"));
         assert_eq!(inputs.download.output_root, root.join("downloads"));
-        assert_eq!(inputs.ffmpeg_executable, root.join("bin/ffmpeg"));
+        assert_eq!(
+            inputs.ffmpeg_executable,
+            expected_runtime_executable(&root, "ffmpeg")
+        );
         assert_eq!(
             inputs.tor_ready_timeout,
             Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS)
         );
+    }
+
+    #[test]
+    fn bundled_sidecar_materialization_plan_is_typed_backend_owned_and_side_effect_free() {
+        let root = test_root("sidecar-materialization-plan");
+        let layout = AppRuntimeLayout::new(root.join("runtime")).expect("runtime layout is valid");
+
+        let plan = build_bundled_sidecar_materialization_plan(&layout)
+            .expect("supported platform produces a typed sidecar plan");
+
+        assert_eq!(plan.items.len(), 3);
+        assert_eq!(plan.bin_root, layout.bin_root().expect("bin root derives"));
+        assert!(!plan.bin_root.exists());
+
+        assert_eq!(plan.items[0].kind, BundledSidecarKind::Arti);
+        assert_eq!(plan.items[1].kind, BundledSidecarKind::YtDlp);
+        assert_eq!(plan.items[2].kind, BundledSidecarKind::Ffmpeg);
+
+        for item in &plan.items {
+            assert!(item.destination.starts_with(&plan.bin_root));
+            assert_eq!(item.destination.parent(), Some(plan.bin_root.as_path()));
+            assert_ne!(item.source_resource, item.destination);
+            assert!(!item.identity.version.is_empty());
+            assert!(!item.source_resource.is_absolute());
+        }
+
+        assert_eq!(plan.items[0].identity.version, "2.6.0");
+        assert_eq!(plan.items[1].identity.version, "2026.08.19");
+        assert_eq!(plan.items[2].identity.version, "n9.0.2-3-ga5923073bf");
+        assert!(plan.items[0].identity.pinned_source_sha256.is_none());
+        assert_eq!(
+            plan.items[1]
+                .identity
+                .pinned_source_sha256
+                .as_deref()
+                .expect("yt-dlp direct binary has pinned digest")
+                .len(),
+            64
+        );
+        assert_eq!(
+            plan.items[2]
+                .identity
+                .pinned_source_sha256
+                .as_deref()
+                .expect("FFmpeg source archive has pinned digest")
+                .len(),
+            64
+        );
+
+        #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+        {
+            assert_eq!(plan.platform, "linux-x86_64");
+            assert_eq!(
+                plan.items[0].source_resource,
+                Path::new("sidecars/arti/linux-x86_64/arti")
+            );
+            assert_eq!(
+                plan.items[1].source_resource,
+                Path::new("sidecars/yt-dlp/linux-x86_64/yt-dlp")
+            );
+            assert_eq!(
+                plan.items[2].source_resource,
+                Path::new("sidecars/ffmpeg/linux-x86_64/ffmpeg")
+            );
+        }
+
+        #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+        {
+            assert_eq!(plan.platform, "windows-x86_64");
+            assert_eq!(
+                plan.items[0].source_resource,
+                Path::new("sidecars/arti/windows-x86_64/arti.exe")
+            );
+            assert_eq!(
+                plan.items[1].source_resource,
+                Path::new("sidecars/yt-dlp/windows-x86_64/yt-dlp.exe")
+            );
+            assert_eq!(
+                plan.items[2].source_resource,
+                Path::new("sidecars/ffmpeg/windows-x86_64/ffmpeg.exe")
+            );
+        }
+
+        assert!(!layout.root().exists());
     }
 
     #[test]

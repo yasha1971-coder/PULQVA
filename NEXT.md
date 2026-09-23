@@ -2,43 +2,58 @@
 
 ## Current verified state
 
-T051 is complete and its recovery hardening T051R1 is also complete.
+T052 is complete.
 
-PULQVA now has the verified T051 runtime-directory boundary plus additional hardening:
+PULQVA now has a typed, backend-owned, side-effect-free sidecar materialization plan:
 
-- prepared runtime directories are canonicalized and verified to remain physically beneath the verified runtime root;
-- existing symlink and non-directory hazards fail closed;
-- executable destinations remain separated under `runtime/bin/*`;
-- Tor state/config/cache remain under `runtime/arti/*`;
-- directory preparation remains idempotent and local-filesystem-only;
-- `desktop-shell-check` now executes desktop boundary tests on both Windows and Linux, not only compilation;
-- no sidecar executable is created, copied, downloaded, or modified;
-- no privacy/network invariant was weakened.
+- exactly Arti, yt-dlp, and FFmpeg are represented;
+- logical packaged-resource identifiers are backend constants and never frontend input;
+- pinned versions come from repository sidecar VERSION files;
+- yt-dlp and FFmpeg identities include the repository-pinned SHA-256 values;
+- runtime destinations derive only from `AppRuntimeLayout`;
+- destinations are direct children of `runtime/bin`;
+- Windows destinations use `.exe`, Linux destinations remain extensionless;
+- source identifiers and runtime destinations are required to differ;
+- planning creates no file/directory, copies no bytes, launches no process, builds no shell command, and performs no network access;
+- Tauri bundle resources remain inactive.
 
-Verified recovery head:
-`ca8755cf59da63cdf1a25e5ddf54891e368b525d`
+Verified PR head:
+`d21e589bac124426514f930f81b079cd5baf4050`
 
 All 11 required workflows passed for that exact head.
 
-The stale parallel PR #52 was closed as superseded.
-
 ## Next atomic task
 
-**T052 — Add a typed local sidecar materialization plan boundary**
+**T053 — Resolve packaged sidecar source root from the Tauri resource directory**
 
-Define, without copying binaries yet, the exact backend-owned mapping from verified packaged sidecar
-sources to the T051 `runtime/bin/*` destinations.
+Bind the T052 logical packaged-resource identifiers to one backend-owned OS package resource root
+without copying bytes yet.
+
+Required boundary:
+
+- resolve the package resource directory only from Tauri's injected `AppHandle`;
+- frontend supplies no resource/filesystem path;
+- join T052 logical source identifiers beneath that resolved resource root;
+- reject parent traversal and any source path that escapes the verified resource root;
+- preserve the T052 pinned identity/version metadata;
+- keep runtime destinations unchanged under `runtime/bin/*`;
+- produce typed source filesystem paths only;
+- no file copy/materialization;
+- no chmod;
+- no process launch;
+- no external network access;
+- no direct-network fallback.
 
 ## Do not do yet
 
 - no sidecar binary copy/materialization;
-- no Tauri bundle-resource activation;
-- no packaging/release installers;
+- no installer/release packaging;
 - no external search provider;
 - no AI provider;
 - no direct-network fallback.
 
 ## Success
 
-The backend can produce one deterministic typed sidecar materialization plan for Arti, yt-dlp, and
-FFmpeg, with all runtime destinations confined to the app-owned runtime tree and no frontend control.
+The backend can deterministically resolve all three packaged sidecar source paths from the desktop
+application's own resource directory while retaining the T052 identities and app-owned runtime
+destinations, without frontend filesystem control or side effects.
