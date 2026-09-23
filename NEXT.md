@@ -37,12 +37,26 @@ This branch now:
 No runtime Arti copy/materialization, chmod, Tor launch change, shell execution, frontend path,
 bundle activation, installer, external provider, or direct-network fallback is introduced.
 
+## Recovery after first committed-identity verification
+
+Implementation head `a5c0bc55b4cfc393d9cec3bb0179a1a227c1c4b8` produced 10/11 green
+workflows. Only `arti-sidecar-check` failed:
+
+- Linux job `107393088967` reproduced the committed digest successfully.
+- Windows job `107393089339` built Arti and passed the local CLI proof, then failed only at the
+  fail-closed SHA comparison.
+- The previous workflow compared before printing the actual rebuilt Windows digest, so the mismatch
+  could not yet be classified as a stable recipe difference versus nondeterministic output.
+
+This recovery changes diagnostics only: the workflow now prints actual SHA-256, expected SHA-256,
+platform, and byte size immediately before the same fail-closed comparison. The comparison is not
+weakened and SHA256SUMS is unchanged.
+
 ## Immediate next action
 
-Inspect the exact T057 implementation head and all triggered checks. The decisive proof is that both
-Arti matrix jobs rebuild the same exact bytes and match the committed SHA256SUMS. If any check fails,
-diagnose only that concrete failure. If all required Windows/Linux desktop/privacy checks are green,
-close T057 in a later closeout phase.
+Inspect the exact diagnostic-recovery head. If Windows fails again, recover the printed actual and
+expected SHA values and diagnose only that concrete difference. If it matches and all required
+checks are green, close T057 in a later closeout phase.
 
 Do not start T058.
 

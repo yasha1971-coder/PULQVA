@@ -68,3 +68,14 @@ and makes packaged-source validation require an Arti digest just like yt-dlp and
 
 T057 remains ACTIVE until the exact implementation head proves the committed digests reproduce on
 both supported CI targets and all required desktop/privacy checks are green.
+
+
+## Recovery after first committed-identity rerun
+
+Head `a5c0bc55b4cfc393d9cec3bb0179a1a227c1c4b8` passed every required workflow
+except `arti-sidecar-check`. Linux reproduced its committed digest. Windows built successfully and
+passed `arti --version` / `arti help proxy`, but failed only at the SHA-256 equality check.
+
+The recovery adds an explicit `PULQVA_ARTI_IDENTITY_COMPARE` diagnostic line before that unchanged
+fail-closed comparison. It does not update the committed Windows digest, weaken the equality check,
+or alter runtime behavior.
