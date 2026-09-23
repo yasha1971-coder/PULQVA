@@ -1,57 +1,57 @@
 # NEXT
 
-## Current verified state
+## Verified implementation; closeout pending
 
-T053 is complete.
+T054 implementation is verified at `a1caa4eb310e472333eb4263223b28c0ff22327b`.
+All 11 triggered workflows passed for that exact head, including Windows/Linux desktop tests.
+The task record is DONE for that implementation; the closeout commit still requires its own CI.
+`PROJECT_STATE.ci` deliberately remains `pending` until the new head is observed green.
 
-Verified T053 closeout head:
-`17959d1943b574e47ff28ab59b39f144fdd52e84`
+PR: #56
+Branch: `task/T054-validate-packaged-sidecar-source-artifacts`
+Main observed before closeout: `3df2c2eefaf64c3398c1d04568c889ff1b3d576f`
+The latest PR #56 checkpoint records the exact closeout SHA and observed CI state.
 
-All 11 required workflows passed for that exact head. T053 is merged on main at
-`3df2c2eefaf64c3398c1d04568c889ff1b3d576f`.
+## What T054 implements
 
-## Active atomic task
+The backend validates resolved packaged sources before runtime-directory preparation or sidecar
+launch. The package root must be a real directory. Source components reject symlinks and invalid
+file types; canonical source paths must remain beneath the canonical resource root. Exactly one
+Arti, yt-dlp, and FFmpeg entry is required. yt-dlp and FFmpeg inputs are hashed locally in bounded
+buffers and compared to their pinned source digests. Typed results retain kind, canonical source,
+destination, identity, and size. Validation does not create or modify runtime destinations.
 
-**T054 — Validate packaged sidecar source artifacts before materialization**
+## Continuity notes that must not be lost
 
-T054 adds a local-only fail-closed verification capability over the T053 resolved package sources:
+- FFmpeg's pinned digest authenticates its platform archive, NOT the extracted executable. The
+  packaged source is now the exact `.tar.xz` or `.zip` archive; its eventual destination is still
+  `runtime/bin/ffmpeg(.exe)`. Never copy archive bytes directly to that executable destination.
+- Arti currently retains version metadata and file/path validation only. It has no pinned content
+  digest here, and no version command runs during validation. Do not describe this as binary
+  authentication or use the stored version string as proof of executable contents.
+- T054 returns paths, not immutable file snapshots. A later materializer must revalidate the bytes
+  it actually copies; an earlier successful hash alone cannot authenticate a changed file.
+- Existing runtime executables are not authenticated or replaced by T054. Materialization, secure
+  publication, archive extraction, and release packaging remain separate work.
+- Regression tests added by T054 cover fixture success, hash mismatch, and non-file rejection.
+  Do not claim a real packaged three-sidecar installation was exercised by those fixture tests.
 
-- package resource root must exist as a real directory and not a symlink;
-- every path component below the resource root is inspected without following symlinks;
-- source leaf must be a real regular file;
-- canonical source paths must remain beneath the canonical package resource root;
-- yt-dlp and FFmpeg sources must match their repository-pinned SHA-256 identities;
-- Arti retains its pinned version identity and receives the same path/file-type containment checks;
-- verified artifacts retain kind, canonical source, runtime destination, identity, and byte size;
-- the real completed-file backend validates package sources before runtime-directory preparation or
-  any sidecar process launch;
-- no runtime destination is created or modified by validation;
-- no chmod, process launch, shell execution, or network access is introduced.
+## Immediate next action
 
-T054 also corrects one identity mismatch discovered at task start: the FFmpeg pinned SHA-256 belongs
-to the pinned platform archive, not the extracted `ffmpeg` executable. Therefore the FFmpeg logical
-package source now names the exact pinned archive while the runtime destination remains
-`runtime/bin/ffmpeg(.exe)`. Future materialization must extract the verified archive rather than
-pretend its archive digest authenticates an extracted binary.
+Inspect PR #56's current head and all triggered checks. Merge only when that exact closeout head
+is green and unchanged. On failure, diagnose only the concrete failure. Do not begin T055 before
+T054 closes and merges.
 
-Branch:
-`task/T054-validate-packaged-sidecar-source-artifacts`
+## Next atomic task after merge
 
-## Next task
+**T055 — Atomically materialize the verified yt-dlp direct-binary artifact**
 
-T054 remains next until its exact head is verified green and closed.
+Implement one backend-only local publication boundary for yt-dlp, whose pinned digest describes
+its direct executable bytes. Reuse the prepared runtime layout and T054 verified input; revalidate
+source containment and the bytes being copied, publish only a fully verified staged file under
+`runtime/bin`, and preserve existing files on failure. Reject archives and unsupported sidecar
+kinds at this boundary. The detailed READY task defines the tests and scope.
 
-## Do not do yet
-
-- no sidecar binary copy/extraction/materialization;
-- no Tauri bundle-resource activation;
-- no installer/release packaging;
-- no external search provider;
-- no AI provider;
-- no direct-network fallback.
-
-## Success
-
-Windows/Linux desktop boundary tests and all existing privacy/media checks are green on the exact
-T054 head, and missing, symlinked, escaped, non-file, or hash-mismatched packaged sidecar sources fail
-closed before any runtime executable destination is touched.
+T055 is queued, not started. Arti authentication and FFmpeg archive extraction are not silently
+folded into this task. No frontend filesystem authority, network fallback, bundle activation,
+installer, external search provider, or AI provider is introduced by this closeout.
