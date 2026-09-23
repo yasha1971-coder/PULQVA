@@ -35,13 +35,25 @@ Arti's version string is not a content digest. T054's FFmpeg digest authenticate
 its extracted executable. Neither can be fed into this direct yt-dlp publication boundary.
 Do not call an untested path-race defense complete; retain any remaining limitation explicitly.
 
-## Current phase: PREPARE
+## Current phase: IMPLEMENT
 
-The separate `t055_publication_contract` integration test target exercises a test-only prototype
-of staging and no-clobber publication. It does not implement the production capability boundary.
-Its CI result is pending; no local Rust test execution was possible in this session.
+The PREPARE proof at `cd2ce4b47d6e5ad58ff31f0e13c89a0e3172e758` passed all 11 triggered
+workflows. The branch now contains a production internal materialization boundary in
+`src/ytdlp_materialize.rs` plus production-boundary tests. This implementation head is NOT yet
+verified and T055 remains ACTIVE.
 
-## Next IMPLEMENT checklist
+The production boundary binds the prepared runtime capability to one T054 verified yt-dlp artifact,
+rechecks pinned backend version/digest identity, source containment/file type/receipt size,
+destination containment, hard-link aliases, existing destinations, copied bytes, staging ownership,
+and no-clobber publication. It does not wire the live Download command and does not handle Arti or
+FFmpeg archive extraction.
+
+Remaining trust limits: concurrent replacement of already-validated parent directories is not
+claimed solved; Windows reparse-point behavior is covered only by ordinary Windows CI, not a
+dedicated adversarial reparse fixture; hard-link publication may fail on unsupported filesystems
+and fails closed without an overwrite fallback; directory metadata durability is not claimed.
+
+## Implemented checklist
 
 1. Preserve the existing desktop API. Add an internal materializer consuming the prepared runtime
    capability and one T054 verified yt-dlp artifact. Resolve expected version/digest from the pinned
