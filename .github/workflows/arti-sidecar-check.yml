@@ -100,15 +100,13 @@ jobs:
           test "${#EXPECTED_SHA256}" -eq 64
           echo "$EXPECTED_SHA256" | grep -Eq '^[0-9a-f]{64}$'
 
-          echo "PULQVA_ARTI_IDENTITY_COMPARE platform=$PULQVA_ARTI_PLATFORM actual_sha256=$SHA256 expected_sha256=$EXPECTED_SHA256 byte_size=$BYTE_SIZE"
-          test "$SHA256" = "$EXPECTED_SHA256"
-
           RECEIPT="$RUNNER_TEMP/arti-identity-${PULQVA_ARTI_PLATFORM}.txt"
           {
             echo "platform=$PULQVA_ARTI_PLATFORM"
             echo "version=$PULQVA_ARTI_VERSION"
             echo "executable=$PULQVA_ARTI_EXECUTABLE"
             echo "sha256=$SHA256"
+            echo "expected_sha256=$EXPECTED_SHA256"
             echo "byte_size=$BYTE_SIZE"
             echo "rust_toolchain=1.91.0"
             echo "cargo_locked=true"
@@ -116,4 +114,17 @@ jobs:
           } > "$RECEIPT"
 
           cat "$RECEIPT"
+          echo "PULQVA_ARTI_IDENTITY_COMPARE platform=$PULQVA_ARTI_PLATFORM actual_sha256=$SHA256 expected_sha256=$EXPECTED_SHA256 byte_size=$BYTE_SIZE"
           echo "PULQVA_ARTI_IDENTITY platform=$PULQVA_ARTI_PLATFORM version=$PULQVA_ARTI_VERSION executable=$PULQVA_ARTI_EXECUTABLE sha256=$SHA256 byte_size=$BYTE_SIZE"
+          test "$SHA256" = "$EXPECTED_SHA256"
+
+      - name: Capture exact built Arti artifact for immutable-source recovery
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arti-identity-candidate-${{ matrix.platform }}
+          path: |
+            ${{ env.PULQVA_ARTI_BIN }}
+            ${{ runner.temp }}/arti-identity-${{ matrix.platform }}.txt
+          if-no-files-found: error
+          retention-days: 30

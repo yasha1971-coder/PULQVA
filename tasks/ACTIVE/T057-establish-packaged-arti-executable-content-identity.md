@@ -79,3 +79,17 @@ passed `arti --version` / `arti help proxy`, but failed only at the SHA-256 equa
 The recovery adds an explicit `PULQVA_ARTI_IDENTITY_COMPARE` diagnostic line before that unchanged
 fail-closed comparison. It does not update the committed Windows digest, weaken the equality check,
 or alter runtime behavior.
+
+
+## Immutable-source recovery phase
+
+The Windows rebuild at `96a4e42b31728e1c3b7e5a879c2974c0d6532eb9` produced
+`de62684554b7af8e783a79339f4bfefff7ac8dbbb4fc498eb54e5a300491bc6b` while the
+earlier capture produced
+`437c9391d7c7d70b8d298c8e6edd5310cb6e0511204c872c3a6c84fbc79e5bba`, with the same
+19,759,616-byte size. A moving rebuild hash is therefore not an acceptable package identity.
+
+This phase adds artifact capture only. The exact executable and receipt produced by each matrix job
+are uploaded even if the existing fail-closed comparison fails. A later phase may retrieve the exact
+Windows artifact from this run and make those exact bytes the immutable package source. The
+committed SHA256SUMS is not changed here.

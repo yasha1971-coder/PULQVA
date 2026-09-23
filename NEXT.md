@@ -67,3 +67,21 @@ Do not start T058.
 - T057 does not yet materialize Arti into runtime/bin;
 - FFmpeg's pinned digest still authenticates its archive, not an extracted executable;
 - existing T055 parent-directory/reparse/durability limitations remain retained.
+
+
+## Recovery: immutable artifact capture
+
+The exact-head diagnostic proved that the Windows `cargo install` output is not byte-reproducible
+across GitHub Actions runs: identical version/features/toolchain and identical byte size produced a
+different SHA-256. Therefore T057 must not chase a moving digest.
+
+Tor Project's current Arti compiling guide states that official binaries are not published, so there
+is no upstream signed/prebuilt Windows executable to pin instead.
+
+This recovery phase keeps the existing fail-closed comparison intact and adds an `upload-artifact`
+capture for the exact built executable plus its receipt, even when the SHA comparison fails. The
+purpose is to retrieve one concrete CI-produced executable and make those exact bytes the future
+package source; later CI can verify the stored/package source bytes against their committed SHA
+without requiring a fresh Windows rebuild to be byte-identical.
+
+No runtime behavior, digest allowlist, or privacy rule changes in this phase.
