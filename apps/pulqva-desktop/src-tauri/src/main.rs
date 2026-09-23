@@ -15,6 +15,8 @@ use serde::Serialize;
 use tauri::Manager;
 use std::{
     ffi::OsString,
+    fs,
+    io,
     path::{Component, Path, PathBuf},
     time::Duration,
 };
@@ -428,15 +430,15 @@ impl AppRuntimeLayout {
     }
 
     fn arti_executable(&self) -> Result<PathBuf, DownloadActionError> {
-        self.derive("arti")
+        self.derive("bin/arti")
     }
 
     fn ytdlp_executable(&self) -> Result<PathBuf, DownloadActionError> {
-        self.derive("yt-dlp")
+        self.derive("bin/yt-dlp")
     }
 
     fn ffmpeg_executable(&self) -> Result<PathBuf, DownloadActionError> {
-        self.derive("ffmpeg")
+        self.derive("bin/ffmpeg")
     }
 
     fn tor_config_file(&self) -> Result<PathBuf, DownloadActionError> {
@@ -476,6 +478,244 @@ impl AppRuntimeLayout {
             Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS),
         )
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PreparedAppRuntimeDirectories {
+    layout: AppRuntimeLayout,
+}
+
+impl PreparedAppRuntimeDirectories {
+    fn layout(&self) -> &AppRuntimeLayout {
+        &self.layout
+    }
+
+    fn into_layout(self) -> AppRuntimeLayout {
+        self.layout
+    }
+}
+
+fn runtime_directory_error(
+    code: &'static str,
+    operation: &str,
+    path: &Path,
+    source: impl std::fmt::Display,
+) -> DownloadActionError {
+    DownloadActionError {
+        code,
+        message: format!("{operation} {}: {source}", path.display()),
+    }
+}
+
+fn reject_existing_runtime_path_hazards(
+    layout: &AppRuntimeLayout,
+    target: &Path,
+) -> Result<(), DownloadActionError> {
+    if !target.starts_with(layout.root()) {
+        return Err(DownloadActionError {
+            code: "runtime-directory-path-escaped",
+            message: format!(
+                "runtime directory target escaped the verified root: {}",
+                target.display()
+            ),
+        });
+    }
+
+    let mut cursor = layout.root().to_path_buf();
+    let relative = target.strip_prefix(layout.root()).map_err(|source| {
+        runtime_directory_error(
+            "runtime-directory-path-escaped",
+            "failed to verify runtime directory target",
+            target,
+            source,
+        )
+    })?;
+
+    for component in relative.components() {
+        let Component::Normal(name) = component else {
+            return Err(DownloadActionError {
+                code: "runtime-directory-path-invalid",
+                message: format!(
+                    "runtime directory target contains a non-normal path component: {}",
+                    target.display()
+                ),
+            });
+        };
+        cursor.push(name);
+
+        match fs::symlink_metadata(&cursor) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                return Err(DownloadActionError {
+                    code: "runtime-directory-symlink",
+                    message: format!(
+                        "runtime directory preparation refuses symlink path: {}",
+                        cursor.display()
+                    ),
+                });
+            }
+            Ok(metadata) if !metadata.is_dir() => {
+                return Err(DownloadActionError {
+                    code: "runtime-directory-not-directory",
+                    message: format!(
+                        "runtime directory preparation found a non-directory path: {}",
+                        cursor.display()
+                    ),
+                });
+            }
+            Ok(_) => {}
+            Err(source) if source.kind() == io::ErrorKind::NotFound => break,
+            Err(source) => {
+                return Err(runtime_directory_error(
+                    "runtime-directory-inspection-failed",
+                    "failed to inspect runtime directory path",
+                    &cursor,
+                    source,
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn create_verified_runtime_directory(
+    layout: &AppRuntimeLayout,
+    target: &Path,
+    canonical_root: &Path,
+) -> Result<(), DownloadActionError> {
+    reject_existing_runtime_path_hazards(layout, target)?;
+
+    fs::create_dir_all(target).map_err(|source| {
+        runtime_directory_error(
+            "runtime-directory-preparation-failed",
+            "failed to create runtime directory",
+            target,
+            source,
+        )
+    })?;
+
+    let metadata = fs::symlink_metadata(target).map_err(|source| {
+        runtime_directory_error(
+            "runtime-directory-inspection-failed",
+            "failed to inspect prepared runtime directory",
+            target,
+            source,
+        )
+    })?;
+
+    if metadata.file_type().is_symlink() {
+        return Err(DownloadActionError {
+            code: "runtime-directory-symlink",
+            message: format!(
+                "runtime directory preparation refuses symlink path: {}",
+                target.display()
+            ),
+        });
+    }
+
+    if !metadata.is_dir() {
+        return Err(DownloadActionError {
+            code: "runtime-directory-not-directory",
+            message: format!(
+                "runtime directory preparation requires a directory: {}",
+                target.display()
+            ),
+        });
+    }
+
+    let canonical_target = fs::canonicalize(target).map_err(|source| {
+        runtime_directory_error(
+            "runtime-directory-canonicalization-failed",
+            "failed to canonicalize prepared runtime directory",
+            target,
+            source,
+        )
+    })?;
+
+    if !canonical_target.starts_with(canonical_root) {
+        return Err(DownloadActionError {
+            code: "runtime-directory-path-escaped",
+            message: format!(
+                "prepared runtime directory escaped the verified runtime root: {}",
+                target.display()
+            ),
+        });
+    }
+
+    Ok(())
+}
+
+fn prepare_app_runtime_directories(
+    layout: AppRuntimeLayout,
+) -> Result<PreparedAppRuntimeDirectories, DownloadActionError> {
+    match fs::symlink_metadata(layout.root()) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            return Err(DownloadActionError {
+                code: "runtime-directory-symlink",
+                message: format!(
+                    "runtime directory preparation refuses symlink root: {}",
+                    layout.root().display()
+                ),
+            });
+        }
+        Ok(metadata) if !metadata.is_dir() => {
+            return Err(DownloadActionError {
+                code: "runtime-directory-not-directory",
+                message: format!(
+                    "runtime directory root is not a directory: {}",
+                    layout.root().display()
+                ),
+            });
+        }
+        Ok(_) => {}
+        Err(source) if source.kind() == io::ErrorKind::NotFound => {}
+        Err(source) => {
+            return Err(runtime_directory_error(
+                "runtime-directory-inspection-failed",
+                "failed to inspect runtime root",
+                layout.root(),
+                source,
+            ));
+        }
+    }
+
+    fs::create_dir_all(layout.root()).map_err(|source| {
+        runtime_directory_error(
+            "runtime-directory-preparation-failed",
+            "failed to create runtime root",
+            layout.root(),
+            source,
+        )
+    })?;
+
+    let canonical_root = fs::canonicalize(layout.root()).map_err(|source| {
+        runtime_directory_error(
+            "runtime-directory-canonicalization-failed",
+            "failed to canonicalize runtime root",
+            layout.root(),
+            source,
+        )
+    })?;
+
+    let tor_config_parent = layout
+        .tor_config_file()?
+        .parent()
+        .ok_or_else(|| DownloadActionError {
+            code: "runtime-directory-path-invalid",
+            message: "Tor config path must have a parent directory".to_owned(),
+        })?
+        .to_path_buf();
+
+    for target in [
+        tor_config_parent,
+        layout.tor_cache_dir()?,
+        layout.tor_state_dir()?,
+        layout.output_root()?,
+    ] {
+        create_verified_runtime_directory(&layout, &target, &canonical_root)?;
+    }
+
+    Ok(PreparedAppRuntimeDirectories { layout })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1064,7 +1304,11 @@ async fn download_completed_file(
     let layout = resolve_app_runtime_layout(&app)?;
     let (candidate, inputs) = prepare_completed_file_command(query, locator, &layout)?;
 
-    tauri::async_runtime::spawn_blocking(move || run_completed_file_pipeline(&candidate, inputs))
+    tauri::async_runtime::spawn_blocking(move || {
+        let prepared_directories = prepare_app_runtime_directories(layout)?;
+        let _verified_layout = prepared_directories.into_layout();
+        run_completed_file_pipeline(&candidate, inputs)
+    })
         .await
         .map_err(|source| DownloadActionError {
             code: "completed-file-task-join-failed",
@@ -1092,9 +1336,9 @@ mod tests {
         AppRuntimeLayout, DEFAULT_TOR_READY_TIMEOUT_SECS, DEFAULT_TOR_SOCKS_PORT,
         DownloadPreflightInputs, T024_MEDIA_SOURCE_URL, T024_PROOF_LOCATOR, app_status,
         build_download_preflight, establish_tor_ready_download_runtime, list_local_candidates,
-        local_candidate_by_locator, plan_local_download, prepare_completed_file_command,
-        prepare_download_runtime, resolve_backend_media_source, runtime_layout_from_app_data_dir,
-        select_local_candidate, submit_intent,
+        local_candidate_by_locator, plan_local_download, prepare_app_runtime_directories,
+        prepare_completed_file_command, prepare_download_runtime, resolve_backend_media_source,
+        runtime_layout_from_app_data_dir, select_local_candidate, submit_intent,
     };
     use std::{
         fs,
@@ -1427,9 +1671,9 @@ mod tests {
         let layout = AppRuntimeLayout::new("runtime").expect("runtime root is valid");
 
         assert_eq!(layout.root(), Path::new("runtime"));
-        assert_eq!(layout.arti_executable().unwrap(), Path::new("runtime/arti"));
-        assert_eq!(layout.ytdlp_executable().unwrap(), Path::new("runtime/yt-dlp"));
-        assert_eq!(layout.ffmpeg_executable().unwrap(), Path::new("runtime/ffmpeg"));
+        assert_eq!(layout.arti_executable().unwrap(), Path::new("runtime/bin/arti"));
+        assert_eq!(layout.ytdlp_executable().unwrap(), Path::new("runtime/bin/yt-dlp"));
+        assert_eq!(layout.ffmpeg_executable().unwrap(), Path::new("runtime/bin/ffmpeg"));
         assert_eq!(
             layout.tor_config_file().unwrap(),
             Path::new("runtime/arti/config/pulqva.toml")
@@ -1490,8 +1734,8 @@ mod tests {
         .expect("supported candidate prepares backend-owned inputs");
 
         assert_eq!(candidate.locator(), T024_PROOF_LOCATOR);
-        assert_eq!(inputs.download.arti_executable, root.join("arti"));
-        assert_eq!(inputs.download.ytdlp_executable, root.join("yt-dlp"));
+        assert_eq!(inputs.download.arti_executable, root.join("bin/arti"));
+        assert_eq!(inputs.download.ytdlp_executable, root.join("bin/yt-dlp"));
         assert_eq!(
             inputs.download.tor_config_file,
             root.join("arti/config/pulqva.toml")
@@ -1499,11 +1743,58 @@ mod tests {
         assert_eq!(inputs.download.tor_cache_dir, root.join("arti/cache"));
         assert_eq!(inputs.download.tor_state_dir, root.join("arti/state"));
         assert_eq!(inputs.download.output_root, root.join("downloads"));
-        assert_eq!(inputs.ffmpeg_executable, root.join("ffmpeg"));
+        assert_eq!(inputs.ffmpeg_executable, root.join("bin/ffmpeg"));
         assert_eq!(
             inputs.tor_ready_timeout,
             Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS)
         );
+    }
+
+    #[test]
+    fn app_runtime_directory_preparation_is_idempotent_and_creates_only_required_directories() {
+        let root = test_root("runtime-directories");
+        let layout = AppRuntimeLayout::new(&root).expect("test runtime root is valid");
+
+        let first = prepare_app_runtime_directories(layout.clone())
+            .expect("first runtime directory preparation succeeds");
+        let second = prepare_app_runtime_directories(first.layout().clone())
+            .expect("second runtime directory preparation is idempotent");
+
+        let config_parent = root.join("arti/config");
+        let cache = root.join("arti/cache");
+        let state = root.join("arti/state");
+        let downloads = root.join("downloads");
+
+        for directory in [&root, &config_parent, &cache, &state, &downloads] {
+            assert!(directory.is_dir(), "required directory exists: {}", directory.display());
+            assert!(directory.starts_with(&root));
+        }
+
+        assert_eq!(second.layout().root(), root.as_path());
+        assert!(!root.join("bin").exists());
+        assert!(!root.join("bin/arti").exists());
+        assert!(!root.join("bin/yt-dlp").exists());
+        assert!(!root.join("bin/ffmpeg").exists());
+        assert!(!root.join("arti/config/pulqva.toml").exists());
+
+        fs::remove_dir_all(root).expect("runtime directory test cleanup succeeds");
+    }
+
+    #[test]
+    fn app_runtime_directory_preparation_fails_closed_on_non_directory_parent() {
+        let root = test_root("runtime-directories-blocked");
+        fs::create_dir_all(&root).expect("test runtime root creation succeeds");
+        fs::write(root.join("arti"), b"blocking file").expect("blocking file creation succeeds");
+        let layout = AppRuntimeLayout::new(&root).expect("test runtime root is valid");
+
+        let error = prepare_app_runtime_directories(layout)
+            .expect_err("non-directory Tor parent must fail closed");
+
+        assert_eq!(error.code, "runtime-directory-not-directory");
+        assert!(!root.join("downloads").exists());
+        assert!(!root.join("bin").exists());
+
+        fs::remove_dir_all(root).expect("blocked runtime directory test cleanup succeeds");
     }
 
     #[test]
