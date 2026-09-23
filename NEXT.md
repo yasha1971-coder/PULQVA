@@ -2,38 +2,45 @@
 
 ## Current verified state
 
-T049 is complete.
+T050 is complete.
 
-Merged T049 main:
-`ab295eb156fda55762a8673819cbe18e90fa57a0`
+PULQVA now resolves the app-owned runtime root through the desktop application's OS data directory:
 
-## Active atomic task
-
-**T050 — Resolve the app-owned runtime root from the desktop application data directory**
-
-T050 replaces the fixed relative runtime root with backend-only OS path resolution:
-
-- `download_completed_file` receives Tauri's injected `AppHandle`, not a frontend filesystem value;
-- `app.path().app_data_dir()` resolves the OS-appropriate app data directory;
-- path-resolution failure maps to typed `app-data-path-resolution-failed`;
-- a `runtime` child beneath that resolved app data directory is passed through the verified T049
-  `AppRuntimeLayout::new`;
-- all Arti, yt-dlp, FFmpeg, Tor config/cache/state, and output paths continue to derive from that layout;
-- the data-only Download planning command no longer needs a runtime filesystem root at all;
-- frontend still supplies only query text plus candidate locator for completed-file execution;
-- command output remains only sanitized completed-file data;
+- `download_completed_file` receives Tauri's injected `AppHandle`;
+- `app.path().app_data_dir()` resolves the OS-appropriate application data directory;
+- resolution failure maps to typed `app-data-path-resolution-failed`;
+- a backend-owned `runtime` child is passed through the verified T049 `AppRuntimeLayout`;
+- Arti, yt-dlp, FFmpeg, Tor config/cache/state, and output paths continue to derive only from that layout;
+- frontend supplies no filesystem/runtime path;
+- completed-file output remains only sanitized data;
 - no network access, runtime binary materialization, bundle resource, installer, or packaging work is introduced.
 
-Branch:
-`task/T050-resolve-app-owned-runtime-root`
+Verified PR head:
+`aa27bdaeb20a2db4f0c55f5a530aa7078964233d`
 
-## Next task
+All 11 required workflows passed for that exact head.
 
-T050 remains next until its exact head is verified green and closed.
+## Next atomic task
+
+**T051 — Add app-owned runtime directory preparation boundary**
+
+Prepare only the directory structure required by the verified runtime layout before any sidecar process launch.
+
+Required boundary:
+
+- input is a verified `AppRuntimeLayout`;
+- create only the app-owned runtime root, Tor config/cache/state parent directories, and download output directory;
+- do not create, copy, download, or modify Arti, yt-dlp, or FFmpeg executables;
+- preparation is local-filesystem-only and performs no external network access;
+- preparation is idempotent;
+- any filesystem failure is typed and fail-closed;
+- all created directories must remain beneath the verified app-owned runtime root;
+- frontend supplies no filesystem path;
+- no process launch, bundle activation, installer, or packaging work is added.
 
 ## Do not do yet
 
-- no runtime binary materialization;
+- no sidecar binary materialization;
 - no packaging/release installers;
 - no Tauri bundle resources;
 - no external search provider;
@@ -42,5 +49,5 @@ T050 remains next until its exact head is verified green and closed.
 
 ## Success
 
-Desktop checks are green for the exact T050 head and completed-file execution resolves its runtime
-root from Tauri's application data directory without exposing filesystem control to the frontend.
+The backend can prepare the verified app-owned runtime directory tree deterministically before future
+local sidecar materialization, without giving the frontend filesystem control.
