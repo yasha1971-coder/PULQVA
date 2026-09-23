@@ -1,4 +1,4 @@
-# T051-R1 — Harden runtime directory verification and desktop test execution
+# T051R1 — Harden runtime directory verification and desktop test execution
 
 Parent: T051  
 Status: ACTIVE

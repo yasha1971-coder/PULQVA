@@ -11,7 +11,7 @@ Post-merge main checks are green.
 
 ## Active recovery phase
 
-**T051-R1 — Harden runtime directory verification and execute desktop boundary tests**
+**T051R1 — Harden runtime directory verification and execute desktop boundary tests**
 
 An unexpected parallel PR #52 was found after T051 had already merged. It is based on the pre-T051
 main and is therefore conflicting/stale as a merge vehicle, but it contains two useful hardening
@@ -22,11 +22,11 @@ improvements that are not present on current main:
 - execution of desktop boundary tests on both Windows and Linux in `desktop-shell-check`, not only
   compilation.
 
-T051-R1 ports only those useful changes onto current main. It does not restart T051 or alter the
+T051R1 ports only those useful changes onto current main. It does not restart T051 or alter the
 privacy/network architecture.
 
 Branch:
-`recovery/T051-R1-runtime-directory-hardening`
+`recovery/T051R1-runtime-directory-hardening`
 
 Superseded source PR:
 `#52`
@@ -35,7 +35,7 @@ Superseded source PR:
 
 **T052 — Add a typed local sidecar materialization plan boundary**
 
-Do not start T052 until T051-R1 is verified and merged.
+Do not start T052 until T051R1 is verified and merged.
 
 ## Do not do yet
 
