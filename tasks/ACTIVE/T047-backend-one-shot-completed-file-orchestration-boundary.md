@@ -1,7 +1,7 @@
 # T047 — Add a backend-only one-shot completed-file orchestration boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
