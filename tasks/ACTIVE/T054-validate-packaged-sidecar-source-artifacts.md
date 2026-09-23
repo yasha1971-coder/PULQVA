@@ -1,7 +1,7 @@
 # T054 — Validate packaged sidecar source artifacts before materialization
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 

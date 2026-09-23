@@ -12,6 +12,7 @@ build = "build.rs"
 pulqva-core = { path = "../../../crates/pulqva-core" }
 pulqva-privacy = { path = "../../../crates/pulqva-privacy" }
 serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
 tauri = { version = "=2.11.6" }
 
 [build-dependencies]

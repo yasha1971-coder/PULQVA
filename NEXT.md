@@ -4,54 +4,47 @@
 
 T053 is complete.
 
-PULQVA now resolves the T052 logical sidecar resource identifiers from the desktop application's own
-Tauri package resource directory:
+Verified T053 closeout head:
+`17959d1943b574e47ff28ab59b39f144fdd52e84`
 
-- the real command obtains the resource root only from injected `AppHandle` via
-  `app.path().resource_dir()`;
-- frontend supplies no resource/filesystem path;
-- logical sidecar source identifiers remain backend-owned relative paths;
-- empty/traversing package-resource roots fail closed;
-- non-normal logical resource paths fail closed;
-- resolved source paths must remain beneath the package resource root;
-- source and runtime destination must differ;
-- T052 sidecar kind/version/SHA-256 identity metadata is preserved;
-- runtime destinations remain direct children of `runtime/bin`;
-- no source file existence is assumed yet;
-- no file copy/write/chmod/process launch/network access or bundle-resource activation is introduced.
+All 11 required workflows passed for that exact head. T053 is merged on main at
+`3df2c2eefaf64c3398c1d04568c889ff1b3d576f`.
 
-Verified PR head:
-`fc0f1664e72b37f4d67de24d495d0f2a9c26c0bb`
-
-All 11 required workflows passed for that exact head.
-
-## Next atomic task
+## Active atomic task
 
 **T054 — Validate packaged sidecar source artifacts before materialization**
 
-Add a local-only typed validation boundary over the T053 resolved source paths before any executable
-bytes can be copied into `runtime/bin`.
+T054 adds a local-only fail-closed verification capability over the T053 resolved package sources:
 
-Required boundary:
+- package resource root must exist as a real directory and not a symlink;
+- every path component below the resource root is inspected without following symlinks;
+- source leaf must be a real regular file;
+- canonical source paths must remain beneath the canonical package resource root;
+- yt-dlp and FFmpeg sources must match their repository-pinned SHA-256 identities;
+- Arti retains its pinned version identity and receives the same path/file-type containment checks;
+- verified artifacts retain kind, canonical source, runtime destination, identity, and byte size;
+- the real completed-file backend validates package sources before runtime-directory preparation or
+  any sidecar process launch;
+- no runtime destination is created or modified by validation;
+- no chmod, process launch, shell execution, or network access is introduced.
 
-- input is the T053 resolved sidecar materialization plan;
-- each resolved source must exist as a real regular file;
-- symlinks and non-files fail closed;
-- canonical source paths must remain beneath the verified package resource root;
-- yt-dlp and FFmpeg content must match their already pinned SHA-256 identities before becoming valid
-  materialization inputs;
-- Arti retains the existing pinned version identity and must pass the same path/file-type containment
-  checks;
-- validation returns typed verified source artifacts while preserving destination and identity data;
-- no destination file is created or modified;
-- no chmod;
-- no process launch;
-- no external network access;
-- no direct-network fallback.
+T054 also corrects one identity mismatch discovered at task start: the FFmpeg pinned SHA-256 belongs
+to the pinned platform archive, not the extracted `ffmpeg` executable. Therefore the FFmpeg logical
+package source now names the exact pinned archive while the runtime destination remains
+`runtime/bin/ffmpeg(.exe)`. Future materialization must extract the verified archive rather than
+pretend its archive digest authenticates an extracted binary.
+
+Branch:
+`task/T054-validate-packaged-sidecar-source-artifacts`
+
+## Next task
+
+T054 remains next until its exact head is verified green and closed.
 
 ## Do not do yet
 
-- no sidecar binary copy/materialization;
+- no sidecar binary copy/extraction/materialization;
+- no Tauri bundle-resource activation;
 - no installer/release packaging;
 - no external search provider;
 - no AI provider;
@@ -59,5 +52,6 @@ Required boundary:
 
 ## Success
 
-The backend can fail closed on missing, symlinked, escaped, malformed, or hash-mismatched packaged
-sidecar inputs before any executable reaches the app-owned runtime directory.
+Windows/Linux desktop boundary tests and all existing privacy/media checks are green on the exact
+T054 head, and missing, symlinked, escaped, non-file, or hash-mismatched packaged sidecar sources fail
+closed before any runtime executable destination is touched.
