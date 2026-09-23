@@ -14,7 +14,7 @@ use pulqva_privacy::{
 use serde::Serialize;
 use std::{
     ffi::OsString,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     time::Duration,
 };
 
@@ -362,6 +362,118 @@ impl DownloadPreflightInputs {
 
         TorSocksEndpoint::new(inputs.socks_port).map_err(DownloadActionError::from)?;
         Ok(inputs)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AppRuntimeLayout {
+    root: PathBuf,
+}
+
+impl AppRuntimeLayout {
+    fn new(root: impl Into<PathBuf>) -> Result<Self, DownloadActionError> {
+        let root = root.into();
+        if root.as_os_str().is_empty() {
+            return Err(DownloadActionError {
+                code: "runtime-layout-root-missing",
+                message: "application runtime root must not be empty".to_owned(),
+            });
+        }
+        if root
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
+        {
+            return Err(DownloadActionError {
+                code: "runtime-layout-root-traversal",
+                message: "application runtime root must not contain parent-directory traversal"
+                    .to_owned(),
+            });
+        }
+        Ok(Self { root })
+    }
+
+    fn root(&self) -> &Path {
+        &self.root
+    }
+
+    fn derive(&self, relative: &str) -> Result<PathBuf, DownloadActionError> {
+        let relative = Path::new(relative);
+        if relative.as_os_str().is_empty()
+            || relative
+                .components()
+                .any(|component| !matches!(component, Component::Normal(_)))
+        {
+            return Err(DownloadActionError {
+                code: "runtime-layout-derived-path-invalid",
+                message: "runtime layout derived path must be a non-empty relative child path"
+                    .to_owned(),
+            });
+        }
+
+        let derived = self.root.join(relative);
+        if !derived.starts_with(&self.root)
+            || derived
+                .components()
+                .any(|component| matches!(component, Component::ParentDir))
+        {
+            return Err(DownloadActionError {
+                code: "runtime-layout-derived-path-escaped",
+                message: "runtime layout derived path must remain beneath the application root"
+                    .to_owned(),
+            });
+        }
+
+        Ok(derived)
+    }
+
+    fn arti_executable(&self) -> Result<PathBuf, DownloadActionError> {
+        self.derive("arti")
+    }
+
+    fn ytdlp_executable(&self) -> Result<PathBuf, DownloadActionError> {
+        self.derive("yt-dlp")
+    }
+
+    fn ffmpeg_executable(&self) -> Result<PathBuf, DownloadActionError> {
+        self.derive("ffmpeg")
+    }
+
+    fn tor_config_file(&self) -> Result<PathBuf, DownloadActionError> {
+        self.derive("arti/config/pulqva.toml")
+    }
+
+    fn tor_cache_dir(&self) -> Result<PathBuf, DownloadActionError> {
+        self.derive("arti/cache")
+    }
+
+    fn tor_state_dir(&self) -> Result<PathBuf, DownloadActionError> {
+        self.derive("arti/state")
+    }
+
+    fn output_root(&self) -> Result<PathBuf, DownloadActionError> {
+        self.derive("downloads")
+    }
+
+    fn download_preflight_inputs(&self) -> Result<DownloadPreflightInputs, DownloadActionError> {
+        DownloadPreflightInputs::new(
+            self.arti_executable()?,
+            self.ytdlp_executable()?,
+            self.tor_config_file()?,
+            self.tor_cache_dir()?,
+            self.tor_state_dir()?,
+            self.output_root()?,
+            DEFAULT_TOR_SOCKS_PORT,
+        )
+    }
+
+    fn completed_file_pipeline_inputs(
+        &self,
+    ) -> Result<CompletedFilePipelineInputs, DownloadActionError> {
+        CompletedFilePipelineInputs::new(
+            self.download_preflight_inputs()?,
+            self.ffmpeg_executable()?,
+            Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS),
+        )
     }
 }
 
@@ -819,25 +931,8 @@ fn launch_tor_gated_media_request(
     }
 }
 
-fn default_download_preflight_inputs() -> Result<DownloadPreflightInputs, DownloadActionError> {
-    DownloadPreflightInputs::new(
-        "runtime/arti",
-        "runtime/yt-dlp",
-        "runtime/arti/config/pulqva.toml",
-        "runtime/arti/cache",
-        "runtime/arti/state",
-        "downloads",
-        DEFAULT_TOR_SOCKS_PORT,
-    )
-}
-
-fn default_completed_file_pipeline_inputs(
-) -> Result<CompletedFilePipelineInputs, DownloadActionError> {
-    CompletedFilePipelineInputs::new(
-        default_download_preflight_inputs()?,
-        "runtime/ffmpeg",
-        Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS),
-    )
+fn default_app_runtime_layout() -> Result<AppRuntimeLayout, DownloadActionError> {
+    AppRuntimeLayout::new("runtime")
 }
 
 fn prepare_completed_file_command(
@@ -854,7 +949,8 @@ fn prepare_completed_file_command(
 
     // Reject validated-but-unsupported candidates before any blocking/runtime work starts.
     let _approved_source = resolve_backend_media_source(&candidate)?;
-    let inputs = default_completed_file_pipeline_inputs()?;
+    let layout = default_app_runtime_layout()?;
+    let inputs = layout.completed_file_pipeline_inputs()?;
     Ok((candidate, inputs))
 }
 
@@ -932,7 +1028,8 @@ fn plan_local_download(
             code: "candidate-not-found",
             message: "candidate locator is not present in the validated local candidate set".to_owned(),
         })?;
-    let _preflight = build_download_preflight(&candidate, default_download_preflight_inputs()?)?;
+    let layout = default_app_runtime_layout()?;
+    let _preflight = build_download_preflight(&candidate, layout.download_preflight_inputs()?)?;
 
     Ok(DownloadAction {
         intent_query: intent.query().to_owned(),
@@ -977,8 +1074,9 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        DEFAULT_TOR_READY_TIMEOUT_SECS, DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs,
-        T024_MEDIA_SOURCE_URL, T024_PROOF_LOCATOR, app_status, build_download_preflight,
+        AppRuntimeLayout, DEFAULT_TOR_READY_TIMEOUT_SECS, DEFAULT_TOR_SOCKS_PORT,
+        DownloadPreflightInputs, T024_MEDIA_SOURCE_URL, T024_PROOF_LOCATOR, app_status,
+        build_download_preflight,
         establish_tor_ready_download_runtime, list_local_candidates, local_candidate_by_locator,
         plan_local_download, prepare_completed_file_command, prepare_download_runtime,
         resolve_backend_media_source, select_local_candidate, submit_intent,
@@ -1310,7 +1408,50 @@ mod tests {
     }
 
     #[test]
-    fn completed_file_command_preflight_uses_backend_owned_runtime_inputs() {
+    fn app_runtime_layout_derives_every_backend_path_beneath_one_root() {
+        let layout = AppRuntimeLayout::new("runtime").expect("runtime root is valid");
+
+        assert_eq!(layout.root(), Path::new("runtime"));
+        assert_eq!(layout.arti_executable().unwrap(), Path::new("runtime/arti"));
+        assert_eq!(layout.ytdlp_executable().unwrap(), Path::new("runtime/yt-dlp"));
+        assert_eq!(layout.ffmpeg_executable().unwrap(), Path::new("runtime/ffmpeg"));
+        assert_eq!(
+            layout.tor_config_file().unwrap(),
+            Path::new("runtime/arti/config/pulqva.toml")
+        );
+        assert_eq!(layout.tor_cache_dir().unwrap(), Path::new("runtime/arti/cache"));
+        assert_eq!(layout.tor_state_dir().unwrap(), Path::new("runtime/arti/state"));
+        assert_eq!(layout.output_root().unwrap(), Path::new("runtime/downloads"));
+
+        for path in [
+            layout.arti_executable().unwrap(),
+            layout.ytdlp_executable().unwrap(),
+            layout.ffmpeg_executable().unwrap(),
+            layout.tor_config_file().unwrap(),
+            layout.tor_cache_dir().unwrap(),
+            layout.tor_state_dir().unwrap(),
+            layout.output_root().unwrap(),
+        ] {
+            assert!(path.starts_with(layout.root()));
+            assert!(!path
+                .components()
+                .any(|component| matches!(component, std::path::Component::ParentDir)));
+        }
+    }
+
+    #[test]
+    fn app_runtime_layout_rejects_missing_or_traversing_root() {
+        let missing = AppRuntimeLayout::new("").expect_err("empty root must fail closed");
+        assert_eq!(missing.code, "runtime-layout-root-missing");
+
+        let traversal =
+            AppRuntimeLayout::new(PathBuf::from("runtime").join("..").join("escape"))
+                .expect_err("parent traversal must fail closed");
+        assert_eq!(traversal.code, "runtime-layout-root-traversal");
+    }
+
+    #[test]
+    fn completed_file_command_preflight_uses_backend_owned_runtime_layout() {
         let (candidate, inputs) = prepare_completed_file_command(
             "find the official live performance".to_owned(),
             T024_PROOF_LOCATOR.to_owned(),
@@ -1320,7 +1461,13 @@ mod tests {
         assert_eq!(candidate.locator(), T024_PROOF_LOCATOR);
         assert_eq!(inputs.download.arti_executable, Path::new("runtime/arti"));
         assert_eq!(inputs.download.ytdlp_executable, Path::new("runtime/yt-dlp"));
-        assert_eq!(inputs.download.output_root, Path::new("downloads"));
+        assert_eq!(
+            inputs.download.tor_config_file,
+            Path::new("runtime/arti/config/pulqva.toml")
+        );
+        assert_eq!(inputs.download.tor_cache_dir, Path::new("runtime/arti/cache"));
+        assert_eq!(inputs.download.tor_state_dir, Path::new("runtime/arti/state"));
+        assert_eq!(inputs.download.output_root, Path::new("runtime/downloads"));
         assert_eq!(inputs.ffmpeg_executable, Path::new("runtime/ffmpeg"));
         assert_eq!(
             inputs.tor_ready_timeout,

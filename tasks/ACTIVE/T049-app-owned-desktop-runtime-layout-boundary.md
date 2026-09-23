@@ -1,7 +1,7 @@
 # T049 — Add an app-owned desktop runtime layout boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
