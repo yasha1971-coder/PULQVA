@@ -22,8 +22,7 @@ pub(super) struct MaterializedYtDlp {
 }
 
 impl MaterializedYtDlp {
-    #[cfg(test)]
-    fn path(&self) -> &Path {
+    pub(super) fn path(&self) -> &Path {
         &self.path
     }
 

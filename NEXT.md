@@ -2,56 +2,54 @@
 
 ## Current verified state
 
-T055 implementation is complete and verified.
+T056 implementation is complete and verified.
 
 Verified implementation head:
-`05c37563301c0d3d953909f4d45b4642442c6d02`
+`c06539668b8d9dc94ea8e61138b5ab144a56623f`
 
 All 11 required workflows passed for that exact head, including Windows and Linux desktop tests.
 
-T055 now provides a backend-only no-clobber yt-dlp materialization boundary:
+T056 now wires the T055 verified yt-dlp materializer into the real completed-file backend prelaunch
+path:
 
-- accepts only the verified yt-dlp direct-binary artifact;
-- binds to backend-pinned version and SHA-256 identity;
-- rechecks package-source containment and runtime destination layout;
-- rejects unsupported kinds, unsafe paths, symlink/file-type hazards, and hard-link aliases;
-- preserves different existing destinations and reuses only matching verified content;
-- rehashes the bytes actually copied into an exclusive staging file;
-- synchronizes the complete staged file and publishes by same-directory hard link;
-- has no overwrite fallback, shell command, process launch, frontend filesystem authority, or network
-  operation.
+- package sources are validated first;
+- exactly one verified yt-dlp artifact is required;
+- runtime directories are prepared before publication;
+- the real T055 materializer runs before any yt-dlp process launch;
+- the materialized path must equal both the app-owned runtime layout destination and the backend
+  completed-file yt-dlp input;
+- missing/duplicate artifacts and path mismatches fail closed before process launch.
 
-The Windows repair at the verified head canonicalizes the trusted package resource root before
-component inspection so canonical artifact paths are accepted without weakening final containment.
-
-## Trust limits that remain
-
-- parent-directory replacement races after validation are not claimed fully solved;
-- ordinary Windows CI is not adversarial reparse-point proof;
-- hard-link unsupported filesystems fail closed;
-- file synchronization is not a universal directory-metadata durability guarantee;
-- T055 did not install a real packaged yt-dlp resource;
-- Arti still lacks pinned executable content authentication in this path;
-- FFmpeg's pinned SHA-256 authenticates its archive, not an extracted executable.
+No frontend filesystem authority, shell command, new network operation, direct-network fallback,
+Arti materialization, FFmpeg extraction, bundle activation, installer, external provider, or AI
+provider was added.
 
 ## Closeout
 
 Branch:
-`task/T055-atomic-ytdlp-sidecar-materialization`
+`task/T056-wire-ytdlp-materialization-into-backend-prelaunch`
 
-Draft PR:
-#57
+PR:
+#58
 
-The implementation head is green, but this closeout commit must pass its own CI before PR #57 may
-be marked ready/merged.
+The implementation head is green, but this closeout commit must pass its own CI before PR #58 may
+be merged.
 
-## Next atomic task after T055 merge
+## Next atomic task after T056 merge
 
-**T056 — Wire verified yt-dlp materialization into backend prelaunch preparation**
+**T057 — Establish packaged Arti executable content identity**
 
-Bind the T055 materializer into the real completed-file backend flow after source validation and
-runtime-directory preparation, before yt-dlp launch. T056 must not silently absorb Arti
-materialization, FFmpeg extraction, packaging, installer work, external providers, or any
-direct-network fallback.
+Arti is now the next prelaunch dependency gap. Its current metadata proves a pinned version and
+path/file type only; it does not authenticate executable bytes. T057 must create a platform-specific
+SHA-256 identity contract for the exact packaged Arti executables before any Arti materialization is
+attempted.
 
-Do not start T056 before PR #57 closeout is green and merged.
+Do not start T057 before PR #58 closeout is green and merged.
+
+## Trust limits retained
+
+- T055/T056 do not make a real release package exist; package-resource population remains separate.
+- Arti version metadata is not executable authentication until T057 or later establishes content
+  identity.
+- FFmpeg's pinned SHA-256 authenticates its archive, not an extracted executable.
+- Existing parent-directory race/reparse/durability limitations from T055 remain explicitly retained.
