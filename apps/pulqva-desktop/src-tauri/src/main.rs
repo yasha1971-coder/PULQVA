@@ -1,3 +1,5 @@
+mod ytdlp_materialize;
+
 use pulqva_core::{
     CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
 };
