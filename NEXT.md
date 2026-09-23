@@ -2,50 +2,54 @@
 
 ## Current verified state
 
-T055 is complete and merged on main at
-`2d99206da86ab64412516d26b762bc01cc9a6771`.
+T056 implementation is complete and verified.
 
-Verified T055 closeout head:
-`c40ad5d6feb52d308c5d9c7b3febb642c5b3cdeb`.
+Verified implementation head:
+`c06539668b8d9dc94ea8e61138b5ab144a56623f`
 
-All 11 required workflows passed for that exact closeout head.
+All 11 required workflows passed for that exact head, including Windows and Linux desktop tests.
 
-## Active atomic task
+T056 now wires the T055 verified yt-dlp materializer into the real completed-file backend prelaunch
+path:
 
-**T056 — Wire verified yt-dlp materialization into backend prelaunch preparation**
+- package sources are validated first;
+- exactly one verified yt-dlp artifact is required;
+- runtime directories are prepared before publication;
+- the real T055 materializer runs before any yt-dlp process launch;
+- the materialized path must equal both the app-owned runtime layout destination and the backend
+  completed-file yt-dlp input;
+- missing/duplicate artifacts and path mismatches fail closed before process launch.
 
-T056 connects the T055 direct-binary materializer to the real completed-file backend flow without
-expanding scope to Arti or FFmpeg materialization.
+No frontend filesystem authority, shell command, new network operation, direct-network fallback,
+Arti materialization, FFmpeg extraction, bundle activation, installer, external provider, or AI
+provider was added.
 
-Implemented ordering:
-
-1. frontend query/locator are validated into backend-owned candidate/pipeline inputs;
-2. Tauri AppHandle resolves the package resource plan;
-3. blocking backend validates all packaged sidecar sources;
-4. exactly one verified yt-dlp artifact is selected;
-5. app-owned runtime directories are prepared;
-6. T055 atomically materializes that verified yt-dlp artifact;
-7. the returned materialized path must equal both the runtime layout yt-dlp destination and the
-   already backend-derived completed-file input path;
-8. only then may the existing completed-file pipeline proceed toward Arti/Tor/yt-dlp launch.
-
-Missing or duplicate verified yt-dlp artifacts fail before runtime-directory mutation and before the
-materializer callback. A wrong materialized path fails before pipeline launch.
-
-No frontend filesystem path is accepted. No shell command, new network operation, direct-network
-fallback, Arti executable materialization, FFmpeg archive extraction, Tauri bundle activation,
-installer, external provider, or AI provider is added.
-
-Tests use an internal materializer callback only to prove ordering/fail-closed behavior without
-pretending fixture bytes are the repository-pinned yt-dlp binary. The production path calls the real
-T055 materializer with backend-pinned identity metadata.
+## Closeout
 
 Branch:
 `task/T056-wire-ytdlp-materialization-into-backend-prelaunch`
 
-## Next action
+PR:
+#58
 
-Inspect the exact T056 implementation head and all triggered CI. Repair only a concrete failure, or
-close T056 if all required checks are green.
+The implementation head is green, but this closeout commit must pass its own CI before PR #58 may
+be merged.
 
-Do not start another task in the same response.
+## Next atomic task after T056 merge
+
+**T057 — Establish packaged Arti executable content identity**
+
+Arti is now the next prelaunch dependency gap. Its current metadata proves a pinned version and
+path/file type only; it does not authenticate executable bytes. T057 must create a platform-specific
+SHA-256 identity contract for the exact packaged Arti executables before any Arti materialization is
+attempted.
+
+Do not start T057 before PR #58 closeout is green and merged.
+
+## Trust limits retained
+
+- T055/T056 do not make a real release package exist; package-resource population remains separate.
+- Arti version metadata is not executable authentication until T057 or later establishes content
+  identity.
+- FFmpeg's pinned SHA-256 authenticates its archive, not an extracted executable.
+- Existing parent-directory race/reparse/durability limitations from T055 remain explicitly retained.
