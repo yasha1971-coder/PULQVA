@@ -1,88 +1,57 @@
 # NEXT
 
-## Verified base and PREPARE proof
+## Current verified state
 
-T054 is merged. Main base for T055:
-`dff37d8f4c2448e7c0ace03a02e28444e488ec6c`.
+T055 implementation is complete and verified.
 
-T055 PREPARE/prototype head:
-`cd2ce4b47d6e5ad58ff31f0e13c89a0e3172e758`.
+Verified implementation head:
+`05c37563301c0d3d953909f4d45b4642442c6d02`
 
-All 11 triggered workflows passed for that exact PREPARE head. That green proof validates the
-test-only publication primitives, not completion of T055.
+All 11 required workflows passed for that exact head, including Windows and Linux desktop tests.
 
-## Active task
+T055 now provides a backend-only no-clobber yt-dlp materialization boundary:
 
-**T055 — Atomically materialize the verified yt-dlp direct-binary artifact**
+- accepts only the verified yt-dlp direct-binary artifact;
+- binds to backend-pinned version and SHA-256 identity;
+- rechecks package-source containment and runtime destination layout;
+- rejects unsupported kinds, unsafe paths, symlink/file-type hazards, and hard-link aliases;
+- preserves different existing destinations and reuses only matching verified content;
+- rehashes the bytes actually copied into an exclusive staging file;
+- synchronizes the complete staged file and publishes by same-directory hard link;
+- has no overwrite fallback, shell command, process launch, frontend filesystem authority, or network
+  operation.
 
-Phase: IMPLEMENT. T055 is NOT DONE.
-Branch: `task/T055-atomic-ytdlp-sidecar-materialization`.
-Draft PR: #57.
+The Windows repair at the verified head canonicalizes the trusted package resource root before
+component inspection so canonical artifact paths are accepted without weakening final containment.
 
-The current branch now adds the production internal boundary
-`apps/pulqva-desktop/src-tauri/src/ytdlp_materialize.rs`.
+## Trust limits that remain
 
-Implemented behavior:
+- parent-directory replacement races after validation are not claimed fully solved;
+- ordinary Windows CI is not adversarial reparse-point proof;
+- hard-link unsupported filesystems fail closed;
+- file synchronization is not a universal directory-metadata durability guarantee;
+- T055 did not install a real packaged yt-dlp resource;
+- Arti still lacks pinned executable content authentication in this path;
+- FFmpeg's pinned SHA-256 authenticates its archive, not an extracted executable.
 
-- input is the prepared app-runtime-directory capability, the verified package resource root, and one
-  T054 verified artifact;
-- only `BundledSidecarKind::YtDlp` is accepted;
-- expected version and SHA-256 are resolved from backend-pinned yt-dlp metadata in production;
-- artifact identity, source containment, source file type, receipt size, runtime destination, and
-  source/destination aliases are revalidated before publication;
-- `runtime/bin` is created only as a real app-owned directory and canonicalized beneath the
-  prepared runtime root;
-- a different or unsafe existing destination is preserved and rejected;
-- a matching verified existing destination may be reused without mutation;
-- copied bytes are streamed in bounded buffers into an exclusive staging file and SHA-256 checked
-  again, so T054 path validation alone is never treated as an immutable byte snapshot;
-- Unix executable permission is applied only to the owned staging file;
-- the staged file is synchronized and published with no-clobber `hard_link`; no overwrite/rename
-  fallback exists;
-- staging cleanup checks the staging file identity before deletion;
-- competing publishers may converge on the same verified destination;
-- the production boundary does not run the executable, touch frontend authority, make network
-  requests, or wire the live Download command.
+## Closeout
 
-Production-boundary tests cover success/reuse, source mutation, unsupported kind, identity mismatch,
-escaped source, hard-link alias, preservation of a different destination, competing publishers, and
-Unix symlink source/destination hazards. The earlier primitive proof remains as separate evidence.
+Branch:
+`task/T055-atomic-ytdlp-sidecar-materialization`
 
-## Trust limits that must not be lost
+Draft PR:
+#57
 
-- FFmpeg's pinned digest authenticates its archive, not an extracted executable. Never route FFmpeg
-  through this direct-binary materializer.
-- Arti still has version metadata without a pinned executable content digest. Never route Arti
-  through this boundary.
-- Concurrent replacement of parent directories after validation is not claimed fully prevented.
-- Windows ordinary CI does not prove adversarial reparse-point handling.
-- `hard_link` requires filesystem support; unsupported publication fails closed rather than
-  falling back to an overwriting operation.
-- File `sync_all` is not a claim of crash-durable directory metadata on every filesystem.
-- A post-publication staging-cleanup error must never trigger deletion of the verified destination.
-- This task still does not install a real bundled yt-dlp resource in a release package.
+The implementation head is green, but this closeout commit must pass its own CI before PR #57 may
+be marked ready/merged.
 
-## Recovery after first IMPLEMENT CI
+## Next atomic task after T055 merge
 
-IMPLEMENT head `75aea52626e5f70f5fd8a5864556ce7533470d0a` produced 10/11 green workflows.
-Only `desktop-shell-check` failed, and only its Windows test job failed. Windows compilation passed.
-Five production T055 tests all failed early with `ytdlp-materialization-source-escaped`.
+**T056 — Wire verified yt-dlp materialization into backend prelaunch preparation**
 
-Root cause: the test artifact source is canonicalized; on Windows that can carry the canonical
-extended path form while the supplied resource-root path remains lexically non-canonical. The
-containment helper compared those path spellings before canonicalizing the root, so valid contained
-sources were rejected before their intended test paths ran.
+Bind the T055 materializer into the real completed-file backend flow after source validation and
+runtime-directory preparation, before yt-dlp launch. T056 must not silently absorb Arti
+materialization, FFmpeg extraction, packaging, installer work, external providers, or any
+direct-network fallback.
 
-The repair canonicalizes the trusted resource root first, accepts either the original trusted root
-spelling or its canonical spelling as the containment base, then performs component/symlink
-inspection from the canonical root and retains the final canonical containment check. This does not
-weaken the escape or symlink fail-closed rules.
-
-## Immediate next action
-
-Inspect the exact repair head's triggered CI. If any check fails, diagnose only that concrete
-failure. If all required checks are green, close T055 in a separate closeout phase; do not merge or
-start T056 yet.
-
-No Arti materialization, FFmpeg extraction, live command wiring, Tauri bundle activation, installer,
-external provider, or direct-network fallback is introduced here.
+Do not start T056 before PR #57 closeout is green and merged.
