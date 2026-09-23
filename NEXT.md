@@ -1,57 +1,62 @@
 # NEXT
 
-## Verified implementation; closeout pending
+## Verified base
 
-T054 implementation is verified at `a1caa4eb310e472333eb4263223b28c0ff22327b`.
-All 11 triggered workflows passed for that exact head, including Windows/Linux desktop tests.
-The task record is DONE for that implementation; the closeout commit still requires its own CI.
-`PROJECT_STATE.ci` deliberately remains `pending` until the new head is observed green.
+T054 is merged through PR #56. Verified closeout head:
+`e25ebb09fc35ea6937999e3b81c26f2361417377`.
+Main observed at startup: `dff37d8f4c2448e7c0ace03a02e28444e488ec6c`.
+The main-head Actions success query returned 11 successful runs; this observation is not the CI
+result for any newer T055 commit. There were no open PRs at startup.
 
-PR: #56
-Branch: `task/T054-validate-packaged-sidecar-source-artifacts`
-Main observed before closeout: `3df2c2eefaf64c3398c1d04568c889ff1b3d576f`
-The latest PR #56 checkpoint records the exact closeout SHA and observed CI state.
-
-## What T054 implements
-
-The backend validates resolved packaged sources before runtime-directory preparation or sidecar
-launch. The package root must be a real directory. Source components reject symlinks and invalid
-file types; canonical source paths must remain beneath the canonical resource root. Exactly one
-Arti, yt-dlp, and FFmpeg entry is required. yt-dlp and FFmpeg inputs are hashed locally in bounded
-buffers and compared to their pinned source digests. Typed results retain kind, canonical source,
-destination, identity, and size. Validation does not create or modify runtime destinations.
-
-## Continuity notes that must not be lost
-
-- FFmpeg's pinned digest authenticates its platform archive, NOT the extracted executable. The
-  packaged source is now the exact `.tar.xz` or `.zip` archive; its eventual destination is still
-  `runtime/bin/ffmpeg(.exe)`. Never copy archive bytes directly to that executable destination.
-- Arti currently retains version metadata and file/path validation only. It has no pinned content
-  digest here, and no version command runs during validation. Do not describe this as binary
-  authentication or use the stored version string as proof of executable contents.
-- T054 returns paths, not immutable file snapshots. A later materializer must revalidate the bytes
-  it actually copies; an earlier successful hash alone cannot authenticate a changed file.
-- Existing runtime executables are not authenticated or replaced by T054. Materialization, secure
-  publication, archive extraction, and release packaging remain separate work.
-- Regression tests added by T054 cover fixture success, hash mismatch, and non-file rejection.
-  Do not claim a real packaged three-sidecar installation was exercised by those fixture tests.
-
-## Immediate next action
-
-Inspect PR #56's current head and all triggered checks. Merge only when that exact closeout head
-is green and unchanged. On failure, diagnose only the concrete failure. Do not begin T055 before
-T054 closes and merges.
-
-## Next atomic task after merge
+## Active task and bounded phase
 
 **T055 — Atomically materialize the verified yt-dlp direct-binary artifact**
 
-Implement one backend-only local publication boundary for yt-dlp, whose pinned digest describes
-its direct executable bytes. Reuse the prepared runtime layout and T054 verified input; revalidate
-source containment and the bytes being copied, publish only a fully verified staged file under
-`runtime/bin`, and preserve existing files on failure. Reject archives and unsupported sidecar
-kinds at this boundary. The detailed READY task defines the tests and scope.
+Phase: PREPARE / executable publication-strategy proof. T055 is NOT DONE.
+Branch: `task/T055-atomic-ytdlp-sidecar-materialization`.
+The draft PR and its latest checkpoint are the authority for this branch's exact head and CI runs.
 
-T055 is queued, not started. Arti authentication and FFmpeg archive extraction are not silently
-folded into this task. No frontend filesystem authority, network fallback, bundle activation,
-installer, external search provider, or AI provider is introduced by this closeout.
+This phase adds an isolated Windows/Linux test target:
+`apps/pulqva-desktop/src-tauri/tests/t055_publication_contract.rs`.
+It exercises a test-only staging algorithm and filesystem publication primitives, not the shipped
+materializer. No production source, live download command, dependency, or frozen kernel was changed.
+
+The tests exercise bounded copy/hash of the actual stream, complete-file publication by hard link,
+no-clobber preservation, exclusive staging creation, cleanup on hash/read failure, rejection of a
+source changed after an earlier receipt, competing publishers, and Unix-only symlink/permission
+cases. They have NOT been executed locally: this session has no Rust toolchain. Only observed CI
+may establish whether they pass. A green run of these tests is NOT completion of T055.
+
+## Implementation decision and limits
+
+Use exclusive staging creation, hash the bytes written, synchronize the completed staging file,
+and publish without replacing any destination. `std::fs::hard_link` is the proposed no-clobber
+publication primitive; reject unsupported filesystems rather than falling back to overwrite/rename.
+See `tasks/ACTIVE/T055-atomic-ytdlp-sidecar-materialization.md` for the implementation checklist.
+
+The test helper intentionally assumes its temporary directory is owned and not concurrently
+replaced. It is NOT a production containment or path-race defense. Production work must bind the
+prepared runtime capability and T054 artifact, validate identities and aliases, and address or
+explicitly retain concurrent-directory-replacement limitations. Do not promote the test helper
+unchanged and claim full safety. File synchronization is not a claim of crash-durable directory
+publication on every filesystem. Unix-only tests do not constitute Windows reparse-point proof.
+
+## Immediate next action
+
+Inspect the draft PR's exact head and CI. Diagnose a concrete failure first. If the primitive proof
+is green, continue the IMPLEMENT phase of T055 on this SAME branch: add the typed backend boundary
+and production-boundary tests. Keep the PR draft and T055 ACTIVE until all acceptance criteria are
+implemented and the exact implementation head is verified. Do not create a parallel T055 branch,
+merge a test-only draft, or advance to another task.
+
+## Continuity notes that must not be lost
+
+- FFmpeg's pinned digest authenticates the platform archive, NOT an extracted executable. Never
+  copy archive bytes to `runtime/bin/ffmpeg(.exe)`.
+- Arti currently has version metadata plus path/file-type checks, not a pinned executable digest.
+  The version string is not binary authentication.
+- T054 returns paths, not immutable snapshots. Revalidate containment and the actual bytes copied.
+- Existing runtime executables must not be overwritten or trusted merely because they exist.
+- Preserve the frozen kernel, Tor-first fail-closed behavior, and backend-only filesystem authority.
+- This phase neither materializes nor runs any real sidecar. No bundle activation, installer,
+  external search, AI provider, or direct-network fallback is introduced.
