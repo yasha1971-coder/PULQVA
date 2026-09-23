@@ -365,16 +365,28 @@ fn validate_source_under_resource_root(
         });
     }
 
-    if !source.starts_with(resource_root) {
+    let canonical_root = fs::canonicalize(resource_root).map_err(|source| DownloadActionError {
+        code: "ytdlp-resource-root-canonicalization-failed",
+        message: format!(
+            "failed to canonicalize yt-dlp package resource root {}: {source}",
+            resource_root.display()
+        ),
+    })?;
+
+    let containment_root = if source.starts_with(resource_root) {
+        resource_root
+    } else if source.starts_with(&canonical_root) {
+        canonical_root.as_path()
+    } else {
         return Err(DownloadActionError {
             code: "ytdlp-materialization-source-escaped",
             message: "verified yt-dlp source must remain beneath the package resource root"
                 .to_owned(),
         });
-    }
+    };
 
     let relative = source
-        .strip_prefix(resource_root)
+        .strip_prefix(containment_root)
         .map_err(|source| DownloadActionError {
             code: "ytdlp-materialization-source-escaped",
             message: format!("failed to verify yt-dlp source containment: {source}"),
@@ -390,7 +402,7 @@ fn validate_source_under_resource_root(
         });
     }
 
-    let mut cursor = resource_root.to_path_buf();
+    let mut cursor = canonical_root.clone();
     let components = relative.components().collect::<Vec<_>>();
     for (index, component) in components.iter().enumerate() {
         let Component::Normal(part) = component else {
@@ -431,13 +443,6 @@ fn validate_source_under_resource_root(
         }
     }
 
-    let canonical_root = fs::canonicalize(resource_root).map_err(|source| DownloadActionError {
-        code: "ytdlp-resource-root-canonicalization-failed",
-        message: format!(
-            "failed to canonicalize yt-dlp package resource root {}: {source}",
-            resource_root.display()
-        ),
-    })?;
     let canonical_source = fs::canonicalize(source).map_err(|source| DownloadActionError {
         code: "ytdlp-materialization-source-canonicalization-failed",
         message: format!("failed to canonicalize verified yt-dlp source: {source}"),

@@ -62,11 +62,27 @@ Unix symlink source/destination hazards. The earlier primitive proof remains as 
 - A post-publication staging-cleanup error must never trigger deletion of the verified destination.
 - This task still does not install a real bundled yt-dlp resource in a release package.
 
+## Recovery after first IMPLEMENT CI
+
+IMPLEMENT head `75aea52626e5f70f5fd8a5864556ce7533470d0a` produced 10/11 green workflows.
+Only `desktop-shell-check` failed, and only its Windows test job failed. Windows compilation passed.
+Five production T055 tests all failed early with `ytdlp-materialization-source-escaped`.
+
+Root cause: the test artifact source is canonicalized; on Windows that can carry the canonical
+extended path form while the supplied resource-root path remains lexically non-canonical. The
+containment helper compared those path spellings before canonicalizing the root, so valid contained
+sources were rejected before their intended test paths ran.
+
+The repair canonicalizes the trusted resource root first, accepts either the original trusted root
+spelling or its canonical spelling as the containment base, then performs component/symlink
+inspection from the canonical root and retains the final canonical containment check. This does not
+weaken the escape or symlink fail-closed rules.
+
 ## Immediate next action
 
-Inspect the draft PR's exact IMPLEMENT head and its triggered CI. If any check fails, diagnose only
-that concrete failure. If all required checks are green, close T055 in a separate closeout phase;
-do not merge or start T056 on the strength of the earlier PREPARE run.
+Inspect the exact repair head's triggered CI. If any check fails, diagnose only that concrete
+failure. If all required checks are green, close T055 in a separate closeout phase; do not merge or
+start T056 yet.
 
 No Arti materialization, FFmpeg extraction, live command wiring, Tauri bundle activation, installer,
 external provider, or direct-network fallback is introduced here.
