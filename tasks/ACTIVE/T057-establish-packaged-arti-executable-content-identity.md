@@ -1,7 +1,7 @@
 # T057 — Establish packaged Arti executable content identity
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
@@ -29,3 +29,24 @@ launching it yet.
 
 Arti runtime materialization, Tor launch changes, FFmpeg extraction/materialization, Tauri bundle
 activation, installer/release packaging, external providers, and direct-network fallback.
+
+
+## Current phase: PREPARE / identity capture
+
+The repository did not contain a content digest for the exact Arti executable bytes. This phase
+changes the existing Windows/Linux Arti CI build into an explicit identity-candidate build recipe
+and emits the exact SHA-256 plus byte size for each produced executable.
+
+The candidate recipe remains pinned to:
+
+- Arti 2.6.0;
+- Rust 1.91.0;
+- Cargo --locked;
+- Windows static-sqlite feature;
+- fixed runner-local install/target directory names;
+- no Tor bootstrap or network use by the produced executable.
+
+This phase does not yet define the committed immutable SHA256SUMS contract. T057 remains ACTIVE
+until a later phase reads the exact CI receipts, commits one platform digest per supported target,
+binds those digests into backend metadata, and re-runs CI to prove the same production recipe matches
+the committed identities.

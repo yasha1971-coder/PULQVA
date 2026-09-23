@@ -13,7 +13,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-latest]
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x86_64
+            executable: arti
+            feature_args: ""
+          - os: windows-latest
+            platform: windows-x86_64
+            executable: arti.exe
+            feature_args: "--features static-sqlite"
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -25,35 +33,77 @@ jobs:
           rustup toolchain install 1.91.0 --profile minimal
           rustup default 1.91.0
 
-      - name: Build exact Arti sidecar without running Tor
+      - name: Build exact Arti identity candidate without running Tor
         shell: bash
+        env:
+          PULQVA_ARTI_PLATFORM: ${{ matrix.platform }}
+          PULQVA_ARTI_EXECUTABLE: ${{ matrix.executable }}
+          PULQVA_ARTI_FEATURE_ARGS: ${{ matrix.feature_args }}
         run: |
           set -euo pipefail
+
           ARTI_VERSION="$(tr -d '\r\n' < sidecars/arti/VERSION)"
           test "$ARTI_VERSION" = "2.6.0"
 
-          EXTRA_FEATURES=()
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            EXTRA_FEATURES=(--features static-sqlite)
+          INSTALL_ROOT="$RUNNER_TEMP/pulqva-arti-root"
+          TARGET_ROOT="$RUNNER_TEMP/pulqva-arti-target"
+          rm -rf "$INSTALL_ROOT" "$TARGET_ROOT"
+
+          FEATURE_ARGS=()
+          if [ -n "$PULQVA_ARTI_FEATURE_ARGS" ]; then
+            FEATURE_ARGS=($PULQVA_ARTI_FEATURE_ARGS)
           fi
 
-          cargo +1.91.0 install arti \
-            --version "$ARTI_VERSION" \
-            --locked \
-            "${EXTRA_FEATURES[@]}" \
-            --root "$RUNNER_TEMP/arti-root"
+          CARGO_INCREMENTAL=0           cargo +1.91.0 install arti             --version "$ARTI_VERSION"             --locked             "${FEATURE_ARGS[@]}"             --root "$INSTALL_ROOT"             --target-dir "$TARGET_ROOT"
+
+          ARTI_BIN="$INSTALL_ROOT/bin/$PULQVA_ARTI_EXECUTABLE"
+          test -f "$ARTI_BIN"
+
+          echo "PULQVA_ARTI_BIN=$ARTI_BIN" >> "$GITHUB_ENV"
+          echo "PULQVA_ARTI_VERSION=$ARTI_VERSION" >> "$GITHUB_ENV"
 
       - name: Verify Arti binary and proxy CLI without bootstrapping
         shell: bash
         run: |
           set -euo pipefail
-          ARTI_BIN="$RUNNER_TEMP/arti-root/bin/arti"
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            ARTI_BIN="${ARTI_BIN}.exe"
-          fi
-          test -f "$ARTI_BIN"
-          VERSION_OUTPUT="$("$ARTI_BIN" --version)"
+          VERSION_OUTPUT="$("$PULQVA_ARTI_BIN" --version)"
           echo "$VERSION_OUTPUT"
-          echo "$VERSION_OUTPUT" | grep -F "2.6.0"
-          "$ARTI_BIN" help proxy > "$RUNNER_TEMP/arti-proxy-help.txt"
+          echo "$VERSION_OUTPUT" | grep -F "$PULQVA_ARTI_VERSION"
+          "$PULQVA_ARTI_BIN" help proxy > "$RUNNER_TEMP/arti-proxy-help.txt"
           grep -i "proxy" "$RUNNER_TEMP/arti-proxy-help.txt"
+
+      - name: Emit exact packaged-executable identity candidate
+        shell: bash
+        env:
+          PULQVA_ARTI_PLATFORM: ${{ matrix.platform }}
+          PULQVA_ARTI_EXECUTABLE: ${{ matrix.executable }}
+          PULQVA_ARTI_FEATURE_ARGS: ${{ matrix.feature_args }}
+        run: |
+          set -euo pipefail
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            SHA256="$(powershell.exe -NoProfile -Command "(Get-FileHash -Algorithm SHA256 -LiteralPath '$PULQVA_ARTI_BIN').Hash.ToLowerInvariant()" | tr -d '\r\n')"
+          else
+            SHA256="$(sha256sum "$PULQVA_ARTI_BIN" | awk '{print $1}')"
+          fi
+
+          test "${#SHA256}" -eq 64
+          echo "$SHA256" | grep -Eq '^[0-9a-f]{64}$'
+
+          BYTE_SIZE="$(wc -c < "$PULQVA_ARTI_BIN" | tr -d '[:space:]')"
+          test "$BYTE_SIZE" -gt 0
+
+          RECEIPT="$RUNNER_TEMP/arti-identity-${PULQVA_ARTI_PLATFORM}.txt"
+          {
+            echo "platform=$PULQVA_ARTI_PLATFORM"
+            echo "version=$PULQVA_ARTI_VERSION"
+            echo "executable=$PULQVA_ARTI_EXECUTABLE"
+            echo "sha256=$SHA256"
+            echo "byte_size=$BYTE_SIZE"
+            echo "rust_toolchain=1.91.0"
+            echo "cargo_locked=true"
+            echo "feature_args=$PULQVA_ARTI_FEATURE_ARGS"
+          } > "$RECEIPT"
+
+          cat "$RECEIPT"
+          echo "PULQVA_ARTI_IDENTITY platform=$PULQVA_ARTI_PLATFORM version=$PULQVA_ARTI_VERSION executable=$PULQVA_ARTI_EXECUTABLE sha256=$SHA256 byte_size=$BYTE_SIZE"

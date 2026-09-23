@@ -2,54 +2,68 @@
 
 ## Current verified state
 
-T056 implementation is complete and verified.
+T056 is complete and merged on main at
+`de146d549471cb80a564ff224b7091d94f0cf022`.
 
-Verified implementation head:
-`c06539668b8d9dc94ea8e61138b5ab144a56623f`
+Verified T056 closeout head:
+`0f0e58f4c813be016c940bc910debc71a28354ec`.
 
-All 11 required workflows passed for that exact head, including Windows and Linux desktop tests.
+All 11 required workflows passed for that exact closeout head.
 
-T056 now wires the T055 verified yt-dlp materializer into the real completed-file backend prelaunch
-path:
-
-- package sources are validated first;
-- exactly one verified yt-dlp artifact is required;
-- runtime directories are prepared before publication;
-- the real T055 materializer runs before any yt-dlp process launch;
-- the materialized path must equal both the app-owned runtime layout destination and the backend
-  completed-file yt-dlp input;
-- missing/duplicate artifacts and path mismatches fail closed before process launch.
-
-No frontend filesystem authority, shell command, new network operation, direct-network fallback,
-Arti materialization, FFmpeg extraction, bundle activation, installer, external provider, or AI
-provider was added.
-
-## Closeout
-
-Branch:
-`task/T056-wire-ytdlp-materialization-into-backend-prelaunch`
-
-PR:
-#58
-
-The implementation head is green, but this closeout commit must pass its own CI before PR #58 may
-be merged.
-
-## Next atomic task after T056 merge
+## Active atomic task
 
 **T057 — Establish packaged Arti executable content identity**
 
-Arti is now the next prelaunch dependency gap. Its current metadata proves a pinned version and
-path/file type only; it does not authenticate executable bytes. T057 must create a platform-specific
-SHA-256 identity contract for the exact packaged Arti executables before any Arti materialization is
-attempted.
+Phase: PREPARE / identity capture. T057 is NOT DONE.
 
-Do not start T057 before PR #58 closeout is green and merged.
+The existing Arti sidecar CI previously proved only that `arti 2.6.0` builds and exposes the proxy
+CLI. It did not establish a digest for the exact executable bytes intended for packaging.
+
+This phase updates the same Windows/Linux production-build path to emit an explicit identity receipt
+for each candidate executable:
+
+- platform;
+- Arti version;
+- executable name;
+- SHA-256 of the exact built executable bytes;
+- byte size;
+- Rust 1.91.0;
+- Cargo --locked;
+- target-specific feature arguments.
+
+The build still does not bootstrap Tor. The desktop runtime receives no new network, shell,
+materialization, chmod, or process behavior from this phase.
+
+Branch:
+`task/T057-establish-packaged-arti-executable-content-identity`
+
+## Why T057 is still open
+
+No digest is invented or inferred. The exact Windows/Linux SHA-256 values must come from the new CI
+receipts. A later T057 phase must:
+
+1. read the exact successful Windows/Linux identity receipts from this branch head;
+2. commit one immutable digest per supported platform under `sidecars/arti`;
+3. make the Arti CI fail closed if a rebuilt candidate differs from the committed identity;
+4. bind the committed Arti digest into the backend sidecar identity metadata;
+5. prove missing/duplicate/malformed/wrong-platform identities fail closed;
+6. run the full Windows/Linux/privacy CI again.
+
+Only after that exact head is green can T057 close.
 
 ## Trust limits retained
 
-- T055/T056 do not make a real release package exist; package-resource population remains separate.
-- Arti version metadata is not executable authentication until T057 or later establishes content
-  identity.
-- FFmpeg's pinned SHA-256 authenticates its archive, not an extracted executable.
-- Existing parent-directory race/reparse/durability limitations from T055 remain explicitly retained.
+- a version string alone is not executable authentication;
+- this phase does not claim cross-machine reproducibility until a later rebuild matches the captured
+  identity;
+- no real Tauri bundle resource is populated yet;
+- no Arti runtime materialization or Tor launch behavior changes here;
+- FFmpeg's pinned SHA-256 still authenticates an archive, not an extracted executable.
+
+## Immediate next action
+
+Inspect the exact T057 PREPARE head. If the Arti Windows/Linux jobs succeed, recover the two emitted
+`PULQVA_ARTI_IDENTITY` receipts and continue T057 on this same branch. If a job fails, diagnose only
+that concrete failure.
+
+Do not start T058.
