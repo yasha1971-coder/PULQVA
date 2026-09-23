@@ -2,32 +2,40 @@
 
 ## Current verified state
 
-T048 is complete.
+T049 is complete.
 
-Merged T048 main:
-`b831df242a074df6c28935453799ca6acdab0af3`
+PULQVA now has one typed app-owned desktop runtime layout boundary:
 
-## Active atomic task
-
-**T049 — Add an app-owned desktop runtime layout boundary**
-
-T049 centralizes backend runtime filesystem ownership:
-
-- `AppRuntimeLayout` owns one backend-only runtime root;
+- `AppRuntimeLayout` owns the backend runtime root;
 - empty roots and roots containing parent-directory traversal fail closed;
-- Arti, yt-dlp, FFmpeg, Tor config/cache/state, and download output paths are derived only from this root;
-- derived child paths are non-empty relative normal-component paths, remain beneath the root, and contain no parent traversal;
-- T048 command preparation now builds `CompletedFilePipelineInputs` from the typed layout;
-- the existing data-only Download planning path also reuses the same layout;
-- frontend still supplies no filesystem/runtime path;
+- Arti, yt-dlp, FFmpeg, Tor config/cache/state, and download output paths are derived only from that root;
+- derived child paths must be non-empty relative normal-component paths, stay beneath the root, and contain no parent traversal;
+- T048 completed-file command preparation consumes the typed layout;
+- the data-only Download planning path also reuses the same layout;
+- frontend supplies no filesystem/runtime path;
 - no process launch, external network access, installer, or bundle activation is introduced by the layout.
 
-Branch:
-`task/T049-app-owned-desktop-runtime-layout-boundary`
+Verified PR head:
+`44955ca8cb015bbb5dde061bb1ae041b22bd952d`
 
-## Next task
+All 11 required workflows passed for that exact head.
 
-T049 remains next until its exact head is verified green and closed.
+## Next atomic task
+
+**T050 — Resolve the app-owned runtime root from the desktop application data directory**
+
+Replace the remaining fixed relative runtime root with one backend-resolved OS application-data root.
+
+Required boundary:
+
+- derive the root through Tauri desktop path resolution, never frontend input;
+- create a PULQVA-owned runtime child beneath the resolved application data directory;
+- feed that root into the verified T049 `AppRuntimeLayout`;
+- path resolution itself performs no external network access;
+- path-resolution failure is typed and fail-closed;
+- no user-supplied filesystem path, executable path, proxy/SOCKS value, media URL, argv, or process identifier is accepted;
+- command output remains only the sanitized completed-file view;
+- no runtime binary materialization, packaging, or installer work yet.
 
 ## Do not do yet
 
@@ -40,5 +48,5 @@ T049 remains next until its exact head is verified green and closed.
 
 ## Success
 
-Desktop/privacy/media/remux checks are green for the exact T049 head and all command runtime paths flow
-through one typed backend-owned root.
+The desktop command resolves its runtime root from an OS-appropriate app-owned data location and still
+feeds all runtime paths through the verified T049 layout without exposing filesystem control to the frontend.
