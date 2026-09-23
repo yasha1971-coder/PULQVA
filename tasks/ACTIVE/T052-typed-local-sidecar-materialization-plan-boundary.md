@@ -1,7 +1,7 @@
 # T052 — Add a typed local sidecar materialization plan boundary
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
