@@ -12,11 +12,12 @@ use pulqva_privacy::{
     prepare_arti_runtime, verify_tor_readiness,
 };
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use tauri::Manager;
 use std::{
     ffi::OsString,
     fs,
-    io,
+    io::{self, Read},
     path::{Component, Path, PathBuf},
     time::Duration,
 };
@@ -561,7 +562,7 @@ fn current_sidecar_platform_spec() -> Result<SidecarPlatformSpec, DownloadAction
             arti_resource: "sidecars/arti/linux-x86_64/arti",
             ytdlp_resource: "sidecars/yt-dlp/linux-x86_64/yt-dlp",
             ytdlp_digest_asset: "yt-dlp_linux",
-            ffmpeg_resource: "sidecars/ffmpeg/linux-x86_64/ffmpeg",
+            ffmpeg_resource: "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz",
             ffmpeg_digest_asset: "ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz",
         });
     }
@@ -573,7 +574,7 @@ fn current_sidecar_platform_spec() -> Result<SidecarPlatformSpec, DownloadAction
             arti_resource: "sidecars/arti/windows-x86_64/arti.exe",
             ytdlp_resource: "sidecars/yt-dlp/windows-x86_64/yt-dlp.exe",
             ytdlp_digest_asset: "yt-dlp.exe",
-            ffmpeg_resource: "sidecars/ffmpeg/windows-x86_64/ffmpeg.exe",
+            ffmpeg_resource: "sidecars/ffmpeg/windows-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip",
             ffmpeg_digest_asset: "ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip",
         });
     }
@@ -809,6 +810,274 @@ fn resolve_packaged_sidecar_materialization_plan<R: tauri::Runtime>(
 
     let plan = build_bundled_sidecar_materialization_plan(layout)?;
     resolve_bundled_sidecar_sources(resource_root, plan)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct VerifiedBundledSidecarArtifact {
+    kind: BundledSidecarKind,
+    source: PathBuf,
+    destination: PathBuf,
+    identity: BundledSidecarIdentity,
+    byte_size: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct VerifiedBundledSidecarMaterializationPlan {
+    platform: &'static str,
+    resource_root: PathBuf,
+    bin_root: PathBuf,
+    items: Vec<VerifiedBundledSidecarArtifact>,
+}
+
+fn sha256_file(path: &Path) -> Result<String, DownloadActionError> {
+    let mut file = fs::File::open(path).map_err(|source| DownloadActionError {
+        code: "sidecar-source-read-failed",
+        message: format!("failed to open packaged sidecar source {}: {source}", path.display()),
+    })?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+
+    loop {
+        let read = file.read(&mut buffer).map_err(|source| DownloadActionError {
+            code: "sidecar-source-read-failed",
+            message: format!("failed to read packaged sidecar source {}: {source}", path.display()),
+        })?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn validate_packaged_sidecar_sources(
+    plan: ResolvedBundledSidecarMaterializationPlan,
+) -> Result<VerifiedBundledSidecarMaterializationPlan, DownloadActionError> {
+    let root_metadata = fs::symlink_metadata(&plan.resource_root).map_err(|source| {
+        DownloadActionError {
+            code: "package-resource-root-inspection-failed",
+            message: format!(
+                "failed to inspect application package resource root {}: {source}",
+                plan.resource_root.display()
+            ),
+        }
+    })?;
+
+    if root_metadata.file_type().is_symlink() {
+        return Err(DownloadActionError {
+            code: "package-resource-root-symlink",
+            message: "application package resource root must not be a symlink".to_owned(),
+        });
+    }
+    if !root_metadata.is_dir() {
+        return Err(DownloadActionError {
+            code: "package-resource-root-not-directory",
+            message: "application package resource root must be a directory".to_owned(),
+        });
+    }
+
+    let canonical_root = fs::canonicalize(&plan.resource_root).map_err(|source| {
+        DownloadActionError {
+            code: "package-resource-root-canonicalization-failed",
+            message: format!(
+                "failed to canonicalize application package resource root {}: {source}",
+                plan.resource_root.display()
+            ),
+        }
+    })?;
+
+    if plan.items.len() != 3 {
+        return Err(DownloadActionError {
+            code: "sidecar-source-plan-invalid",
+            message: "packaged sidecar validation plan must contain exactly Arti, yt-dlp, and FFmpeg"
+                .to_owned(),
+        });
+    }
+
+    let mut saw_arti = false;
+    let mut saw_ytdlp = false;
+    let mut saw_ffmpeg = false;
+    let mut verified = Vec::with_capacity(plan.items.len());
+
+    for item in plan.items {
+        match item.kind {
+            BundledSidecarKind::Arti if !saw_arti => saw_arti = true,
+            BundledSidecarKind::YtDlp if !saw_ytdlp => saw_ytdlp = true,
+            BundledSidecarKind::Ffmpeg if !saw_ffmpeg => saw_ffmpeg = true,
+            _ => {
+                return Err(DownloadActionError {
+                    code: "sidecar-source-plan-invalid",
+                    message:
+                        "packaged sidecar validation plan must contain each supported sidecar once"
+                            .to_owned(),
+                });
+            }
+        }
+
+        if !item.source.starts_with(&plan.resource_root) {
+            return Err(DownloadActionError {
+                code: "sidecar-source-path-escaped",
+                message: "packaged sidecar source must remain beneath the package resource root"
+                    .to_owned(),
+            });
+        }
+
+        let relative = item
+            .source
+            .strip_prefix(&plan.resource_root)
+            .map_err(|source| DownloadActionError {
+                code: "sidecar-source-path-escaped",
+                message: format!("failed to verify packaged sidecar source path: {source}"),
+            })?;
+
+        if relative.as_os_str().is_empty()
+            || relative
+                .components()
+                .any(|component| !matches!(component, Component::Normal(_)))
+        {
+            return Err(DownloadActionError {
+                code: "sidecar-source-path-invalid",
+                message: "packaged sidecar source must be a non-empty normal child path".to_owned(),
+            });
+        }
+
+        let mut cursor = plan.resource_root.clone();
+        let components = relative.components().collect::<Vec<_>>();
+        for (index, component) in components.iter().enumerate() {
+            let Component::Normal(part) = component else {
+                return Err(DownloadActionError {
+                    code: "sidecar-source-path-invalid",
+                    message: "packaged sidecar source contains a non-normal path component".to_owned(),
+                });
+            };
+            cursor.push(part);
+            let is_final = index + 1 == components.len();
+
+            let metadata = match fs::symlink_metadata(&cursor) {
+                Ok(metadata) => metadata,
+                Err(source) if source.kind() == io::ErrorKind::NotFound => {
+                    return Err(DownloadActionError {
+                        code: "sidecar-source-missing",
+                        message: format!("packaged sidecar source is missing: {}", cursor.display()),
+                    });
+                }
+                Err(source) => {
+                    return Err(DownloadActionError {
+                        code: "sidecar-source-inspection-failed",
+                        message: format!(
+                            "failed to inspect packaged sidecar source {}: {source}",
+                            cursor.display()
+                        ),
+                    });
+                }
+            };
+
+            if metadata.file_type().is_symlink() {
+                return Err(DownloadActionError {
+                    code: "sidecar-source-symlink",
+                    message: format!(
+                        "packaged sidecar source path must not traverse a symlink: {}",
+                        cursor.display()
+                    ),
+                });
+            }
+
+            if is_final {
+                if !metadata.is_file() {
+                    return Err(DownloadActionError {
+                        code: "sidecar-source-not-file",
+                        message: format!(
+                            "packaged sidecar source must be a regular file: {}",
+                            cursor.display()
+                        ),
+                    });
+                }
+            } else if !metadata.is_dir() {
+                return Err(DownloadActionError {
+                    code: "sidecar-source-parent-not-directory",
+                    message: format!(
+                        "packaged sidecar source parent must be a directory: {}",
+                        cursor.display()
+                    ),
+                });
+            }
+        }
+
+        let canonical_source = fs::canonicalize(&item.source).map_err(|source| {
+            DownloadActionError {
+                code: "sidecar-source-canonicalization-failed",
+                message: format!(
+                    "failed to canonicalize packaged sidecar source {}: {source}",
+                    item.source.display()
+                ),
+            }
+        })?;
+
+        if !canonical_source.starts_with(&canonical_root) {
+            return Err(DownloadActionError {
+                code: "sidecar-source-path-escaped",
+                message: "canonical packaged sidecar source escaped the package resource root"
+                    .to_owned(),
+            });
+        }
+
+        if matches!(item.kind, BundledSidecarKind::YtDlp | BundledSidecarKind::Ffmpeg) {
+            let expected = item
+                .identity
+                .pinned_source_sha256
+                .as_deref()
+                .ok_or_else(|| DownloadActionError {
+                    code: "sidecar-source-hash-missing",
+                    message:
+                        "yt-dlp and FFmpeg packaged sources require a pinned SHA-256 identity"
+                            .to_owned(),
+                })?;
+            let actual = sha256_file(&canonical_source)?;
+            if !actual.eq_ignore_ascii_case(expected) {
+                return Err(DownloadActionError {
+                    code: "sidecar-source-hash-mismatch",
+                    message: format!(
+                        "packaged sidecar source SHA-256 mismatch for {}",
+                        canonical_source.display()
+                    ),
+                });
+            }
+        }
+
+        let byte_size = fs::metadata(&canonical_source)
+            .map_err(|source| DownloadActionError {
+                code: "sidecar-source-inspection-failed",
+                message: format!(
+                    "failed to read packaged sidecar source metadata {}: {source}",
+                    canonical_source.display()
+                ),
+            })?
+            .len();
+
+        verified.push(VerifiedBundledSidecarArtifact {
+            kind: item.kind,
+            source: canonical_source,
+            destination: item.destination,
+            identity: item.identity,
+            byte_size,
+        });
+    }
+
+    if !(saw_arti && saw_ytdlp && saw_ffmpeg) {
+        return Err(DownloadActionError {
+            code: "sidecar-source-plan-invalid",
+            message: "packaged sidecar validation plan must contain Arti, yt-dlp, and FFmpeg"
+                .to_owned(),
+        });
+    }
+
+    Ok(VerifiedBundledSidecarMaterializationPlan {
+        platform: plan.platform,
+        resource_root: canonical_root,
+        bin_root: plan.bin_root,
+        items: verified,
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1637,7 +1906,7 @@ async fn download_completed_file(
     let (candidate, inputs) = prepare_completed_file_command(query, locator, &layout)?;
 
     tauri::async_runtime::spawn_blocking(move || {
-        let _sidecar_plan = sidecar_plan;
+        let _verified_sidecar_plan = validate_packaged_sidecar_sources(sidecar_plan)?;
         let prepared_directories = prepare_app_runtime_directories(layout)?;
         let _verified_layout = prepared_directories.into_layout();
         run_completed_file_pipeline(&candidate, inputs)
@@ -1668,8 +1937,10 @@ mod tests {
     use super::{
         AppRuntimeLayout, BundledSidecarKind, DEFAULT_TOR_READY_TIMEOUT_SECS,
         DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
-        T024_PROOF_LOCATOR, app_status, build_bundled_sidecar_materialization_plan,
-        resolve_bundled_sidecar_sources,
+        BundledSidecarIdentity, ResolvedBundledSidecarMaterializationItem,
+        ResolvedBundledSidecarMaterializationPlan, T024_PROOF_LOCATOR, app_status,
+        build_bundled_sidecar_materialization_plan, resolve_bundled_sidecar_sources,
+        validate_packaged_sidecar_sources,
         build_download_preflight, establish_tor_ready_download_runtime, list_local_candidates,
         local_candidate_by_locator, plan_local_download, prepare_app_runtime_directories,
         prepare_completed_file_command, prepare_download_runtime, resolve_backend_media_source,
@@ -2174,7 +2445,9 @@ mod tests {
             );
             assert_eq!(
                 plan.items[2].source_resource,
-                Path::new("sidecars/ffmpeg/linux-x86_64/ffmpeg")
+                Path::new(
+                    "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz"
+                )
             );
         }
 
@@ -2191,7 +2464,9 @@ mod tests {
             );
             assert_eq!(
                 plan.items[2].source_resource,
-                Path::new("sidecars/ffmpeg/windows-x86_64/ffmpeg.exe")
+                Path::new(
+                    "sidecars/ffmpeg/windows-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip"
+                )
             );
         }
 
@@ -2243,6 +2518,122 @@ mod tests {
         .expect_err("resource root traversal must fail closed");
 
         assert_eq!(error.code, "package-resource-root-traversal");
+    }
+
+    fn source_validation_fixture_plan(
+        root: &Path,
+        hash_override: Option<&str>,
+    ) -> ResolvedBundledSidecarMaterializationPlan {
+        let resource_root = root.join("package-resources");
+        fs::create_dir_all(&resource_root).expect("fixture resource root creation succeeds");
+
+        let arti_source = resource_root.join("arti");
+        let ytdlp_source = resource_root.join("yt-dlp");
+        let ffmpeg_source = resource_root.join("ffmpeg-archive");
+        fs::write(&arti_source, b"arti-fixture").expect("Arti fixture write succeeds");
+        fs::write(&ytdlp_source, b"abc").expect("yt-dlp fixture write succeeds");
+        fs::write(&ffmpeg_source, b"abc").expect("FFmpeg fixture write succeeds");
+
+        let layout = AppRuntimeLayout::new(root.join("runtime")).expect("fixture layout is valid");
+        let digest = hash_override
+            .unwrap_or("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+            .to_owned();
+
+        ResolvedBundledSidecarMaterializationPlan {
+            platform: "fixture",
+            resource_root,
+            bin_root: layout.bin_root().expect("fixture bin root derives"),
+            items: vec![
+                ResolvedBundledSidecarMaterializationItem {
+                    kind: BundledSidecarKind::Arti,
+                    source: arti_source,
+                    destination: layout.arti_executable().expect("Arti destination derives"),
+                    identity: BundledSidecarIdentity {
+                        version: "2.6.0".to_owned(),
+                        pinned_source_sha256: None,
+                    },
+                },
+                ResolvedBundledSidecarMaterializationItem {
+                    kind: BundledSidecarKind::YtDlp,
+                    source: ytdlp_source,
+                    destination: layout.ytdlp_executable().expect("yt-dlp destination derives"),
+                    identity: BundledSidecarIdentity {
+                        version: "2026.08.19".to_owned(),
+                        pinned_source_sha256: Some(digest.clone()),
+                    },
+                },
+                ResolvedBundledSidecarMaterializationItem {
+                    kind: BundledSidecarKind::Ffmpeg,
+                    source: ffmpeg_source,
+                    destination: layout.ffmpeg_executable().expect("FFmpeg destination derives"),
+                    identity: BundledSidecarIdentity {
+                        version: "n9.0.2-3-ga5923073bf".to_owned(),
+                        pinned_source_sha256: Some(digest),
+                    },
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn packaged_sidecar_source_validation_verifies_files_hashes_and_containment() {
+        let root = test_root("sidecar-source-validation");
+        let plan = source_validation_fixture_plan(&root, None);
+        let runtime_root = root.join("runtime");
+
+        let verified = validate_packaged_sidecar_sources(plan)
+            .expect("regular contained sources with matching hashes validate");
+
+        assert_eq!(verified.items.len(), 3);
+        assert!(verified.resource_root.is_absolute() || verified.resource_root.exists());
+        assert!(!verified.bin_root.exists());
+
+        for item in &verified.items {
+            assert!(item.source.starts_with(&verified.resource_root));
+            assert!(item.source.is_file());
+            assert!(item.destination.starts_with(&verified.bin_root));
+            assert!(item.byte_size > 0);
+        }
+
+        assert_eq!(verified.items[0].kind, BundledSidecarKind::Arti);
+        assert_eq!(verified.items[1].kind, BundledSidecarKind::YtDlp);
+        assert_eq!(verified.items[2].kind, BundledSidecarKind::Ffmpeg);
+        assert!(!runtime_root.exists());
+
+        fs::remove_dir_all(root).expect("validation fixture cleanup succeeds");
+    }
+
+    #[test]
+    fn packaged_sidecar_source_validation_fails_closed_on_hash_mismatch() {
+        let root = test_root("sidecar-source-hash-mismatch");
+        let plan = source_validation_fixture_plan(
+            &root,
+            Some("0000000000000000000000000000000000000000000000000000000000000000"),
+        );
+
+        let error = validate_packaged_sidecar_sources(plan)
+            .expect_err("hash mismatch must fail before runtime destination creation");
+
+        assert_eq!(error.code, "sidecar-source-hash-mismatch");
+        assert!(!root.join("runtime").exists());
+
+        fs::remove_dir_all(root).expect("hash mismatch fixture cleanup succeeds");
+    }
+
+    #[test]
+    fn packaged_sidecar_source_validation_rejects_non_file_source() {
+        let root = test_root("sidecar-source-not-file");
+        let mut plan = source_validation_fixture_plan(&root, None);
+        fs::remove_file(&plan.items[0].source).expect("fixture Arti file removal succeeds");
+        fs::create_dir_all(&plan.items[0].source).expect("fixture Arti directory creation succeeds");
+
+        let error = validate_packaged_sidecar_sources(plan)
+            .expect_err("directory sidecar source must fail closed");
+
+        assert_eq!(error.code, "sidecar-source-not-file");
+        assert!(!root.join("runtime").exists());
+
+        fs::remove_dir_all(root).expect("non-file fixture cleanup succeeds");
     }
 
     #[test]
