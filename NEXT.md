@@ -4,46 +4,35 @@
 
 T047 is complete.
 
-PULQVA now has a backend-only one-shot completed-file orchestration boundary:
+Merged T047 main:
+`3e3773183f0f14c24f0714815e0541f5ab4e49ae`
 
-- input is a validated `SearchCandidate` plus explicit backend runtime inputs;
-- preflight, Arti preparation/readiness, Tor-gated yt-dlp request planning/launch, completed download,
-  FFmpeg remux planning/launch/completion, and sanitized completed-file conversion all reuse the
-  previously verified T037–T046 boundaries;
-- Tor remains mandatory before yt-dlp launch;
-- there is no direct-network fallback;
-- yt-dlp completion and Arti cleanup remain fail-closed;
-- FFmpeg receives only the validated local artifact and remains local-file-only;
-- every failed phase returns before any later phase starts;
-- final output is only the sanitized `CompletedFileView`;
-- no Tauri command/frontend wiring exists yet;
-- no backend filesystem path, executable path, argv, source URL, proxy/SOCKS data, process identifier,
-  or raw completion internals cross the output boundary.
-
-Verified PR head:
-`7c56f08b62fc6110c2167398fbf9f012e46856c7`
-
-All 11 required workflows passed for that exact head.
-
-## Next atomic task
+## Active atomic task
 
 **T048 — Add async desktop completed-file command wiring**
 
-Expose the verified T047 pipeline to the desktop shell without accepting backend runtime paths from
-frontend code and without blocking the UI thread.
+T048 wires the verified T047 pipeline into the desktop shell while preserving backend ownership:
 
-Required boundary:
-
-- frontend input remains only the natural-language query plus validated candidate locator;
-- query and locator are revalidated before any runtime work starts;
-- backend constructs all runtime paths/settings itself;
-- no executable path, filesystem root, proxy/SOCKS data, media URL, argv, or process identifier is
+- frontend command input is only natural-language query text plus candidate locator;
+- query is revalidated through `SearchIntent`;
+- locator is revalidated against the local candidate set;
+- unsupported candidates fail before a blocking/runtime task starts;
+- backend constructs Arti, yt-dlp, FFmpeg, Tor config/cache/state, output-root, SOCKS port, and Tor
+  readiness timeout inputs itself;
+- no executable path, filesystem root, proxy/SOCKS value, media URL, argv, or process identifier is
   accepted from frontend input;
-- execution runs off the UI thread through a bounded backend blocking task;
-- backend task calls the existing T047 one-shot pipeline rather than duplicating network/process logic;
-- successful command output is only the sanitized T046 `CompletedFileView`;
-- task-join failure is surfaced as a typed fail-closed desktop error;
-- no direct-network fallback exists.
+- `download_completed_file` is async and moves the existing T047 synchronous pipeline into
+  `tauri::async_runtime::spawn_blocking`;
+- task-join failure maps to typed `completed-file-task-join-failed`;
+- success returns only the sanitized `CompletedFileView`;
+- no duplicate network/process implementation or direct-network fallback is introduced.
+
+Branch:
+`task/T048-async-desktop-completed-file-command-wiring`
+
+## Next task
+
+T048 remains next until its exact head is verified green and closed.
 
 ## Do not do yet
 
@@ -54,6 +43,5 @@ Required boundary:
 
 ## Success
 
-A desktop command can trigger the verified Tor-first download-to-file pipeline from query + candidate
-locator and return only a sanitized completed-file value without blocking the UI thread or exposing
-backend runtime inputs.
+Desktop/privacy/media/remux checks are green for the exact T048 head and the async command exposes only
+query + candidate locator on input and sanitized completed-file data on output.

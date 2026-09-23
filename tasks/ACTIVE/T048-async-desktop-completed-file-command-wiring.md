@@ -1,7 +1,7 @@
 # T048 — Add async desktop completed-file command wiring
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
