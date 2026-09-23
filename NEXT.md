@@ -2,27 +2,25 @@
 
 ## Current verified state
 
-T051 is complete.
+T051 is complete and its recovery hardening T051R1 is also complete.
 
-PULQVA now has an app-owned runtime directory preparation boundary:
+PULQVA now has the verified T051 runtime-directory boundary plus additional hardening:
 
-- input is the verified `AppRuntimeLayout`;
-- the runtime root, Tor config parent, Tor cache/state, and download output directories are prepared locally;
-- preparation is idempotent;
-- symlink/non-directory traversal inside the owned runtime tree fails closed;
-- filesystem failures map to typed `runtime-directory-preparation-failed`;
-- preparation runs in the backend blocking task before any sidecar launch;
-- Arti, yt-dlp, and FFmpeg executables are not created, copied, downloaded, or modified;
-- executable paths are separated under `runtime/bin/*`;
-- Tor state remains under `runtime/arti/*`;
-- T051 deliberately does not create `runtime/bin`;
-- frontend supplies no filesystem/runtime path;
-- no external network access, bundle activation, installer, or packaging work is introduced.
+- prepared runtime directories are canonicalized and verified to remain physically beneath the verified runtime root;
+- existing symlink and non-directory hazards fail closed;
+- executable destinations remain separated under `runtime/bin/*`;
+- Tor state/config/cache remain under `runtime/arti/*`;
+- directory preparation remains idempotent and local-filesystem-only;
+- `desktop-shell-check` now executes desktop boundary tests on both Windows and Linux, not only compilation;
+- no sidecar executable is created, copied, downloaded, or modified;
+- no privacy/network invariant was weakened.
 
-Verified PR head:
-`e00fdc496468595e7d6b9897e18d7b0f44449ff0`
+Verified recovery head:
+`ca8755cf59da63cdf1a25e5ddf54891e368b525d`
 
 All 11 required workflows passed for that exact head.
+
+The stale parallel PR #52 was closed as superseded.
 
 ## Next atomic task
 
@@ -31,24 +29,11 @@ All 11 required workflows passed for that exact head.
 Define, without copying binaries yet, the exact backend-owned mapping from verified packaged sidecar
 sources to the T051 `runtime/bin/*` destinations.
 
-Required boundary:
-
-- plan covers Arti, yt-dlp, and FFmpeg only;
-- each destination comes only from the verified `AppRuntimeLayout`;
-- each source is backend-owned packaged-resource metadata, never frontend input;
-- source and destination must be distinct;
-- destination must remain beneath `runtime/bin`;
-- no shell command is constructed;
-- no process launch occurs;
-- no external network access occurs;
-- no binary copy/materialization occurs yet;
-- no direct-network fallback is introduced.
-
 ## Do not do yet
 
 - no sidecar binary copy/materialization;
+- no Tauri bundle-resource activation;
 - no packaging/release installers;
-- no active Tauri bundle resources;
 - no external search provider;
 - no AI provider;
 - no direct-network fallback.
