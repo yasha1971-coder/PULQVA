@@ -2,56 +2,50 @@
 
 ## Current verified state
 
-T055 implementation is complete and verified.
+T055 is complete and merged on main at
+`2d99206da86ab64412516d26b762bc01cc9a6771`.
 
-Verified implementation head:
-`05c37563301c0d3d953909f4d45b4642442c6d02`
+Verified T055 closeout head:
+`c40ad5d6feb52d308c5d9c7b3febb642c5b3cdeb`.
 
-All 11 required workflows passed for that exact head, including Windows and Linux desktop tests.
+All 11 required workflows passed for that exact closeout head.
 
-T055 now provides a backend-only no-clobber yt-dlp materialization boundary:
-
-- accepts only the verified yt-dlp direct-binary artifact;
-- binds to backend-pinned version and SHA-256 identity;
-- rechecks package-source containment and runtime destination layout;
-- rejects unsupported kinds, unsafe paths, symlink/file-type hazards, and hard-link aliases;
-- preserves different existing destinations and reuses only matching verified content;
-- rehashes the bytes actually copied into an exclusive staging file;
-- synchronizes the complete staged file and publishes by same-directory hard link;
-- has no overwrite fallback, shell command, process launch, frontend filesystem authority, or network
-  operation.
-
-The Windows repair at the verified head canonicalizes the trusted package resource root before
-component inspection so canonical artifact paths are accepted without weakening final containment.
-
-## Trust limits that remain
-
-- parent-directory replacement races after validation are not claimed fully solved;
-- ordinary Windows CI is not adversarial reparse-point proof;
-- hard-link unsupported filesystems fail closed;
-- file synchronization is not a universal directory-metadata durability guarantee;
-- T055 did not install a real packaged yt-dlp resource;
-- Arti still lacks pinned executable content authentication in this path;
-- FFmpeg's pinned SHA-256 authenticates its archive, not an extracted executable.
-
-## Closeout
-
-Branch:
-`task/T055-atomic-ytdlp-sidecar-materialization`
-
-Draft PR:
-#57
-
-The implementation head is green, but this closeout commit must pass its own CI before PR #57 may
-be marked ready/merged.
-
-## Next atomic task after T055 merge
+## Active atomic task
 
 **T056 — Wire verified yt-dlp materialization into backend prelaunch preparation**
 
-Bind the T055 materializer into the real completed-file backend flow after source validation and
-runtime-directory preparation, before yt-dlp launch. T056 must not silently absorb Arti
-materialization, FFmpeg extraction, packaging, installer work, external providers, or any
-direct-network fallback.
+T056 connects the T055 direct-binary materializer to the real completed-file backend flow without
+expanding scope to Arti or FFmpeg materialization.
 
-Do not start T056 before PR #57 closeout is green and merged.
+Implemented ordering:
+
+1. frontend query/locator are validated into backend-owned candidate/pipeline inputs;
+2. Tauri AppHandle resolves the package resource plan;
+3. blocking backend validates all packaged sidecar sources;
+4. exactly one verified yt-dlp artifact is selected;
+5. app-owned runtime directories are prepared;
+6. T055 atomically materializes that verified yt-dlp artifact;
+7. the returned materialized path must equal both the runtime layout yt-dlp destination and the
+   already backend-derived completed-file input path;
+8. only then may the existing completed-file pipeline proceed toward Arti/Tor/yt-dlp launch.
+
+Missing or duplicate verified yt-dlp artifacts fail before runtime-directory mutation and before the
+materializer callback. A wrong materialized path fails before pipeline launch.
+
+No frontend filesystem path is accepted. No shell command, new network operation, direct-network
+fallback, Arti executable materialization, FFmpeg archive extraction, Tauri bundle activation,
+installer, external provider, or AI provider is added.
+
+Tests use an internal materializer callback only to prove ordering/fail-closed behavior without
+pretending fixture bytes are the repository-pinned yt-dlp binary. The production path calls the real
+T055 materializer with backend-pinned identity metadata.
+
+Branch:
+`task/T056-wire-ytdlp-materialization-into-backend-prelaunch`
+
+## Next action
+
+Inspect the exact T056 implementation head and all triggered CI. Repair only a concrete failure, or
+close T056 if all required checks are green.
+
+Do not start another task in the same response.

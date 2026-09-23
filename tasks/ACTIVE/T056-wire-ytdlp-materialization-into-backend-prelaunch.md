@@ -1,7 +1,7 @@
 # T056 — Wire verified yt-dlp materialization into backend prelaunch preparation
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
