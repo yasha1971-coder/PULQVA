@@ -34,6 +34,8 @@ const DEFAULT_TOR_SOCKS_PORT: u16 = 19050;
 const DEFAULT_TOR_READY_TIMEOUT_SECS: u64 = 30;
 const ARTI_SIDECAR_VERSION: &str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/arti/VERSION"));
+const ARTI_SIDECAR_SHA256SUMS: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/arti/SHA256SUMS"));
 const YTDLP_SIDECAR_VERSION: &str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/yt-dlp/VERSION"));
 const YTDLP_SIDECAR_SHA256SUMS: &str =
@@ -550,6 +552,7 @@ struct BundledSidecarMaterializationPlan {
 struct SidecarPlatformSpec {
     platform: &'static str,
     arti_resource: &'static str,
+    arti_digest_asset: &'static str,
     ytdlp_resource: &'static str,
     ytdlp_digest_asset: &'static str,
     ffmpeg_resource: &'static str,
@@ -562,6 +565,7 @@ fn current_sidecar_platform_spec() -> Result<SidecarPlatformSpec, DownloadAction
         return Ok(SidecarPlatformSpec {
             platform: "linux-x86_64",
             arti_resource: "sidecars/arti/linux-x86_64/arti",
+            arti_digest_asset: "linux-x86_64/arti",
             ytdlp_resource: "sidecars/yt-dlp/linux-x86_64/yt-dlp",
             ytdlp_digest_asset: "yt-dlp_linux",
             ffmpeg_resource: "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz",
@@ -574,6 +578,7 @@ fn current_sidecar_platform_spec() -> Result<SidecarPlatformSpec, DownloadAction
         return Ok(SidecarPlatformSpec {
             platform: "windows-x86_64",
             arti_resource: "sidecars/arti/windows-x86_64/arti.exe",
+            arti_digest_asset: "windows-x86_64/arti.exe",
             ytdlp_resource: "sidecars/yt-dlp/windows-x86_64/yt-dlp.exe",
             ytdlp_digest_asset: "yt-dlp.exe",
             ffmpeg_resource: "sidecars/ffmpeg/windows-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip",
@@ -613,6 +618,71 @@ fn pinned_sha256_for_asset(
     Err(DownloadActionError {
         code: "sidecar-source-identity-missing",
         message: format!("no pinned SHA-256 identity found for sidecar source asset {asset}"),
+    })
+}
+
+
+fn pinned_arti_sha256_for_platform(
+    manifest: &str,
+    platform: &str,
+    asset: &str,
+) -> Result<String, DownloadActionError> {
+    let expected_prefix = format!("{platform}/");
+    if !asset.starts_with(&expected_prefix) {
+        return Err(DownloadActionError {
+            code: "arti-source-identity-platform-mismatch",
+            message: format!(
+                "Arti identity asset {asset} does not belong to platform {platform}"
+            ),
+        });
+    }
+
+    let mut found = None;
+    for (line_index, line) in manifest.lines().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let fields = trimmed.split_whitespace().collect::<Vec<_>>();
+        let names_requested_asset = fields.get(1).copied() == Some(asset)
+            || fields.last().copied() == Some(asset);
+        if !names_requested_asset {
+            continue;
+        }
+
+        if fields.len() != 2 {
+            return Err(DownloadActionError {
+                code: "arti-source-identity-malformed",
+                message: format!(
+                    "Arti SHA-256 identity for {asset} is malformed on line {}",
+                    line_index + 1
+                ),
+            });
+        }
+
+        let digest = fields[0];
+        if digest.len() != 64 || !digest.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err(DownloadActionError {
+                code: "arti-source-identity-malformed",
+                message: format!(
+                    "Arti SHA-256 identity for {asset} must be exactly 64 hexadecimal characters"
+                ),
+            });
+        }
+
+        if found.is_some() {
+            return Err(DownloadActionError {
+                code: "arti-source-identity-duplicate",
+                message: format!("Arti SHA-256 identity for {asset} appears more than once"),
+            });
+        }
+        found = Some(digest.to_ascii_lowercase());
+    }
+
+    found.ok_or_else(|| DownloadActionError {
+        code: "arti-source-identity-missing",
+        message: format!("no pinned Arti SHA-256 identity found for platform asset {asset}"),
     })
 }
 
@@ -669,7 +739,11 @@ fn build_bundled_sidecar_materialization_plan(
             destination: layout.arti_executable()?,
             identity: BundledSidecarIdentity {
                 version: ARTI_SIDECAR_VERSION.trim().to_owned(),
-                pinned_source_sha256: None,
+                pinned_source_sha256: Some(pinned_arti_sha256_for_platform(
+                    ARTI_SIDECAR_SHA256SUMS,
+                    platform.platform,
+                    platform.arti_digest_asset,
+                )?),
             },
         },
         BundledSidecarMaterializationItem {
@@ -1024,27 +1098,24 @@ fn validate_packaged_sidecar_sources(
             });
         }
 
-        if matches!(item.kind, BundledSidecarKind::YtDlp | BundledSidecarKind::Ffmpeg) {
-            let expected = item
-                .identity
-                .pinned_source_sha256
-                .as_deref()
-                .ok_or_else(|| DownloadActionError {
-                    code: "sidecar-source-hash-missing",
-                    message:
-                        "yt-dlp and FFmpeg packaged sources require a pinned SHA-256 identity"
-                            .to_owned(),
-                })?;
-            let actual = sha256_file(&canonical_source)?;
-            if !actual.eq_ignore_ascii_case(expected) {
-                return Err(DownloadActionError {
-                    code: "sidecar-source-hash-mismatch",
-                    message: format!(
-                        "packaged sidecar source SHA-256 mismatch for {}",
-                        canonical_source.display()
-                    ),
-                });
-            }
+        let expected = item
+            .identity
+            .pinned_source_sha256
+            .as_deref()
+            .ok_or_else(|| DownloadActionError {
+                code: "sidecar-source-hash-missing",
+                message: "every packaged sidecar source requires a pinned SHA-256 identity"
+                    .to_owned(),
+            })?;
+        let actual = sha256_file(&canonical_source)?;
+        if !actual.eq_ignore_ascii_case(expected) {
+            return Err(DownloadActionError {
+                code: "sidecar-source-hash-mismatch",
+                message: format!(
+                    "packaged sidecar source SHA-256 mismatch for {}",
+                    canonical_source.display()
+                ),
+            });
         }
 
         let byte_size = fs::metadata(&canonical_source)
@@ -2016,8 +2087,9 @@ mod tests {
         BundledSidecarIdentity, ResolvedBundledSidecarMaterializationItem,
         ResolvedBundledSidecarMaterializationPlan, VerifiedBundledSidecarArtifact,
         VerifiedBundledSidecarMaterializationPlan, T024_PROOF_LOCATOR, app_status,
-        build_bundled_sidecar_materialization_plan, prepare_materialized_ytdlp_prelaunch,
-        resolve_bundled_sidecar_sources, validate_packaged_sidecar_sources,
+        build_bundled_sidecar_materialization_plan, pinned_arti_sha256_for_platform,
+        prepare_materialized_ytdlp_prelaunch, resolve_bundled_sidecar_sources,
+        validate_packaged_sidecar_sources,
         build_download_preflight, establish_tor_ready_download_runtime, list_local_candidates,
         local_candidate_by_locator, plan_local_download, prepare_app_runtime_directories,
         prepare_completed_file_command, prepare_download_runtime, resolve_backend_media_source,
@@ -2463,6 +2535,67 @@ mod tests {
     }
 
     #[test]
+    fn arti_identity_parser_requires_one_well_formed_platform_entry() {
+        let linux = pinned_arti_sha256_for_platform(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  linux-x86_64/arti\n",
+            "linux-x86_64",
+            "linux-x86_64/arti",
+        )
+        .expect("one exact Arti identity is accepted");
+        assert_eq!(linux.len(), 64);
+
+        let missing = pinned_arti_sha256_for_platform(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  windows-x86_64/arti.exe\n",
+            "linux-x86_64",
+            "linux-x86_64/arti",
+        )
+        .expect_err("missing platform identity must fail closed");
+        assert_eq!(missing.code, "arti-source-identity-missing");
+
+        let duplicate = pinned_arti_sha256_for_platform(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  linux-x86_64/arti\nbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  linux-x86_64/arti\n",
+            "linux-x86_64",
+            "linux-x86_64/arti",
+        )
+        .expect_err("duplicate platform identity must fail closed");
+        assert_eq!(duplicate.code, "arti-source-identity-duplicate");
+
+        let malformed = pinned_arti_sha256_for_platform(
+            "not-a-digest  linux-x86_64/arti\n",
+            "linux-x86_64",
+            "linux-x86_64/arti",
+        )
+        .expect_err("malformed platform identity must fail closed");
+        assert_eq!(malformed.code, "arti-source-identity-malformed");
+
+        let wrong_platform = pinned_arti_sha256_for_platform(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  linux-x86_64/arti\n",
+            "windows-x86_64",
+            "linux-x86_64/arti",
+        )
+        .expect_err("wrong-platform asset binding must fail closed");
+        assert_eq!(
+            wrong_platform.code,
+            "arti-source-identity-platform-mismatch"
+        );
+    }
+
+    #[test]
+    fn packaged_sidecar_source_validation_requires_arti_content_identity() {
+        let root = test_root("arti-source-hash-required");
+        let mut plan = source_validation_fixture_plan(&root, None);
+        plan.items[0].identity.pinned_source_sha256 = None;
+
+        let error = validate_packaged_sidecar_sources(plan)
+            .expect_err("Arti without a content digest must fail closed");
+
+        assert_eq!(error.code, "sidecar-source-hash-missing");
+        assert!(!root.join("runtime").exists());
+
+        fs::remove_dir_all(root).expect("Arti hash-required fixture cleanup succeeds");
+    }
+
+    #[test]
     fn bundled_sidecar_materialization_plan_is_typed_backend_owned_and_side_effect_free() {
         let root = test_root("sidecar-materialization-plan");
         let layout = AppRuntimeLayout::new(root.join("runtime")).expect("runtime layout is valid");
@@ -2489,7 +2622,15 @@ mod tests {
         assert_eq!(plan.items[0].identity.version, "2.6.0");
         assert_eq!(plan.items[1].identity.version, "2026.08.19");
         assert_eq!(plan.items[2].identity.version, "n9.0.2-3-ga5923073bf");
-        assert!(plan.items[0].identity.pinned_source_sha256.is_none());
+        assert_eq!(
+            plan.items[0]
+                .identity
+                .pinned_source_sha256
+                .as_deref()
+                .expect("Arti direct binary has pinned digest")
+                .len(),
+            64
+        );
         assert_eq!(
             plan.items[1]
                 .identity
@@ -2627,7 +2768,10 @@ mod tests {
                     destination: layout.arti_executable().expect("Arti destination derives"),
                     identity: BundledSidecarIdentity {
                         version: "2.6.0".to_owned(),
-                        pinned_source_sha256: None,
+                        pinned_source_sha256: Some(
+                            "ee35e504447b53206b28f1fa2874d4ac8ab94260a2dd3193bf0dd3819d638925"
+                                .to_owned(),
+                        ),
                     },
                 },
                 ResolvedBundledSidecarMaterializationItem {
