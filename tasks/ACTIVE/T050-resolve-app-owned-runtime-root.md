@@ -1,7 +1,7 @@
 # T050 — Resolve app-owned runtime root from desktop application data
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 

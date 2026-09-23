@@ -12,6 +12,7 @@ use pulqva_privacy::{
     prepare_arti_runtime, verify_tor_readiness,
 };
 use serde::Serialize;
+use tauri::Manager;
 use std::{
     ffi::OsString,
     path::{Component, Path, PathBuf},
@@ -931,13 +932,27 @@ fn launch_tor_gated_media_request(
     }
 }
 
-fn default_app_runtime_layout() -> Result<AppRuntimeLayout, DownloadActionError> {
-    AppRuntimeLayout::new("runtime")
+fn runtime_layout_from_app_data_dir(
+    app_data_dir: impl Into<PathBuf>,
+) -> Result<AppRuntimeLayout, DownloadActionError> {
+    AppRuntimeLayout::new(app_data_dir.into().join("runtime"))
+}
+
+fn resolve_app_runtime_layout<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> Result<AppRuntimeLayout, DownloadActionError> {
+    let app_data_dir = app.path().app_data_dir().map_err(|source| DownloadActionError {
+        code: "app-data-path-resolution-failed",
+        message: format!("failed to resolve application data directory: {source}"),
+    })?;
+
+    runtime_layout_from_app_data_dir(app_data_dir)
 }
 
 fn prepare_completed_file_command(
     query: String,
     locator: String,
+    layout: &AppRuntimeLayout,
 ) -> Result<(SearchCandidate, CompletedFilePipelineInputs), DownloadActionError> {
     let _intent = SearchIntent::new(query).map_err(DownloadActionError::from)?;
     let candidate = local_candidate_by_locator(&locator)
@@ -949,7 +964,6 @@ fn prepare_completed_file_command(
 
     // Reject validated-but-unsupported candidates before any blocking/runtime work starts.
     let _approved_source = resolve_backend_media_source(&candidate)?;
-    let layout = default_app_runtime_layout()?;
     let inputs = layout.completed_file_pipeline_inputs()?;
     Ok((candidate, inputs))
 }
@@ -1028,8 +1042,7 @@ fn plan_local_download(
             code: "candidate-not-found",
             message: "candidate locator is not present in the validated local candidate set".to_owned(),
         })?;
-    let layout = default_app_runtime_layout()?;
-    let _preflight = build_download_preflight(&candidate, layout.download_preflight_inputs()?)?;
+    let _approved_source = resolve_backend_media_source(&candidate)?;
 
     Ok(DownloadAction {
         intent_query: intent.query().to_owned(),
@@ -1046,8 +1059,10 @@ fn plan_local_download(
 async fn download_completed_file(
     query: String,
     locator: String,
+    app: tauri::AppHandle,
 ) -> Result<CompletedFileView, DownloadActionError> {
-    let (candidate, inputs) = prepare_completed_file_command(query, locator)?;
+    let layout = resolve_app_runtime_layout(&app)?;
+    let (candidate, inputs) = prepare_completed_file_command(query, locator, &layout)?;
 
     tauri::async_runtime::spawn_blocking(move || run_completed_file_pipeline(&candidate, inputs))
         .await
@@ -1076,10 +1091,10 @@ mod tests {
     use super::{
         AppRuntimeLayout, DEFAULT_TOR_READY_TIMEOUT_SECS, DEFAULT_TOR_SOCKS_PORT,
         DownloadPreflightInputs, T024_MEDIA_SOURCE_URL, T024_PROOF_LOCATOR, app_status,
-        build_download_preflight,
-        establish_tor_ready_download_runtime, list_local_candidates, local_candidate_by_locator,
-        plan_local_download, prepare_completed_file_command, prepare_download_runtime,
-        resolve_backend_media_source, select_local_candidate, submit_intent,
+        build_download_preflight, establish_tor_ready_download_runtime, list_local_candidates,
+        local_candidate_by_locator, plan_local_download, prepare_completed_file_command,
+        prepare_download_runtime, resolve_backend_media_source, runtime_layout_from_app_data_dir,
+        select_local_candidate, submit_intent,
     };
     use std::{
         fs,
@@ -1451,24 +1466,40 @@ mod tests {
     }
 
     #[test]
-    fn completed_file_command_preflight_uses_backend_owned_runtime_layout() {
+    fn app_data_runtime_layout_places_runtime_beneath_resolved_app_data() {
+        let app_data = PathBuf::from("os-data").join("app.pulqva.desktop");
+        let layout =
+            runtime_layout_from_app_data_dir(&app_data).expect("resolved app data path is valid");
+
+        assert_eq!(layout.root(), app_data.join("runtime"));
+        assert!(layout.root().starts_with(&app_data));
+    }
+
+    #[test]
+    fn completed_file_command_preflight_uses_resolved_backend_runtime_layout() {
+        let app_data = PathBuf::from("os-data").join("app.pulqva.desktop");
+        let layout =
+            runtime_layout_from_app_data_dir(&app_data).expect("resolved app data path is valid");
+        let root = app_data.join("runtime");
+
         let (candidate, inputs) = prepare_completed_file_command(
             "find the official live performance".to_owned(),
             T024_PROOF_LOCATOR.to_owned(),
+            &layout,
         )
         .expect("supported candidate prepares backend-owned inputs");
 
         assert_eq!(candidate.locator(), T024_PROOF_LOCATOR);
-        assert_eq!(inputs.download.arti_executable, Path::new("runtime/arti"));
-        assert_eq!(inputs.download.ytdlp_executable, Path::new("runtime/yt-dlp"));
+        assert_eq!(inputs.download.arti_executable, root.join("arti"));
+        assert_eq!(inputs.download.ytdlp_executable, root.join("yt-dlp"));
         assert_eq!(
             inputs.download.tor_config_file,
-            Path::new("runtime/arti/config/pulqva.toml")
+            root.join("arti/config/pulqva.toml")
         );
-        assert_eq!(inputs.download.tor_cache_dir, Path::new("runtime/arti/cache"));
-        assert_eq!(inputs.download.tor_state_dir, Path::new("runtime/arti/state"));
-        assert_eq!(inputs.download.output_root, Path::new("runtime/downloads"));
-        assert_eq!(inputs.ffmpeg_executable, Path::new("runtime/ffmpeg"));
+        assert_eq!(inputs.download.tor_cache_dir, root.join("arti/cache"));
+        assert_eq!(inputs.download.tor_state_dir, root.join("arti/state"));
+        assert_eq!(inputs.download.output_root, root.join("downloads"));
+        assert_eq!(inputs.ffmpeg_executable, root.join("ffmpeg"));
         assert_eq!(
             inputs.tor_ready_timeout,
             Duration::from_secs(DEFAULT_TOR_READY_TIMEOUT_SECS)
@@ -1477,9 +1508,11 @@ mod tests {
 
     #[test]
     fn completed_file_command_preflight_fails_before_runtime_for_invalid_input() {
+        let layout = AppRuntimeLayout::new("runtime").expect("test runtime root is valid");
         let blank = prepare_completed_file_command(
             "  \t ".to_owned(),
             T024_PROOF_LOCATOR.to_owned(),
+            &layout,
         )
         .expect_err("blank intent must fail before runtime work");
         assert_eq!(blank.code, "invalid-search-intent");
@@ -1487,6 +1520,7 @@ mod tests {
         let unknown = prepare_completed_file_command(
             "find it".to_owned(),
             "local:test:candidate:not-returned".to_owned(),
+            &layout,
         )
         .expect_err("unknown locator must fail before runtime work");
         assert_eq!(unknown.code, "candidate-not-found");
@@ -1494,6 +1528,7 @@ mod tests {
         let unsupported = prepare_completed_file_command(
             "find archive".to_owned(),
             "local:test:candidate:archive-performance".to_owned(),
+            &layout,
         )
         .expect_err("unsupported candidate must fail before runtime work");
         assert_eq!(unsupported.code, "media-source-unsupported");

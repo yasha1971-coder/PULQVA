@@ -4,38 +4,32 @@
 
 T049 is complete.
 
-PULQVA now has one typed app-owned desktop runtime layout boundary:
+Merged T049 main:
+`ab295eb156fda55762a8673819cbe18e90fa57a0`
 
-- `AppRuntimeLayout` owns the backend runtime root;
-- empty roots and roots containing parent-directory traversal fail closed;
-- Arti, yt-dlp, FFmpeg, Tor config/cache/state, and download output paths are derived only from that root;
-- derived child paths must be non-empty relative normal-component paths, stay beneath the root, and contain no parent traversal;
-- T048 completed-file command preparation consumes the typed layout;
-- the data-only Download planning path also reuses the same layout;
-- frontend supplies no filesystem/runtime path;
-- no process launch, external network access, installer, or bundle activation is introduced by the layout.
-
-Verified PR head:
-`44955ca8cb015bbb5dde061bb1ae041b22bd952d`
-
-All 11 required workflows passed for that exact head.
-
-## Next atomic task
+## Active atomic task
 
 **T050 — Resolve the app-owned runtime root from the desktop application data directory**
 
-Replace the remaining fixed relative runtime root with one backend-resolved OS application-data root.
+T050 replaces the fixed relative runtime root with backend-only OS path resolution:
 
-Required boundary:
+- `download_completed_file` receives Tauri's injected `AppHandle`, not a frontend filesystem value;
+- `app.path().app_data_dir()` resolves the OS-appropriate app data directory;
+- path-resolution failure maps to typed `app-data-path-resolution-failed`;
+- a `runtime` child beneath that resolved app data directory is passed through the verified T049
+  `AppRuntimeLayout::new`;
+- all Arti, yt-dlp, FFmpeg, Tor config/cache/state, and output paths continue to derive from that layout;
+- the data-only Download planning command no longer needs a runtime filesystem root at all;
+- frontend still supplies only query text plus candidate locator for completed-file execution;
+- command output remains only sanitized completed-file data;
+- no network access, runtime binary materialization, bundle resource, installer, or packaging work is introduced.
 
-- derive the root through Tauri desktop path resolution, never frontend input;
-- create a PULQVA-owned runtime child beneath the resolved application data directory;
-- feed that root into the verified T049 `AppRuntimeLayout`;
-- path resolution itself performs no external network access;
-- path-resolution failure is typed and fail-closed;
-- no user-supplied filesystem path, executable path, proxy/SOCKS value, media URL, argv, or process identifier is accepted;
-- command output remains only the sanitized completed-file view;
-- no runtime binary materialization, packaging, or installer work yet.
+Branch:
+`task/T050-resolve-app-owned-runtime-root`
+
+## Next task
+
+T050 remains next until its exact head is verified green and closed.
 
 ## Do not do yet
 
@@ -48,5 +42,5 @@ Required boundary:
 
 ## Success
 
-The desktop command resolves its runtime root from an OS-appropriate app-owned data location and still
-feeds all runtime paths through the verified T049 layout without exposing filesystem control to the frontend.
+Desktop checks are green for the exact T050 head and completed-file execution resolves its runtime
+root from Tauri's application data directory without exposing filesystem control to the frontend.
