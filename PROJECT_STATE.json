@@ -11,7 +11,7 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "Windows Arti full-file identity reproducibility pending after /DEBUG:NONE recovery; allowlist unchanged."
+    "Windows identity reproduced in two builds and promoted; exact promotion-head CI pending."
   ],
   "updated": "2026-09-24"
 }

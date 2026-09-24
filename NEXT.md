@@ -14,7 +14,7 @@ All 11 required workflows passed for that exact closeout head.
 
 **T059 — Wire verified Arti materialization into backend prelaunch preparation**
 
-Phase: IMPLEMENT. T059 is NOT DONE.
+Phase: RECOVERY / identity promotion pending CI. T059 is NOT DONE.
 
 The real completed-file backend now preserves the existing T056 yt-dlp materialization step and adds
 T058 Arti materialization before the existing pipeline can prepare or launch Tor.
@@ -52,12 +52,11 @@ Branch:
 
 ## Immediate next action
 
-Inspect the exact T059 implementation head and all triggered CI. If any check fails, diagnose only
-that concrete failure. If all required Windows/Linux/privacy checks are green, close T059 in a later
-bounded phase.
-
-Do not start T060.
-
+Observe the identity-promotion commit recorded in the latest PR #61 checkpoint.
+Windows executable reproducibility has now been demonstrated by two independent artifacts
+(see the final recovery section below). The old digest has been replaced with the reproduced
+value. All required checks must pass for this new commit before a later T059 closeout.
+Do not retry the old head or start T060.
 
 ## Recovery after first T059 implementation CI
 
@@ -127,3 +126,23 @@ ONE next action: inspect that new head's Windows compile, CLI, PE metadata check
 captured identity. If those succeed, rerun the same Windows job once unchanged in a later
 phase and compare complete executable hashes. Only matching independent builds permit
 a later digest promotion. Do not merge PR #61 or start T060.
+
+## Current recovery: promote independently reproduced Windows identity
+
+This section supersedes the earlier pending-reproducibility notes above.
+Head `923b7a48d0cff324347f4cedf98e7c62e7e6ab2a`, run `36030525791`:
+Windows jobs `107737813985` and `107754281056` both passed compile, CLI and PE checks.
+Artifacts `10823040260` and `10824592634` contain byte-for-byte identical executables,
+independently downloaded and hashed: 19,624,960 bytes, SHA-256
+`9245c7b5f71391238539bf2d78a492453cae66f978cf8e479039a26f1667f3df`.
+Both receipts identify the same pinned linker SHA and flags. The only failure was the
+old SHA allowlist comparison. Ten other workflows and Linux had succeeded.
+
+This atomic recovery promotes only the Windows identity and records its provenance in
+`sidecars/arti/README.md`. Linux identity, workflow recipe, product code and kernel are unchanged.
+Local identity matching and continuity checks are required before publication. Exact new SHA
+and CI run are saved in the PR checkpoint. Last verified T058 commit remains unchanged.
+
+PENDING: CI for the new promotion commit. NOT DONE: T059, release packaging.
+ONE next action: observe required checks for that exact new head; if all are green, prepare
+T059 closeout in a later bounded phase. Any failure must be diagnosed first. Do not start T060.
