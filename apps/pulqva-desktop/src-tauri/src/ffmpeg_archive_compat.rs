@@ -22,5 +22,16 @@ fn pinned_archive_matches_independent_extractor() {
     assert_eq!(receipt.archive_sha256, digest);
     assert_eq!(actual, std::env::var("PULQVA_FFMPEG_REFERENCE_SHA256").unwrap());
     assert_eq!(receipt.byte_size, std::env::var("PULQVA_FFMPEG_REFERENCE_SIZE").unwrap().parse::<u64>().unwrap());
+    let stage_root = std::env::temp_dir().join(format!("pulqva-real-ffmpeg-stage-{}", std::process::id()));
+    std::fs::create_dir(&stage_root).unwrap();
+    let stage_root = std::fs::canonicalize(stage_root).unwrap();
+    let stage = super::ffmpeg_stage::extract_to_stage(&stage_root, &bytes, digest, platform.ffmpeg_digest_asset).unwrap();
+    assert_eq!(stage.receipt().executable_sha256, receipt.executable_sha256);
+    assert_eq!(stage.receipt().byte_size, receipt.byte_size);
+    let staged_path = stage.path().to_owned();
+    drop(stage);
+    assert!(!staged_path.exists());
+    assert_eq!(std::fs::read_dir(&stage_root).unwrap().count(), 0);
+    std::fs::remove_dir(stage_root).unwrap();
     println!("PULQVA_FFMPEG_COMPAT platform={} sha256={} byte_size={}", platform.platform, actual, receipt.byte_size);
 }

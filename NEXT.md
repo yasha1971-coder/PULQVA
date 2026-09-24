@@ -1,5 +1,28 @@
 # NEXT
 
+## CURRENT: T060 owned extraction stage, CI pending
+
+Supersedes prior current sections. Head `50bacca94652e5bdf00b6d5cdac95420abe7a05b`
+passed all 11 workflows. Real ZIP and tar.xz compatibility steps passed on Linux job
+107828801887 and Windows job 107828802335 (desktop run 36057727803).
+
+Added per-operation staging directory with exclusive file creation, root/directory/file identity
+tracking, output sync and same-handle reread against adapter receipt. Lifetime cleanup removes
+only matching owned paths, never recursively; foreign files prevent directory deletion.
+Unix stage directories/files are 0700/0600; no executable permissions or runtime publication.
+Both real archive CI tests now additionally exercise staging and lifetime cleanup.
+
+NOT DONE: T060 still needs authenticated source-file snapshot/containment and backend plan
+integration. Stage API currently takes immutable bytes and backend-owned root/identity inputs.
+It is not a proof against adversarial concurrent ancestor swaps or Windows reparse points.
+Cleanup is best-effort on Drop; process crashes or identity-acquisition failures can leave orphans.
+Do not claim universal durability or race-free cleanup. No production caller is wired.
+
+Local continuity/diff checks run before publication. Rust/Cargo unavailable locally, new stage
+tests and real-archive stage behavior await CI. Exact new head/runs saved in PR #62.
+ONE next action: observe exact-head CI; diagnose failures first, otherwise continue later with
+source-file snapshot and typed backend extraction integration. No merge of incomplete T060.
+
 ## CURRENT: T060 real pinned-archive compatibility proof, CI pending
 
 Supersedes prior current sections below. T060-C head

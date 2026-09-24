@@ -1,7 +1,13 @@
 # T060 — Safely extract FFmpeg from the verified packaged archive
 
 Parent: DESKTOP FOUNDATION
-Status: ACTIVE — T060-A/B/C verified; real archive compatibility CI pending
+Status: ACTIVE — real archive compatibility verified; owned-stage CI pending
+
+Head `50bacca94652e5bdf00b6d5cdac95420abe7a05b` passed all 11 workflows including
+independent real-archive output comparison on Windows/Linux. Current phase adds owned
+staging/lifetime cleanup and disk-content verification against adapter receipts; real-archive
+CI now tests that path too. Source-file snapshot/containment and backend plan integration
+remain pending. No adversarial filesystem race or crash-cleanup guarantee is claimed.
 
 T060-C head `120f6968dbd59db8041042a611d1117e69743204` passed all 11 workflows.
 Current phase adds Windows/Linux real pinned-archive proof to desktop CI: authenticate the
