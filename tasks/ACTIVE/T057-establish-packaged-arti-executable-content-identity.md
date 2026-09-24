@@ -105,3 +105,18 @@ the MSVC link output contains per-build data.
 The Windows candidate build now passes `/Brepro` to the MSVC linker through Rust. Linux is
 unchanged. The committed Windows digest and fail-closed comparison are intentionally not updated in
 this phase. Exact candidate artifacts continue to be uploaded for later proof.
+
+
+## Proven stable Windows identity
+
+Two unchanged Windows `/Brepro` CI executions on head
+`ad17896b52535122ef5766dcd4ae0960f2b19df7` were byte-identical:
+
+- job `107436310670`: SHA-256
+  `14af3c8e0d9ea0a9983f80592aaec1ca00068d3655fa8a78aa326f4a262f8a5e`,
+  19,760,128 bytes;
+- rerun job `107449565233`: the same SHA-256 and the same 19,760,128-byte size.
+
+The committed Windows `SHA256SUMS` identity is now updated to this proven stable value. The
+`/Brepro` build recipe and fail-closed equality check remain mandatory. T057 remains ACTIVE until
+one fresh CI attempt on the updated committed identity is fully green.

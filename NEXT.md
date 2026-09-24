@@ -115,3 +115,31 @@ Recover the Windows artifact and its printed actual SHA. Then rerun this exact s
 job once, without changing code. If the two `/Brepro` runs produce the same exact SHA-256, update
 the committed Windows identity to that proven stable value in a later T057 phase. If they differ,
 diagnose the remaining nondeterminism rather than moving the allowlist.
+
+
+## Proven Windows identity committed
+
+The Windows `/Brepro` recipe was run twice on the unchanged exact head
+`ad17896b52535122ef5766dcd4ae0960f2b19df7`.
+
+Both Windows jobs produced byte-identical output:
+
+- job `107436310670`:
+  `14af3c8e0d9ea0a9983f80592aaec1ca00068d3655fa8a78aa326f4a262f8a5e`,
+  19,760,128 bytes;
+- unchanged rerun job `107449565233`:
+  `14af3c8e0d9ea0a9983f80592aaec1ca00068d3655fa8a78aa326f4a262f8a5e`,
+  19,760,128 bytes.
+
+This phase updates only the committed Windows Arti identity and provenance to that proven stable
+value. The Windows build keeps `/Brepro`; the fail-closed comparison remains unchanged. Linux
+identity remains unchanged.
+
+## Immediate next action for T057
+
+Inspect the exact fresh-CI head. T057 may enter closeout only if all required workflows are green and
+the Windows Arti matrix job rebuilds
+`14af3c8e0d9ea0a9983f80592aaec1ca00068d3655fa8a78aa326f4a262f8a5e`
+at 19,760,128 bytes while Linux continues to match its committed digest.
+
+Do not start T058.
