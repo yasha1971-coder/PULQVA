@@ -1,4 +1,5 @@
 mod arti_materialize;
+mod ffmpeg_archive_policy;
 mod ytdlp_materialize;
 
 use pulqva_core::{

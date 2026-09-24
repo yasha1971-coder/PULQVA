@@ -1,5 +1,26 @@
 # NEXT
 
+## CURRENT: T060-A metadata policy, CI pending
+
+This section supersedes the historical T059 closeout notes below.
+T059 merged in PR #61; main `d14b742e9662b1ccb68f64d28500e97efdff5454`
+passed all 11 post-merge workflows. Branch: `task/T060-verified-ffmpeg-archive-extraction`.
+
+T060-A adds a backend-only pure archive metadata policy and five grouped Rust tests.
+It rejects unsafe paths/types, duplicate executable members and declared-size/count overflows.
+Any rejected entry poisons the scan. No file extraction, authentication or staging is implemented.
+Header limits alone do NOT enforce actual decompressed-byte bounds. No production caller is wired.
+
+Rust/Cargo is unavailable locally: compilation and Rust tests await Windows/Linux desktop CI.
+Local continuity and diff checks run before publication. Exact head/PR/runs are checkpointed
+in the new PR. Parent T060 remains ACTIVE / NOT DONE.
+
+ONE next action: observe exact T060-A head CI; diagnose any failure first. If green, a later
+bounded phase may implement T060-B (authenticated bounded ZIP adapter). Do not merge or call
+T060 complete on the strength of metadata-only checks.
+
+## Historical T059 closeout snapshot (superseded above)
+
 ## Current verified state
 
 T059 implementation is complete and verified at
