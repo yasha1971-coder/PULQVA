@@ -2,54 +2,44 @@
 
 ## Current verified state
 
-T058 implementation is complete and verified.
+T059 implementation is complete and verified at
+`c7b81f00fe23803bfc79c61a48f14afddef055e3`.
+All 11 required workflows passed for that exact head, including Windows/Linux Arti identity
+(`36037909043`), desktop shell, Rust, continuity and privacy/media checks.
 
-Verified implementation head:
-`0748bfaaef65fb9b3b9ffce4657d02ab220143c5`
+The completed-file backend now materializes yt-dlp first, then authenticated Arti,
+binds the resulting Arti path to the backend runtime layout, and only then enters the
+pipeline that can prepare/launch Tor. Missing, duplicate, failed or mismatched Arti
+materialization blocks that pipeline. No new network path was introduced.
 
-All 11 required workflows passed for that exact head.
+Windows Arti reproducibility recovery is verified. Pinned Rust 1.91.0 rust-lld with
+`/Brepro /DEBUG:NONE` produced two byte-identical executables; the promoted SHA-256 is
+`9245c7b5f71391238539bf2d78a492453cae66f978cf8e479039a26f1667f3df`.
+The subsequent promotion-head CI passed, including full executable SHA verification.
+Evidence/provenance: `sidecars/arti/README.md` and PR #61 checkpoints.
 
-T058 now provides a backend-only no-clobber Arti materialization boundary using the authenticated T057
-platform identity:
+## Closeout pending
 
-- only a verified Arti direct-binary artifact is accepted;
-- backend-owned version + platform SHA-256 identity are required;
-- source containment/type/receipt size and destination layout are revalidated;
-- source/destination aliases and unsafe paths are rejected;
-- matching verified existing destinations may be reused;
-- different or unsafe existing destinations are preserved and rejected;
-- copied bytes are hashed again from the actual staging stream;
-- Unix executable permission is applied only to the owned stage;
-- the complete stage is synchronized before no-clobber hard-link publication;
-- owned staging cleanup is identity-checked;
-- no shell, network, Tor bootstrap, process launch, or frontend filesystem authority is introduced.
+Branch: `task/T059-wire-arti-materialization-into-backend-prelaunch`
+Draft PR: #61
 
-## Closeout
+This metadata-only closeout must pass its own CI before PR #61 is made ready and merged.
+The exact closeout head and new workflow IDs are recorded in the PR checkpoint.
+Do not merge based only on the previous green implementation head.
 
-Branch:
-`task/T058-atomic-arti-sidecar-materialization`
+ONE next action: observe the exact closeout head's required CI. If green, finish PR #61;
+if any failure occurs, diagnose it before unrelated work. Do not start T060 before merge.
 
-Draft PR:
-#60
+## Next atomic task after T059 merge
 
-The implementation head is green, but this closeout commit must pass its own CI before PR #60 may
-be marked ready and merged.
+T060 — Safely extract FFmpeg from the verified packaged archive.
 
-## Next atomic task after T058 merge
+Implement the backend-only bounded extraction-to-owned-staging boundary described in
+`tasks/READY/T060-verified-ffmpeg-archive-extraction.md`. FFmpeg is an authenticated archive,
+not a direct-binary artifact. Runtime publication and prelaunch wiring remain later tasks.
+T060 is specified only; no implementation or new build for it has started.
 
-**T059 — Wire verified Arti materialization into backend prelaunch preparation**
+## Retained limits
 
-Bind T058 into the real completed-file backend path before Arti/Tor runtime preparation or launch,
-while preserving the already verified T056 yt-dlp materialization ordering. T059 must not absorb
-FFmpeg extraction, bundle activation, installer work, external providers, AI providers, or any
-direct-network fallback.
-
-Do not start T059 before PR #60 closeout is green and merged.
-
-## Trust limits retained
-
-- T058 does not prove a real release package contains the Arti resource;
-- T058 is not adversarial Windows reparse-point proof;
-- unsupported hard-link filesystems fail closed;
-- file synchronization is not a universal directory-metadata durability guarantee;
-- FFmpeg's pinned digest still authenticates its archive, not an extracted executable.
+T059 is not release packaging, bundle-resource or end-to-end natural-language download proof.
+Existing filesystem/concurrency trust limits from T058 remain. Kernel/privacy contracts unchanged.

@@ -1444,6 +1444,56 @@ where
     Ok((prepared.into_layout(), materialized))
 }
 
+fn select_verified_arti_artifact(
+    plan: &VerifiedBundledSidecarMaterializationPlan,
+) -> Result<&VerifiedBundledSidecarArtifact, DownloadActionError> {
+    let mut matches = plan
+        .items
+        .iter()
+        .filter(|item| item.kind == BundledSidecarKind::Arti);
+    let artifact = matches.next().ok_or_else(|| DownloadActionError {
+        code: "verified-arti-artifact-missing",
+        message: "validated packaged sidecar plan must contain exactly one Arti artifact".to_owned(),
+    })?;
+
+    if matches.next().is_some() {
+        return Err(DownloadActionError {
+            code: "verified-arti-artifact-duplicate",
+            message: "validated packaged sidecar plan contains more than one Arti artifact".to_owned(),
+        });
+    }
+
+    Ok(artifact)
+}
+
+fn prepare_materialized_arti_prelaunch<F>(
+    layout: AppRuntimeLayout,
+    plan: &VerifiedBundledSidecarMaterializationPlan,
+    materialize: F,
+) -> Result<(AppRuntimeLayout, PathBuf), DownloadActionError>
+where
+    F: FnOnce(
+        &PreparedAppRuntimeDirectories,
+        &Path,
+        &VerifiedBundledSidecarArtifact,
+    ) -> Result<PathBuf, DownloadActionError>,
+{
+    let artifact = select_verified_arti_artifact(plan)?;
+    let prepared = prepare_app_runtime_directories(layout)?;
+    let expected = prepared.layout().arti_executable()?;
+    let materialized = materialize(&prepared, &plan.resource_root, artifact)?;
+
+    if materialized != expected {
+        return Err(DownloadActionError {
+            code: "materialized-arti-path-mismatch",
+            message: "materialized Arti path must equal the app-owned runtime layout destination"
+                .to_owned(),
+        });
+    }
+
+    Ok((prepared.into_layout(), materialized))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CompletedFilePipelineInputs {
     download: DownloadPreflightInputs,
@@ -1471,6 +1521,60 @@ impl CompletedFilePipelineInputs {
             tor_ready_timeout,
         })
     }
+}
+
+fn run_completed_file_with_materialized_sidecars<FY, FA, FP>(
+    layout: AppRuntimeLayout,
+    verified_sidecar_plan: &VerifiedBundledSidecarMaterializationPlan,
+    candidate: &SearchCandidate,
+    inputs: CompletedFilePipelineInputs,
+    materialize_ytdlp: FY,
+    materialize_arti: FA,
+    run_pipeline: FP,
+) -> Result<CompletedFileView, DownloadActionError>
+where
+    FY: FnOnce(
+        &PreparedAppRuntimeDirectories,
+        &Path,
+        &VerifiedBundledSidecarArtifact,
+    ) -> Result<PathBuf, DownloadActionError>,
+    FA: FnOnce(
+        &PreparedAppRuntimeDirectories,
+        &Path,
+        &VerifiedBundledSidecarArtifact,
+    ) -> Result<PathBuf, DownloadActionError>,
+    FP: FnOnce(
+        &SearchCandidate,
+        CompletedFilePipelineInputs,
+    ) -> Result<CompletedFileView, DownloadActionError>,
+{
+    let (verified_layout, materialized_ytdlp) =
+        prepare_materialized_ytdlp_prelaunch(layout, verified_sidecar_plan, materialize_ytdlp)?;
+
+    if materialized_ytdlp != inputs.download.ytdlp_executable
+        || materialized_ytdlp != verified_layout.ytdlp_executable()?
+    {
+        return Err(DownloadActionError {
+            code: "completed-file-ytdlp-path-mismatch",
+            message: "completed-file pipeline yt-dlp path must equal the verified materialized path"
+                .to_owned(),
+        });
+    }
+
+    let (verified_layout, materialized_arti) =
+        prepare_materialized_arti_prelaunch(verified_layout, verified_sidecar_plan, materialize_arti)?;
+
+    if materialized_arti != inputs.download.arti_executable
+        || materialized_arti != verified_layout.arti_executable()?
+    {
+        return Err(DownloadActionError {
+            code: "completed-file-arti-path-mismatch",
+            message: "completed-file pipeline Arti path must equal the verified materialized path"
+                .to_owned(),
+        });
+    }
+
+    run_pipeline(candidate, inputs)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2033,9 +2137,11 @@ async fn download_completed_file(
 
     tauri::async_runtime::spawn_blocking(move || {
         let verified_sidecar_plan = validate_packaged_sidecar_sources(sidecar_plan)?;
-        let (verified_layout, materialized_ytdlp) = prepare_materialized_ytdlp_prelaunch(
+        run_completed_file_with_materialized_sidecars(
             layout,
             &verified_sidecar_plan,
+            &candidate,
+            inputs,
             |prepared, resource_root, artifact| {
                 ytdlp_materialize::materialize_verified_ytdlp(
                     prepared,
@@ -2044,20 +2150,16 @@ async fn download_completed_file(
                 )
                 .map(|result| result.path().to_path_buf())
             },
-        )?;
-
-        if materialized_ytdlp != inputs.download.ytdlp_executable
-            || materialized_ytdlp != verified_layout.ytdlp_executable()?
-        {
-            return Err(DownloadActionError {
-                code: "completed-file-ytdlp-path-mismatch",
-                message:
-                    "completed-file pipeline yt-dlp path must equal the verified materialized path"
-                        .to_owned(),
-            });
-        }
-
-        run_completed_file_pipeline(&candidate, inputs)
+            |prepared, resource_root, artifact| {
+                arti_materialize::materialize_verified_arti(
+                    prepared,
+                    resource_root,
+                    artifact,
+                )
+                .map(|result| result.path().to_path_buf())
+            },
+            run_completed_file_pipeline,
+        )
     })
         .await
         .map_err(|source| DownloadActionError {
@@ -2084,13 +2186,14 @@ fn main() {
 mod tests {
     use super::{
         AppRuntimeLayout, BundledSidecarKind, DEFAULT_TOR_READY_TIMEOUT_SECS,
-        DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
+        DEFAULT_TOR_SOCKS_PORT, DownloadActionError, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
         BundledSidecarIdentity, ResolvedBundledSidecarMaterializationItem,
         ResolvedBundledSidecarMaterializationPlan, VerifiedBundledSidecarArtifact,
         VerifiedBundledSidecarMaterializationPlan, T024_PROOF_LOCATOR, app_status,
         build_bundled_sidecar_materialization_plan, pinned_arti_sha256_for_platform,
-        prepare_materialized_ytdlp_prelaunch, resolve_bundled_sidecar_sources,
-        validate_packaged_sidecar_sources,
+        prepare_materialized_arti_prelaunch, prepare_materialized_ytdlp_prelaunch,
+        resolve_bundled_sidecar_sources, run_completed_file_with_materialized_sidecars,
+        validate_packaged_sidecar_sources, CompletedFileView,
         build_download_preflight, establish_tor_ready_download_runtime, list_local_candidates,
         local_candidate_by_locator, plan_local_download, prepare_app_runtime_directories,
         prepare_completed_file_command, prepare_download_runtime, resolve_backend_media_source,
@@ -2993,6 +3096,292 @@ mod tests {
         assert!(!wrong.exists());
 
         fs::remove_dir_all(root).expect("path-mismatch fixture cleanup");
+    }
+
+    fn verified_arti_prelaunch_fixture(
+        root: &Path,
+        arti_count: usize,
+    ) -> (AppRuntimeLayout, VerifiedBundledSidecarMaterializationPlan) {
+        let layout = AppRuntimeLayout::new(root.join("runtime")).expect("fixture runtime layout");
+        let resource_root = root.join("resources");
+        fs::create_dir_all(&resource_root).expect("fixture resource root");
+        let mut items = Vec::new();
+
+        for index in 0..arti_count {
+            let source = resource_root.join(format!("arti-{index}"));
+            fs::write(&source, b"fixture").expect("fixture Arti source");
+            items.push(VerifiedBundledSidecarArtifact {
+                kind: BundledSidecarKind::Arti,
+                source,
+                destination: layout.arti_executable().expect("Arti destination"),
+                identity: BundledSidecarIdentity {
+                    version: "fixture".to_owned(),
+                    pinned_source_sha256: Some(
+                        "0000000000000000000000000000000000000000000000000000000000000000"
+                            .to_owned(),
+                    ),
+                },
+                byte_size: 7,
+            });
+        }
+
+        (
+            layout.clone(),
+            VerifiedBundledSidecarMaterializationPlan {
+                platform: "fixture",
+                resource_root,
+                bin_root: layout.bin_root().expect("fixture bin root"),
+                items,
+            },
+        )
+    }
+
+    #[test]
+    fn arti_prelaunch_prepares_runtime_before_materialization_and_binds_expected_path() {
+        let root = test_root("arti-prelaunch-order");
+        let (layout, plan) = verified_arti_prelaunch_fixture(&root, 1);
+        let expected = layout.arti_executable().expect("expected Arti path");
+        let expected_for_callback = expected.clone();
+
+        let (verified_layout, materialized) = prepare_materialized_arti_prelaunch(
+            layout,
+            &plan,
+            move |prepared, resource_root, artifact| {
+                assert!(prepared.layout().root().is_dir());
+                assert!(prepared.layout().tor_cache_dir()?.is_dir());
+                assert!(prepared.layout().tor_state_dir()?.is_dir());
+                assert!(prepared.layout().output_root()?.is_dir());
+                assert!(resource_root.is_dir());
+                assert_eq!(artifact.destination, expected_for_callback);
+                assert!(!artifact.destination.exists());
+                Ok(artifact.destination.clone())
+            },
+        )
+        .expect("Arti prelaunch preparation succeeds");
+
+        assert_eq!(materialized, expected);
+        assert_eq!(verified_layout.arti_executable().unwrap(), expected);
+        assert!(!expected.exists());
+
+        fs::remove_dir_all(root).expect("Arti prelaunch order fixture cleanup");
+    }
+
+    #[test]
+    fn arti_prelaunch_fails_closed_when_verified_artifact_is_missing_before_materializer() {
+        let root = test_root("arti-prelaunch-missing");
+        let (layout, plan) = verified_arti_prelaunch_fixture(&root, 0);
+        let runtime_root = layout.root().to_path_buf();
+        let called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let called_in_callback = called.clone();
+
+        let error = prepare_materialized_arti_prelaunch(
+            layout,
+            &plan,
+            move |_, _, _| {
+                called_in_callback.store(true, std::sync::atomic::Ordering::SeqCst);
+                unreachable!("missing Arti artifact must fail before materializer")
+            },
+        )
+        .expect_err("missing Arti artifact must fail closed");
+
+        assert_eq!(error.code, "verified-arti-artifact-missing");
+        assert!(!called.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(!runtime_root.exists());
+
+        fs::remove_dir_all(root).expect("missing Arti artifact fixture cleanup");
+    }
+
+    #[test]
+    fn arti_prelaunch_fails_closed_on_duplicate_verified_artifacts_before_materializer() {
+        let root = test_root("arti-prelaunch-duplicate");
+        let (layout, plan) = verified_arti_prelaunch_fixture(&root, 2);
+        let runtime_root = layout.root().to_path_buf();
+        let called = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let called_in_callback = called.clone();
+
+        let error = prepare_materialized_arti_prelaunch(
+            layout,
+            &plan,
+            move |_, _, _| {
+                called_in_callback.store(true, std::sync::atomic::Ordering::SeqCst);
+                unreachable!("duplicate Arti artifacts must fail before materializer")
+            },
+        )
+        .expect_err("duplicate Arti artifacts must fail closed");
+
+        assert_eq!(error.code, "verified-arti-artifact-duplicate");
+        assert!(!called.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(!runtime_root.exists());
+
+        fs::remove_dir_all(root).expect("duplicate Arti artifact fixture cleanup");
+    }
+
+    #[test]
+    fn arti_prelaunch_rejects_materializer_returning_non_layout_path() {
+        let root = test_root("arti-prelaunch-path-mismatch");
+        let (layout, plan) = verified_arti_prelaunch_fixture(&root, 1);
+        let wrong = root.join("wrong-arti");
+
+        let error = prepare_materialized_arti_prelaunch(
+            layout,
+            &plan,
+            |_, _, _| Ok(wrong.clone()),
+        )
+        .expect_err("wrong Arti materialized destination must fail closed");
+
+        assert_eq!(error.code, "materialized-arti-path-mismatch");
+        assert!(!wrong.exists());
+
+        fs::remove_dir_all(root).expect("Arti path-mismatch fixture cleanup");
+    }
+
+    fn verified_completed_file_sidecars_fixture(
+        root: &Path,
+    ) -> (
+        AppRuntimeLayout,
+        VerifiedBundledSidecarMaterializationPlan,
+    ) {
+        let layout = AppRuntimeLayout::new(root.join("runtime")).expect("fixture runtime layout");
+        let resource_root = root.join("resources");
+        fs::create_dir_all(&resource_root).expect("fixture resource root");
+
+        let ytdlp_source = resource_root.join("yt-dlp");
+        let arti_source = resource_root.join("arti");
+        fs::write(&ytdlp_source, b"ytdlp").expect("fixture yt-dlp source");
+        fs::write(&arti_source, b"arti").expect("fixture Arti source");
+
+        let items = vec![
+            VerifiedBundledSidecarArtifact {
+                kind: BundledSidecarKind::YtDlp,
+                source: ytdlp_source,
+                destination: layout.ytdlp_executable().expect("yt-dlp destination"),
+                identity: BundledSidecarIdentity {
+                    version: "fixture".to_owned(),
+                    pinned_source_sha256: Some(
+                        "0000000000000000000000000000000000000000000000000000000000000000"
+                            .to_owned(),
+                    ),
+                },
+                byte_size: 5,
+            },
+            VerifiedBundledSidecarArtifact {
+                kind: BundledSidecarKind::Arti,
+                source: arti_source,
+                destination: layout.arti_executable().expect("Arti destination"),
+                identity: BundledSidecarIdentity {
+                    version: "fixture".to_owned(),
+                    pinned_source_sha256: Some(
+                        "1111111111111111111111111111111111111111111111111111111111111111"
+                            .to_owned(),
+                    ),
+                },
+                byte_size: 4,
+            },
+        ];
+
+        (
+            layout.clone(),
+            VerifiedBundledSidecarMaterializationPlan {
+                platform: "fixture",
+                resource_root,
+                bin_root: layout.bin_root().expect("fixture bin root"),
+                items,
+            },
+        )
+    }
+
+    #[test]
+    fn completed_file_prelaunch_orders_ytdlp_then_arti_then_pipeline() {
+        let root = test_root("completed-file-sidecar-order");
+        let (layout, plan) = verified_completed_file_sidecars_fixture(&root);
+        let (candidate, inputs) = prepare_completed_file_command(
+            "find the official live performance".to_owned(),
+            T024_PROOF_LOCATOR.to_owned(),
+            &layout,
+        )
+        .expect("completed-file fixture inputs");
+
+        let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let ytdlp_events = events.clone();
+        let arti_events = events.clone();
+        let pipeline_events = events.clone();
+
+        let result = run_completed_file_with_materialized_sidecars(
+            layout,
+            &plan,
+            &candidate,
+            inputs,
+            move |prepared, _, artifact| {
+                ytdlp_events.lock().unwrap().push("yt-dlp");
+                assert!(prepared.layout().root().is_dir());
+                assert_eq!(artifact.kind, BundledSidecarKind::YtDlp);
+                Ok(artifact.destination.clone())
+            },
+            move |prepared, _, artifact| {
+                arti_events.lock().unwrap().push("arti");
+                assert!(prepared.layout().root().is_dir());
+                assert_eq!(artifact.kind, BundledSidecarKind::Arti);
+                Ok(artifact.destination.clone())
+            },
+            move |_, _| {
+                pipeline_events.lock().unwrap().push("pipeline");
+                Ok(CompletedFileView {
+                    file_name: "fixture.mp4".to_owned(),
+                    byte_size: 1,
+                    stage: "completed-file-ready",
+                })
+            },
+        )
+        .expect("sidecar prelaunch orchestration succeeds");
+
+        assert_eq!(result.file_name, "fixture.mp4");
+        assert_eq!(
+            *events.lock().unwrap(),
+            vec!["yt-dlp", "arti", "pipeline"]
+        );
+
+        fs::remove_dir_all(root).expect("completed-file order fixture cleanup");
+    }
+
+    #[test]
+    fn completed_file_prelaunch_arti_failure_blocks_pipeline() {
+        let root = test_root("completed-file-arti-failure");
+        let (layout, plan) = verified_completed_file_sidecars_fixture(&root);
+        let (candidate, inputs) = prepare_completed_file_command(
+            "find the official live performance".to_owned(),
+            T024_PROOF_LOCATOR.to_owned(),
+            &layout,
+        )
+        .expect("completed-file fixture inputs");
+
+        let pipeline_called =
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let pipeline_called_in_closure = pipeline_called.clone();
+
+        let error = run_completed_file_with_materialized_sidecars(
+            layout,
+            &plan,
+            &candidate,
+            inputs,
+            |_, _, artifact| Ok(artifact.destination.clone()),
+            |_, _, _| {
+                Err(DownloadActionError {
+                    code: "fixture-arti-materialization-failed",
+                    message: "fixture Arti materialization failure".to_owned(),
+                })
+            },
+            move |_, _| {
+                pipeline_called_in_closure
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                unreachable!("pipeline must not run after Arti materialization failure")
+            },
+        )
+        .expect_err("Arti materialization failure must block completed-file pipeline");
+
+        assert_eq!(error.code, "fixture-arti-materialization-failed");
+        assert!(!pipeline_called.load(std::sync::atomic::Ordering::SeqCst));
+
+        fs::remove_dir_all(root).expect("completed-file failure fixture cleanup");
     }
 
     #[test]
