@@ -1,7 +1,7 @@
 # T059 — Wire verified Arti materialization into backend prelaunch preparation
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
@@ -30,3 +30,26 @@ launch, without expanding scope to FFmpeg extraction or release packaging.
 
 FFmpeg archive extraction/materialization, Tauri bundle activation, installer/release packaging,
 external providers, AI providers, and direct-network fallback.
+
+
+## Current phase: IMPLEMENT
+
+T059 preserves the established T056 ordering and adds T058 Arti materialization before the existing
+completed-file pipeline can prepare or launch Tor:
+
+1. validate all packaged sidecar sources;
+2. materialize verified yt-dlp using the existing T056 boundary and bind its path;
+3. select exactly one verified Arti artifact;
+4. prepare/reuse app-owned runtime directories;
+5. materialize Arti using the T058 boundary and bind its path to both the runtime layout and the
+   backend-derived completed-file Arti input;
+6. only then enter the existing completed-file pipeline, whose first Tor-related step is building
+   the download preflight and preparing the Arti runtime.
+
+A new orchestration helper makes this ordering testable without launching any process. Tests prove
+yt-dlp -> Arti -> pipeline ordering and prove that an Arti materialization error prevents the
+pipeline closure from running. Separate Arti prelaunch tests cover missing/duplicate verified
+artifacts, runtime-directory preparation before materialization, and materialized-path mismatch.
+
+No FFmpeg extraction, bundle activation, installer, external provider, AI provider, or direct-network
+fallback is introduced.
