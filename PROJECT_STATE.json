@@ -10,6 +10,8 @@
   "next_task": "T059",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
-  "known_blockers": [],
+  "known_blockers": [
+    "Windows Arti full-file identity reproducibility pending after /DEBUG:NONE recovery; allowlist unchanged."
+  ],
   "updated": "2026-09-24"
 }

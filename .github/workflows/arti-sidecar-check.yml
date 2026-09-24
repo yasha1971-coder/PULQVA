@@ -60,7 +60,10 @@ jobs:
             test -f "$RUST_LLD_UNIX"
             RUST_LLD_NATIVE="$(cygpath -w "$RUST_LLD_UNIX")"
             export CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER="$RUST_LLD_NATIVE"
-            export RUSTFLAGS="-C linker-flavor=lld-link -C link-arg=/Brepro"
+            export RUSTFLAGS="-C linker-flavor=lld-link -C link-arg=/Brepro -C link-arg=/DEBUG:NONE"
+            LINKER_SHA256="$(sha256sum "$RUST_LLD_UNIX" | awk '{print $1}')"
+            echo "PULQVA_ARTI_LINKER_SHA256=$LINKER_SHA256" >> "$GITHUB_ENV"
+            echo "PULQVA_ARTI_RUSTFLAGS=$RUSTFLAGS" >> "$GITHUB_ENV"
             echo "PULQVA_ARTI_WINDOWS_LINKER=rust-lld rust_toolchain=1.91.0 linker=$RUST_LLD_NATIVE"
           fi
 
@@ -81,6 +84,44 @@ jobs:
           echo "$VERSION_OUTPUT" | grep -F "$PULQVA_ARTI_VERSION"
           "$PULQVA_ARTI_BIN" help proxy > "$RUNNER_TEMP/arti-proxy-help.txt"
           grep -i "proxy" "$RUNNER_TEMP/arti-proxy-help.txt"
+
+      - name: Verify Windows release has no CodeView identity
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - "$(cygpath -w "$PULQVA_ARTI_BIN")" <<'PY'
+          import struct
+          import sys
+          from pathlib import Path
+
+          data = Path(sys.argv[1]).read_bytes()
+          pe = struct.unpack_from("<I", data, 0x3c)[0]
+          assert data[pe:pe + 4] == b"PE\0\0", "Invalid PE signature"
+          count = struct.unpack_from("<H", data, pe + 6)[0]
+          optional_size = struct.unpack_from("<H", data, pe + 20)[0]
+          optional = pe + 24
+          assert struct.unpack_from("<H", data, optional)[0] == 0x20b, "Expected PE32+"
+          rva, size = struct.unpack_from("<II", data, optional + 112 + 6 * 8)
+          assert rva and size and size % 28 == 0, "Missing/invalid PE debug directory"
+          table = optional + optional_size
+          debug_offset = None
+          for index in range(count):
+              section = table + index * 40
+              _, base, raw_size, raw_offset = struct.unpack_from("<IIII", data, section + 8)
+              if base <= rva and rva + size <= base + raw_size:
+                  debug_offset = raw_offset + rva - base
+                  break
+          assert debug_offset is not None, "PE debug directory outside raw sections"
+          assert debug_offset + size <= len(data), "Truncated PE debug directory"
+          types = [
+              struct.unpack_from("<I", data, offset + 12)[0]
+              for offset in range(debug_offset, debug_offset + size, 28)
+          ]
+          assert 2 not in types, "Unexpected CodeView/PDB identity: /DEBUG:NONE ineffective"
+          assert 16 in types, "Missing reproducible-build marker: /Brepro ineffective"
+          print("PULQVA_ARTI_PE_METADATA codeview=false reproducible_marker=true")
+          PY
 
       - name: Emit exact packaged-executable identity candidate
         shell: bash
@@ -121,6 +162,12 @@ jobs:
             echo "rust_toolchain=1.91.0"
             echo "cargo_locked=true"
             echo "feature_args=$PULQVA_ARTI_FEATURE_ARGS"
+            if [ "$RUNNER_OS" = "Windows" ]; then
+              echo "linker=rust-lld"
+              echo "linker_sha256=$PULQVA_ARTI_LINKER_SHA256"
+              echo "rustflags=$PULQVA_ARTI_RUSTFLAGS"
+              echo "codeview_identity=false"
+            fi
           } > "$RECEIPT"
 
           cat "$RECEIPT"

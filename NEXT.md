@@ -98,3 +98,32 @@ uses `rust-lld.exe` shipped by the already pinned Rust 1.91.0 toolchain, with
 `linker-flavor=lld-link` and `/Brepro`. Linux is unchanged. The existing committed Windows digest
 is intentionally left unchanged so the first rust-lld candidate must fail closed and be captured;
 a later phase must prove two unchanged rust-lld runs match before changing SHA256SUMS.
+
+## Active recovery: suppress Windows PDB identity (supersedes earlier recovery notes)
+
+PR #61 remains draft; T059 is ACTIVE / NOT DONE.
+Parent head: `5c4c02475b40e1f581cbc3466703496ca3ce9d4c`.
+Run `35981665243` attempts 1 and 2 failed only at Windows whole-file identity.
+Artifacts `10800577059` and `10820967928` were independently hashed and compared:
+both 19,624,960 bytes, but SHA-256 `16cc66dd363a357eddb9129e5b62cc000c94b1d43b9bfc80a7b9b56fcf9ed6ac`
+versus `bb908c07a1c0b60e19b050bf667a7c44379a3a33228b8c83d799de3b1a8e1d2e`.
+Exactly 20 bytes differ: PE/debug timestamps and the CodeView PDB GUID.
+All code sections and all other bytes match. See PR checkpoint 5818360924.
+
+This Windows-only recipe change adds `/DEBUG:NONE` to the pinned rust-lld flags,
+retaining `/Brepro`. An executable acceptance check requires no CodeView debug
+record and a reproducible-build marker in the actual PE output. The identity receipt
+records the linker SHA-256 and effective Rust flags. Linux and product code are unchanged.
+
+The old committed executable digest is deliberately retained. A fresh successful
+compile/CLI/PE check is still expected to fail at the old-digest comparison and upload
+the candidate. Do not call that mismatch a new compilation failure.
+
+Verification: local YAML/shell/Python syntax and rejection of both old CodeView-bearing
+artifacts; Windows build and reproducibility remain pending. Exact new head and CI run
+IDs are recorded in the PR checkpoint after publishing this commit.
+
+ONE next action: inspect that new head's Windows compile, CLI, PE metadata check and
+captured identity. If those succeed, rerun the same Windows job once unchanged in a later
+phase and compare complete executable hashes. Only matching independent builds permit
+a later digest promotion. Do not merge PR #61 or start T060.
