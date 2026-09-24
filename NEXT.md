@@ -2,147 +2,44 @@
 
 ## Current verified state
 
-T058 is complete and merged on main at
-`0ca4264e47cb9d8c5a464cc93e2b43561e602710`.
+T059 implementation is complete and verified at
+`c7b81f00fe23803bfc79c61a48f14afddef055e3`.
+All 11 required workflows passed for that exact head, including Windows/Linux Arti identity
+(`36037909043`), desktop shell, Rust, continuity and privacy/media checks.
 
-Verified T058 closeout head:
-`d02793b5d9d2e11fb9c627b88f69dacdce4b85f5`.
+The completed-file backend now materializes yt-dlp first, then authenticated Arti,
+binds the resulting Arti path to the backend runtime layout, and only then enters the
+pipeline that can prepare/launch Tor. Missing, duplicate, failed or mismatched Arti
+materialization blocks that pipeline. No new network path was introduced.
 
-All 11 required workflows passed for that exact closeout head.
-
-## Active atomic task
-
-**T059 — Wire verified Arti materialization into backend prelaunch preparation**
-
-Phase: RECOVERY / identity promotion pending CI. T059 is NOT DONE.
-
-The real completed-file backend now preserves the existing T056 yt-dlp materialization step and adds
-T058 Arti materialization before the existing pipeline can prepare or launch Tor.
-
-Implemented ordering:
-
-1. frontend query/locator are validated into backend-owned candidate/pipeline inputs;
-2. Tauri AppHandle resolves the package resource plan;
-3. blocking backend validates packaged sidecar sources;
-4. existing T056 prelaunch materializes yt-dlp and binds its path to the runtime layout and backend
-   completed-file input;
-5. exactly one verified Arti artifact is selected;
-6. app-owned runtime directories are prepared/reused;
-7. T058 atomically materializes Arti;
-8. the materialized Arti path must equal both `runtime/bin/arti(.exe)` and the backend-derived
-   completed-file Arti input path;
-9. only then is the existing completed-file pipeline invoked; Tor runtime preparation/launch stays
-   downstream of this boundary.
-
-The orchestration helper is covered without launching processes. Tests prove:
-
-- yt-dlp materialization happens before Arti materialization;
-- Arti materialization happens before the pipeline;
-- Arti materialization failure prevents the pipeline closure from running;
-- missing/duplicate verified Arti artifacts fail before the Arti materializer callback;
-- runtime directories exist before the Arti materializer callback;
-- a non-layout Arti materialized path fails closed.
-
-No frontend filesystem path is accepted. No FFmpeg extraction/materialization, new network operation,
-shell command, direct-network fallback, bundle activation, installer, external provider, or AI
-provider is added.
-
-Branch:
-`task/T059-wire-arti-materialization-into-backend-prelaunch`
-
-## Immediate next action
-
-Observe the identity-promotion commit recorded in the latest PR #61 checkpoint.
-Windows executable reproducibility has now been demonstrated by two independent artifacts
-(see the final recovery section below). The old digest has been replaced with the reproduced
-value. All required checks must pass for this new commit before a later T059 closeout.
-Do not retry the old head or start T060.
-
-## Recovery after first T059 implementation CI
-
-Implementation head `f7dad20ceaff5100e2ce2858d1e161099ed17a70` produced 10/11 green workflows.
-Only `desktop-shell-check` failed, and both Windows/Linux jobs failed at test-module compilation
-before desktop boundary tests.
-
-Exact error: `DownloadActionError` was referenced by the new Arti-failure test closure but omitted
-from the test module import list. Production behavior was not implicated.
-
-This recovery changes only that test import. No production path, ordering, Tor behavior, privacy
-boundary, or materialization logic is changed.
-
-
-## Recovery: remaining Windows drift isolated to the MSVC linker
-
-Two captured Windows `/Brepro` executables were compared directly:
-
-- prior candidate SHA:
-  `14af3c8e0d9ea0a9983f80592aaec1ca00068d3655fa8a78aa326f4a262f8a5e`;
-- later fresh-run SHA:
-  `e86747f49a70c13fd494326b74e70dd8c7b23947f23c81d6162752fff9af96ab`;
-- both are exactly 19,760,128 bytes.
-
-PE comparison shows:
-
-- `.text` is byte-identical;
-- `.data`, `.pdata`, and `.reloc` are byte-identical;
-- only `.rdata` and PE/linker metadata differ;
-- the Rich header's relevant tool build changed from `36256` to `36257`;
-- the PE reproducible-build hash and CodeView GUID changed accordingly.
-
-Therefore the remaining drift is tied to the floating MSVC linker/toolset on
-`windows-latest`, not Arti source code or the Rust-generated executable code.
-
-This recovery removes that floating linker from the Windows Arti identity recipe. The workflow now
-uses `rust-lld.exe` shipped by the already pinned Rust 1.91.0 toolchain, with
-`linker-flavor=lld-link` and `/Brepro`. Linux is unchanged. The existing committed Windows digest
-is intentionally left unchanged so the first rust-lld candidate must fail closed and be captured;
-a later phase must prove two unchanged rust-lld runs match before changing SHA256SUMS.
-
-## Active recovery: suppress Windows PDB identity (supersedes earlier recovery notes)
-
-PR #61 remains draft; T059 is ACTIVE / NOT DONE.
-Parent head: `5c4c02475b40e1f581cbc3466703496ca3ce9d4c`.
-Run `35981665243` attempts 1 and 2 failed only at Windows whole-file identity.
-Artifacts `10800577059` and `10820967928` were independently hashed and compared:
-both 19,624,960 bytes, but SHA-256 `16cc66dd363a357eddb9129e5b62cc000c94b1d43b9bfc80a7b9b56fcf9ed6ac`
-versus `bb908c07a1c0b60e19b050bf667a7c44379a3a33228b8c83d799de3b1a8e1d2e`.
-Exactly 20 bytes differ: PE/debug timestamps and the CodeView PDB GUID.
-All code sections and all other bytes match. See PR checkpoint 5818360924.
-
-This Windows-only recipe change adds `/DEBUG:NONE` to the pinned rust-lld flags,
-retaining `/Brepro`. An executable acceptance check requires no CodeView debug
-record and a reproducible-build marker in the actual PE output. The identity receipt
-records the linker SHA-256 and effective Rust flags. Linux and product code are unchanged.
-
-The old committed executable digest is deliberately retained. A fresh successful
-compile/CLI/PE check is still expected to fail at the old-digest comparison and upload
-the candidate. Do not call that mismatch a new compilation failure.
-
-Verification: local YAML/shell/Python syntax and rejection of both old CodeView-bearing
-artifacts; Windows build and reproducibility remain pending. Exact new head and CI run
-IDs are recorded in the PR checkpoint after publishing this commit.
-
-ONE next action: inspect that new head's Windows compile, CLI, PE metadata check and
-captured identity. If those succeed, rerun the same Windows job once unchanged in a later
-phase and compare complete executable hashes. Only matching independent builds permit
-a later digest promotion. Do not merge PR #61 or start T060.
-
-## Current recovery: promote independently reproduced Windows identity
-
-This section supersedes the earlier pending-reproducibility notes above.
-Head `923b7a48d0cff324347f4cedf98e7c62e7e6ab2a`, run `36030525791`:
-Windows jobs `107737813985` and `107754281056` both passed compile, CLI and PE checks.
-Artifacts `10823040260` and `10824592634` contain byte-for-byte identical executables,
-independently downloaded and hashed: 19,624,960 bytes, SHA-256
+Windows Arti reproducibility recovery is verified. Pinned Rust 1.91.0 rust-lld with
+`/Brepro /DEBUG:NONE` produced two byte-identical executables; the promoted SHA-256 is
 `9245c7b5f71391238539bf2d78a492453cae66f978cf8e479039a26f1667f3df`.
-Both receipts identify the same pinned linker SHA and flags. The only failure was the
-old SHA allowlist comparison. Ten other workflows and Linux had succeeded.
+The subsequent promotion-head CI passed, including full executable SHA verification.
+Evidence/provenance: `sidecars/arti/README.md` and PR #61 checkpoints.
 
-This atomic recovery promotes only the Windows identity and records its provenance in
-`sidecars/arti/README.md`. Linux identity, workflow recipe, product code and kernel are unchanged.
-Local identity matching and continuity checks are required before publication. Exact new SHA
-and CI run are saved in the PR checkpoint. Last verified T058 commit remains unchanged.
+## Closeout pending
 
-PENDING: CI for the new promotion commit. NOT DONE: T059, release packaging.
-ONE next action: observe required checks for that exact new head; if all are green, prepare
-T059 closeout in a later bounded phase. Any failure must be diagnosed first. Do not start T060.
+Branch: `task/T059-wire-arti-materialization-into-backend-prelaunch`
+Draft PR: #61
+
+This metadata-only closeout must pass its own CI before PR #61 is made ready and merged.
+The exact closeout head and new workflow IDs are recorded in the PR checkpoint.
+Do not merge based only on the previous green implementation head.
+
+ONE next action: observe the exact closeout head's required CI. If green, finish PR #61;
+if any failure occurs, diagnose it before unrelated work. Do not start T060 before merge.
+
+## Next atomic task after T059 merge
+
+T060 — Safely extract FFmpeg from the verified packaged archive.
+
+Implement the backend-only bounded extraction-to-owned-staging boundary described in
+`tasks/READY/T060-verified-ffmpeg-archive-extraction.md`. FFmpeg is an authenticated archive,
+not a direct-binary artifact. Runtime publication and prelaunch wiring remain later tasks.
+T060 is specified only; no implementation or new build for it has started.
+
+## Retained limits
+
+T059 is not release packaging, bundle-resource or end-to-end natural-language download proof.
+Existing filesystem/concurrency trust limits from T058 remain. Kernel/privacy contracts unchanged.

@@ -1,7 +1,7 @@
 # T059 — Wire verified Arti materialization into backend prelaunch preparation
 
 Parent: DESKTOP FOUNDATION  
-Status: ACTIVE
+Status: DONE (implementation verified; closeout CI and merge pending)
 
 ## Goal
 
@@ -32,7 +32,7 @@ FFmpeg archive extraction/materialization, Tauri bundle activation, installer/re
 external providers, AI providers, and direct-network fallback.
 
 
-## Current phase: IMPLEMENT
+## Implemented result
 
 T059 preserves the established T056 ordering and adds T058 Arti materialization before the existing
 completed-file pipeline can prepare or launch Tor:
@@ -71,3 +71,20 @@ floating MSVC tool build change from `36256` to `36257`; CodeView/Repro identity
 The Windows identity recipe now uses the `rust-lld.exe` shipped by pinned Rust 1.91.0 instead of
 the mutable Visual Studio linker supplied by `windows-latest`. It keeps `/Brepro` and the
 fail-closed SHA comparison. The committed digest is not changed in this phase.
+
+## Verified closeout evidence
+
+Implementation and Windows identity recovery verified at
+`c7b81f00fe23803bfc79c61a48f14afddef055e3`: all 11 required workflows succeeded.
+Arti sidecar workflow `36037909043` passed for both supported platforms; the pinned
+Windows digest is `9245c7b5f71391238539bf2d78a492453cae66f978cf8e479039a26f1667f3df`.
+The two preceding `/DEBUG:NONE` executable artifacts were independently downloaded,
+hashed and compared byte-for-byte before promotion. Current recipe uses pinned Rust
+1.91.0 rust-lld, `/Brepro` and `/DEBUG:NONE`, with actual PE checks.
+This supersedes the earlier recovery notes that left the Windows digest unchanged.
+
+The metadata-only closeout commit must pass its own CI before PR #61 is made ready
+and merged. T060 is only planned and must not start before that merge.
+
+Retained limits: this is not release-package or end-to-end user-journey proof;
+FFmpeg archive extraction/materialization, bundle activation and providers remain out of scope.
