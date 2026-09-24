@@ -85,3 +85,33 @@ package source; later CI can verify the stored/package source bytes against thei
 without requiring a fresh Windows rebuild to be byte-identical.
 
 No runtime behavior, digest allowlist, or privacy rule changes in this phase.
+
+
+## Windows reproducibility recovery: /Brepro
+
+The captured Windows artifact from run `35934005627` was downloaded and inspected directly.
+
+Exact captured executable:
+
+- `arti.exe` size: 19,759,616 bytes;
+- receipt SHA-256:
+  `e40620ee8332f90967bf13dec2338a2307aadd0f8579fede83ba9aed71a798c5`;
+- PE/COFF timestamp: `2026-09-23T23:36:51Z`, exactly the build time;
+- all three PE debug-directory entries also carried that same build-time timestamp;
+- the executable contains an RSDS/PDB identity record.
+
+That proves at least one concrete source of Windows byte drift: build-time data emitted by the MSVC
+link step. This recovery changes only the Windows candidate build by passing MSVC linker option
+`/Brepro` through Rust (`RUSTFLAGS="-C link-arg=/Brepro"`). Microsoft tooling identifies
+`/Brepro` images by using reproducible-build identity data rather than a wall-clock PE timestamp.
+
+The committed Windows SHA256SUMS entry remains unchanged. The existing equality check remains
+fail-closed, so this head is expected to remain red until a stable `/Brepro` candidate is proven.
+Artifact capture remains enabled so the exact candidate can be recovered.
+
+## Immediate next action after this head runs
+
+Recover the Windows artifact and its printed actual SHA. Then rerun this exact same failed Windows
+job once, without changing code. If the two `/Brepro` runs produce the same exact SHA-256, update
+the committed Windows identity to that proven stable value in a later T057 phase. If they differ,
+diagnose the remaining nondeterminism rather than moving the allowlist.

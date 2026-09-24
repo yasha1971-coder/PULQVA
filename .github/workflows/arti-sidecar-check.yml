@@ -54,6 +54,10 @@ jobs:
             FEATURE_ARGS=($PULQVA_ARTI_FEATURE_ARGS)
           fi
 
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            export RUSTFLAGS="-C link-arg=/Brepro"
+          fi
+
           CARGO_INCREMENTAL=0           cargo +1.91.0 install arti             --version "$ARTI_VERSION"             --locked             "${FEATURE_ARGS[@]}"             --root "$INSTALL_ROOT"             --target-dir "$TARGET_ROOT"
 
           ARTI_BIN="$INSTALL_ROOT/bin/$PULQVA_ARTI_EXECUTABLE"

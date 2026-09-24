@@ -93,3 +93,15 @@ This phase adds artifact capture only. The exact executable and receipt produced
 are uploaded even if the existing fail-closed comparison fails. A later phase may retrieve the exact
 Windows artifact from this run and make those exact bytes the immutable package source. The
 committed SHA256SUMS is not changed here.
+
+
+## Windows /Brepro recovery
+
+The exact Windows artifact captured from run `35934005627` was inspected locally. Its PE/COFF
+timestamp and all debug-directory timestamps equal the wall-clock build time
+`2026-09-23T23:36:51Z`; it also carries an RSDS/PDB identity record. This is direct evidence that
+the MSVC link output contains per-build data.
+
+The Windows candidate build now passes `/Brepro` to the MSVC linker through Rust. Linux is
+unchanged. The committed Windows digest and fail-closed comparison are intentionally not updated in
+this phase. Exact candidate artifacts continue to be uploaded for later proof.
