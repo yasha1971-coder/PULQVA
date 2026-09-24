@@ -1,7 +1,7 @@
 # T060 — Safely extract FFmpeg from the verified packaged archive
 
 Parent: DESKTOP FOUNDATION
-Status: ACTIVE — T060-A metadata policy, CI pending
+Status: ACTIVE — T060-A verified; T060-B ZIP stream adapter CI pending
 
 ## Bounded implementation phases
 
@@ -11,9 +11,15 @@ separate verifiable changes; implementing all safely exceeds a bounded phase.
 
 - T060-A (current): pure metadata policy and tests for member names/types, exact executable
   selection, duplicate selection, bounded declared sizes/count and poisoned failure state.
-- T060-B: bounded ZIP adapter over authenticated owned source bytes and staged output.
+- T060-B: bounded ZIP adapter over authenticated immutable source bytes to an internal writer.
 - T060-C: tar.xz adapter with the same contract and actual decompressed-byte limits.
 - Final integration: shared authenticated extraction receipt and ownership/cleanup tests.
+
+T060-A head `b6b0dbd8d9b6c0191a659e693b7c0db11952b11f` passed all 11 workflows.
+T060-B adds stored/deflate extraction, immutable-source SHA verification, metadata gate,
+actual output limits/CRC and hash receipt. It does not own staging; partial writer output on
+failure must be discarded by the later owned-stage integration. Real archive compatibility,
+tar.xz and source-file containment/ownership tests remain pending.
 
 T060-A does not authenticate archives, decompress data, write files or enforce actual streamed
 byte limits. Header-size checks alone are not a decompression-bomb defense.

@@ -1,5 +1,29 @@
 # NEXT
 
+## CURRENT: T060-B ZIP stream adapter, CI pending
+
+Supersedes the T060-A current section below. All 11 workflows passed for T060-A head
+`b6b0dbd8d9b6c0191a659e693b7c0db11952b11f`, including Windows/Linux desktop tests.
+PR #62 / branch `task/T060-verified-ffmpeg-archive-extraction` remains draft and ACTIVE.
+
+Added an immutable ZIP-byte adapter: authenticate the entire bounded source against a
+backend-supplied pinned digest before parsing; reject unsupported ZIP layouts, metadata
+count ambiguity, unsafe paths/types/encryption; select one exact FFmpeg; stream stored/deflate
+data into an internal writer with actual byte limits, CRC checking and output digest receipt.
+ZIP64/multipart/prefixed/trailing layouts are deliberately unsupported in this phase.
+
+The writer is NOT yet an owned filesystem stage. On failure it may hold partial data and
+the later staging caller MUST discard it. No production caller, filesystem publication,
+runtime integration, or tar.xz adapter is implemented. Parent T060 is NOT DONE.
+zip 2.4.2 is pinned with default features disabled and deflate enabled; its upstream API
+source was read. Real pinned BtbN archive compatibility is NOT TESTED yet.
+
+Local continuity/diff checks run before publication. Rust/Cargo remain unavailable locally;
+new Rust compilation/tests await CI. Exact new head/run IDs are recorded in PR #62.
+ONE next action: inspect this exact head's CI; diagnose failures first. If green, continue
+bounded extraction work with tar.xz and then owned staging/source-file integration, including
+real pinned-archive compatibility. No merge until the complete T060 contract is verified.
+
 ## CURRENT: T060-A metadata policy, CI pending
 
 This section supersedes the historical T059 closeout notes below.
