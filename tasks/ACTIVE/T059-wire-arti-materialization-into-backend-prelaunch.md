@@ -60,3 +60,14 @@ fallback is introduced.
 Head `f7dad20ceaff5100e2ce2858d1e161099ed17a70` passed every workflow except
 `desktop-shell-check`. Both OS jobs failed only because the test module referenced
 `DownloadActionError` without importing it. This recovery adds that import only.
+
+
+## Recovery: pin the Windows linker
+
+Direct comparison of the two 19,760,128-byte `/Brepro` Windows artifacts showed that executable
+code/data are stable and drift is confined to PE/linker metadata. Their Rich headers identify a
+floating MSVC tool build change from `36256` to `36257`; CodeView/Repro identity changes with it.
+
+The Windows identity recipe now uses the `rust-lld.exe` shipped by pinned Rust 1.91.0 instead of
+the mutable Visual Studio linker supplied by `windows-latest`. It keeps `/Brepro` and the
+fail-closed SHA comparison. The committed digest is not changed in this phase.

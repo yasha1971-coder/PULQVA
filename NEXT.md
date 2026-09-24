@@ -70,3 +70,31 @@ from the test module import list. Production behavior was not implicated.
 
 This recovery changes only that test import. No production path, ordering, Tor behavior, privacy
 boundary, or materialization logic is changed.
+
+
+## Recovery: remaining Windows drift isolated to the MSVC linker
+
+Two captured Windows `/Brepro` executables were compared directly:
+
+- prior candidate SHA:
+  `14af3c8e0d9ea0a9983f80592aaec1ca00068d3655fa8a78aa326f4a262f8a5e`;
+- later fresh-run SHA:
+  `e86747f49a70c13fd494326b74e70dd8c7b23947f23c81d6162752fff9af96ab`;
+- both are exactly 19,760,128 bytes.
+
+PE comparison shows:
+
+- `.text` is byte-identical;
+- `.data`, `.pdata`, and `.reloc` are byte-identical;
+- only `.rdata` and PE/linker metadata differ;
+- the Rich header's relevant tool build changed from `36256` to `36257`;
+- the PE reproducible-build hash and CodeView GUID changed accordingly.
+
+Therefore the remaining drift is tied to the floating MSVC linker/toolset on
+`windows-latest`, not Arti source code or the Rust-generated executable code.
+
+This recovery removes that floating linker from the Windows Arti identity recipe. The workflow now
+uses `rust-lld.exe` shipped by the already pinned Rust 1.91.0 toolchain, with
+`linker-flavor=lld-link` and `/Brepro`. Linux is unchanged. The existing committed Windows digest
+is intentionally left unchanged so the first rust-lld candidate must fail closed and be captured;
+a later phase must prove two unchanged rust-lld runs match before changing SHA256SUMS.
