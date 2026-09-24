@@ -2186,7 +2186,7 @@ fn main() {
 mod tests {
     use super::{
         AppRuntimeLayout, BundledSidecarKind, DEFAULT_TOR_READY_TIMEOUT_SECS,
-        DEFAULT_TOR_SOCKS_PORT, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
+        DEFAULT_TOR_SOCKS_PORT, DownloadActionError, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
         BundledSidecarIdentity, ResolvedBundledSidecarMaterializationItem,
         ResolvedBundledSidecarMaterializationPlan, VerifiedBundledSidecarArtifact,
         VerifiedBundledSidecarMaterializationPlan, T024_PROOF_LOCATOR, app_status,

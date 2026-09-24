@@ -57,3 +57,16 @@ that concrete failure. If all required Windows/Linux/privacy checks are green, c
 bounded phase.
 
 Do not start T060.
+
+
+## Recovery after first T059 implementation CI
+
+Implementation head `f7dad20ceaff5100e2ce2858d1e161099ed17a70` produced 10/11 green workflows.
+Only `desktop-shell-check` failed, and both Windows/Linux jobs failed at test-module compilation
+before desktop boundary tests.
+
+Exact error: `DownloadActionError` was referenced by the new Arti-failure test closure but omitted
+from the test module import list. Production behavior was not implicated.
+
+This recovery changes only that test import. No production path, ordering, Tor behavior, privacy
+boundary, or materialization logic is changed.

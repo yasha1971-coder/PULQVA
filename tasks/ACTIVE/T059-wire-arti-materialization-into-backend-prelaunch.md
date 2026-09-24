@@ -53,3 +53,10 @@ artifacts, runtime-directory preparation before materialization, and materialize
 
 No FFmpeg extraction, bundle activation, installer, external provider, AI provider, or direct-network
 fallback is introduced.
+
+
+## Recovery: missing test import
+
+Head `f7dad20ceaff5100e2ce2858d1e161099ed17a70` passed every workflow except
+`desktop-shell-check`. Both OS jobs failed only because the test module referenced
+`DownloadActionError` without importing it. This recovery adds that import only.
