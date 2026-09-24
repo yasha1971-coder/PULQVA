@@ -25,7 +25,34 @@ fn pinned_archive_matches_independent_extractor() {
     let stage_root = std::env::temp_dir().join(format!("pulqva-real-ffmpeg-stage-{}", std::process::id()));
     std::fs::create_dir(&stage_root).unwrap();
     let stage_root = std::fs::canonicalize(stage_root).unwrap();
-    let stage = super::ffmpeg_stage::extract_to_stage(&stage_root, &bytes, digest, platform.ffmpeg_digest_asset).unwrap();
+    let resources = std::env::temp_dir().join(format!("pulqva-real-ffmpeg-source-{}", std::process::id()));
+    std::fs::create_dir(&resources).unwrap();
+    let resources = std::fs::canonicalize(resources).unwrap();
+    let source = resources.join(platform.ffmpeg_resource);
+    std::fs::create_dir_all(source.parent().unwrap()).unwrap();
+    std::fs::write(&source, &bytes).unwrap();
+    let layout = super::AppRuntimeLayout::new(&stage_root).unwrap();
+    let artifact = super::VerifiedBundledSidecarArtifact {
+        kind: super::BundledSidecarKind::Ffmpeg, source,
+        destination: layout.ffmpeg_executable().unwrap(),
+        identity: super::BundledSidecarIdentity {
+            version: super::FFMPEG_SIDECAR_VERSION.trim().to_owned(),
+            pinned_source_sha256: Some(expected.clone()),
+        },
+        byte_size: bytes.len() as u64,
+    };
+    let prepared = super::PreparedAppRuntimeDirectories { layout };
+    let mut invalid = artifact.clone(); invalid.kind = super::BundledSidecarKind::Arti;
+    assert!(super::ffmpeg_source::extract_verified_ffmpeg(&prepared, &resources, &invalid).is_err());
+    invalid = artifact.clone(); invalid.destination = stage_root.join("wrong");
+    assert!(super::ffmpeg_source::extract_verified_ffmpeg(&prepared, &resources, &invalid).is_err());
+    invalid = artifact.clone(); invalid.identity.version = "wrong".to_owned();
+    assert!(super::ffmpeg_source::extract_verified_ffmpeg(&prepared, &resources, &invalid).is_err());
+    assert_eq!(std::fs::read_dir(&stage_root).unwrap().count(), 0);
+    let extraction = super::ffmpeg_source::extract_verified_ffmpeg(&prepared, &resources, &artifact).unwrap();
+    assert_eq!(extraction.platform, platform.platform);
+    assert_eq!(extraction.version, super::FFMPEG_SIDECAR_VERSION.trim());
+    let stage = extraction.stage;
     assert_eq!(stage.receipt().executable_sha256, receipt.executable_sha256);
     assert_eq!(stage.receipt().byte_size, receipt.byte_size);
     let staged_path = stage.path().to_owned();
@@ -33,5 +60,6 @@ fn pinned_archive_matches_independent_extractor() {
     assert!(!staged_path.exists());
     assert_eq!(std::fs::read_dir(&stage_root).unwrap().count(), 0);
     std::fs::remove_dir(stage_root).unwrap();
+    std::fs::remove_dir_all(resources).unwrap();
     println!("PULQVA_FFMPEG_COMPAT platform={} sha256={} byte_size={}", platform.platform, actual, receipt.byte_size);
 }

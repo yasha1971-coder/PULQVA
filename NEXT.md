@@ -1,5 +1,28 @@
 # NEXT
 
+## CURRENT: T060 authenticated source snapshot + typed integration, CI pending
+
+Supersedes earlier current sections. Head `c22dc198182db1058de0474f847de30a9822cffb`
+passed all 11 workflows including real archive staging/cleanup. PR #62 stays draft.
+
+Added backend entrypoint consuming the verified FFmpeg artifact + prepared runtime layout.
+It binds kind/version/pinned archive SHA, exact package source and intended runtime destination;
+rejects noncanonical/outside/symlink/nonregular source paths; reads one bounded file-handle
+snapshot and authenticates its actual bytes; rechecks root/source identity; feeds only that
+immutable snapshot to the owned-stage adapter. No source reopen after authentication.
+The result binds stage receipt to backend version/platform. Real archive CI now covers this
+complete extraction-to-staging entrypoint and negative kind/version/destination checks.
+
+No live prelaunch call, executable publication or release packaging. Existing adversarial
+ancestor-swap/reparse/crash-cleanup limits remain; source hash protects parsed bytes, not a
+universal filesystem race guarantee. Future publication must revalidate the stage receipt.
+
+Local continuity/diff checks before publishing. Rust/Cargo unavailable locally: new compile,
+snapshot tests and full real-source integration await CI. Parent T060 NOT DONE until verified.
+ONE next action: inspect exact-head desktop CI and all required workflows. Diagnose failures
+first; if green, audit T060 acceptance coverage and prepare closeout in a later bounded phase.
+Exact new head/run IDs are in PR #62 checkpoint. Do not merge yet.
+
 ## CURRENT: T060 owned extraction stage, CI pending
 
 Supersedes prior current sections. Head `50bacca94652e5bdf00b6d5cdac95420abe7a05b`
