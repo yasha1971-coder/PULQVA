@@ -1,5 +1,27 @@
 # NEXT
 
+## CURRENT: T060 real pinned-archive compatibility proof, CI pending
+
+Supersedes prior current sections below. T060-C head
+`120f6968dbd59db8041042a611d1117e69743204` passed all 11 workflows.
+PR #62 remains draft, parent T060 ACTIVE / NOT DONE.
+
+Extended Windows/Linux desktop CI to fetch the exact archive in SOURCE_PROOF.json,
+check pinned size/SHA256SUMS, independently stream its FFmpeg member with Python zipfile/tarfile,
+then run the real Rust ZIP/tar.xz adapter against the same immutable archive and compare output
+hash/size. Neither path executes FFmpeg. Receipt is retained as a small Actions artifact.
+This is build/test fixture download only, not product network behavior or a Tor bypass.
+
+The explicit ignored Rust compatibility test MUST be invoked by the new CI step. Missing
+fixtures fail that test; normal unit tests do not silently claim real-archive coverage.
+Local YAML/Python/shell syntax and continuity/diff checks precede publication. Rust/Cargo is
+unavailable locally; actual compatibility is still NOT TESTED until these jobs finish.
+
+ONE next action: inspect exact new head desktop-shell-check on both OSes. If a real archive is
+rejected, recover the exact member/layout and diagnose without weakening authentication or path
+safety. If both pass, proceed later to authenticated source-file snapshot and owned staging/cleanup.
+No runtime publication, production caller or completed T060 claim yet. Exact head/runs in PR #62.
+
 ## CURRENT: T060-C tar.xz stream adapter, CI pending
 
 Supersedes prior current sections below. T060-B head

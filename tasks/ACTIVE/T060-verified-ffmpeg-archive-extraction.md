@@ -1,7 +1,12 @@
 # T060 — Safely extract FFmpeg from the verified packaged archive
 
 Parent: DESKTOP FOUNDATION
-Status: ACTIVE — T060-A/B verified; T060-C tar.xz stream adapter CI pending
+Status: ACTIVE — T060-A/B/C verified; real archive compatibility CI pending
+
+T060-C head `120f6968dbd59db8041042a611d1117e69743204` passed all 11 workflows.
+Current phase adds Windows/Linux real pinned-archive proof to desktop CI: authenticate the
+archive, independently hash the chosen member, compare real Rust adapter output hash/size.
+No executable is launched. Results must be observed before claiming real compatibility.
 
 ## Bounded implementation phases
 
