@@ -1,7 +1,7 @@
 # T058 — Atomically materialize the verified Arti direct-binary artifact
 
 Parent: DESKTOP FOUNDATION  
-Status: READY
+Status: ACTIVE
 
 ## Goal
 
@@ -38,3 +38,31 @@ publication filesystems.
 Wiring Arti materialization into the live completed-file command, changing Tor lifecycle/readiness,
 FFmpeg extraction, Tauri bundle activation, installer/release packaging, external providers, AI
 providers, and direct-network fallback.
+
+
+## Current phase: IMPLEMENT
+
+T058 is implemented as a backend-only sibling of the already verified T055 direct-binary
+materialization boundary, with Arti-specific pinned identity from T057.
+
+The production boundary:
+
+- accepts only `BundledSidecarKind::Arti`;
+- resolves the expected Arti version and platform SHA-256 from backend-owned T057 metadata;
+- revalidates source/resource-root containment, source file type and T057 receipt size;
+- requires destination exactly `runtime/bin/arti(.exe)`;
+- rejects source/destination path or hard-link aliases;
+- creates/verifies `runtime/bin` only beneath the prepared app-owned runtime root;
+- preserves unsafe or different existing destinations;
+- reuses only an existing matching verified executable;
+- copies in bounded buffers into an exclusive staging file and hashes the bytes actually copied;
+- on Unix, sets executable permission only on the owned staging file;
+- synchronizes the staged file before no-clobber hard-link publication;
+- validates staging ownership before cleanup and supports competing publishers converging on one
+  verified destination.
+
+Production-boundary tests cover publish/reuse, source mutation after T057 verification, unsupported
+kind, identity mismatch, escaped source, hard-link alias, different existing destination
+preservation, competing publishers, and Unix source/destination symlink hazards.
+
+No live completed-file/Tor launch wiring is added in T058.
