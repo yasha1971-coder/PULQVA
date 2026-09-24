@@ -1,5 +1,29 @@
 # NEXT
 
+## CURRENT: T060-C tar.xz stream adapter, CI pending
+
+Supersedes prior current sections below. T060-B head
+`ecbe966eb8c3f5f5f9aa63dbf425ba5a147981e9` passed all 11 workflows.
+PR #62 / branch `task/T060-verified-ffmpeg-archive-extraction` remains draft.
+
+Added immutable tar.xz-byte adapter: source SHA before parsing, 256 MiB source/decoder-memory
+limits, 2 GiB total decompressed-byte budget including nonselected members/padding, raw TAR
+entry policy, per-member actual-size checks, extracted-byte hash receipt and full XZ footer
+consumption. Nonzero trailing TAR data and bytes beyond the single XZ stream fail closed.
+GNU long-name/PAX/sparse extensions and links/special entries are unsupported and rejected.
+
+Four grouped Rust tests cover valid extraction, links/duplicates/wrong SHA/truncated XZ,
+exact-limit versus over-limit reading, and trailing XZ data. tar 0.4.44 and xz2 0.1.7
+are pinned; xz2 uses static liblzma. Rust/Cargo unavailable locally: CI compile/tests pending.
+Local continuity/diff checks precede publication. New head/run IDs are checkpointed in PR #62.
+
+NOT DONE: parent T060. Both adapters still write to an internal writer, not an owned stage;
+partial data on failure MUST be discarded by future owned-stage integration. Actual pinned
+BtbN archive compatibility remains NOT TESTED, including TAR extension requirements.
+ONE next action: inspect exact-head CI; diagnose any failure first. If green, inspect real
+archive compatibility and implement authenticated source snapshot + owned staging/cleanup
+in a later bounded phase. Do not wire runtime publication or merge incomplete T060.
+
 ## CURRENT: T060-B ZIP stream adapter, CI pending
 
 Supersedes the T060-A current section below. All 11 workflows passed for T060-A head

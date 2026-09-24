@@ -1,7 +1,7 @@
 # T060 — Safely extract FFmpeg from the verified packaged archive
 
 Parent: DESKTOP FOUNDATION
-Status: ACTIVE — T060-A verified; T060-B ZIP stream adapter CI pending
+Status: ACTIVE — T060-A/B verified; T060-C tar.xz stream adapter CI pending
 
 ## Bounded implementation phases
 
@@ -14,6 +14,12 @@ separate verifiable changes; implementing all safely exceeds a bounded phase.
 - T060-B: bounded ZIP adapter over authenticated immutable source bytes to an internal writer.
 - T060-C: tar.xz adapter with the same contract and actual decompressed-byte limits.
 - Final integration: shared authenticated extraction receipt and ownership/cleanup tests.
+
+T060-B head `ecbe966eb8c3f5f5f9aa63dbf425ba5a147981e9` passed all 11 workflows.
+T060-C adds tar.xz to an internal writer, source authentication, bounded decoder memory and
+actual decompressed bytes, raw-entry policy, output hashing and XZ footer/trailing checks.
+GNU/PAX extension records are intentionally unsupported until real archive compatibility is
+inspected. Source-file/staging ownership remains a later integration; parent task NOT DONE.
 
 T060-A head `b6b0dbd8d9b6c0191a659e693b7c0db11952b11f` passed all 11 workflows.
 T060-B adds stored/deflate extraction, immutable-source SHA verification, metadata gate,
