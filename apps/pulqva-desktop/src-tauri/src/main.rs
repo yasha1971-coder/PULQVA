@@ -1,3 +1,4 @@
+mod arti_materialize;
 mod ytdlp_materialize;
 
 use pulqva_core::{
