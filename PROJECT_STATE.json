@@ -4,12 +4,15 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "c7b81f00fe23803bfc79c61a48f14afddef055e3",
-  "last_completed_task": "T059",
+  "last_verified_commit": "24a7a066f938bc7d6336deb39cc56c84a132b891",
+  "last_completed_task": "T060",
   "active_task": null,
-  "next_task": "T060",
+  "next_task": "T061",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
-  "known_blockers": [],
-  "updated": "2026-09-24"
+  "known_blockers": [
+    "Windows live media retrieval unproven: latest successful CI exercised fail-closed timeout.",
+    "Earlier Linux media exit-1 root cause unknown; diagnostic rerun succeeded."
+  ],
+  "updated": "2026-09-25"
 }

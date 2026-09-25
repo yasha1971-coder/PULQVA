@@ -1,4 +1,11 @@
 mod arti_materialize;
+mod ffmpeg_archive_policy;
+mod ffmpeg_zip;
+mod ffmpeg_tar_xz;
+mod ffmpeg_stage;
+mod ffmpeg_source;
+#[cfg(test)]
+mod ffmpeg_archive_compat;
 mod ytdlp_materialize;
 
 use pulqva_core::{
