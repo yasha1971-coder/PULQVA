@@ -1,18 +1,16 @@
 # NEXT
 
-## CURRENT: T063M metadata failure diagnostic launch
+## CURRENT: T063M diagnostics verified; PR #68 closeout CI/merge pending
 
-Base main cdd2299e450161ed2842f654878125e5ce125c51: 9/10 checks green.
-Arti compiler recovery passed. Linux metadata workflow 36177458014,
-job 108211426176 exited 1 without retained stderr. Cause unknown.
-PR #67 checkpoint 5839441794 records diagnosis.
+Branch recovery/T063M-metadata-diagnostics.
+Verified head 5dccf46a61e54c3e98bd4b3c74d7a5ce7e93d69b: all 10 triggered checks green.
+Metadata run 36191270234, Linux job 108256683386: unit test + real metadata OK.
+Windows job 108256683616: unit test + accepted fail-closed timeout; not positive
+Windows metadata proof. Evidence and scope recorded in tasks/DONE/T063M.
 
-Branch recovery/T063M-metadata-diagnostics adds opt-in bounded failure-only
-stderr to the fixed public metadata example and enables it in CI. Production
-launcher, fixture URL, Tor gate, timeout and success criteria remain unchanged.
-Rust execution pending in CI; local Cargo unavailable.
+Historical Linux exit-1 did not reproduce; root cause remains unknown. Live
+failure receipt not exercised in this run. Production behavior unchanged.
 
-ONE next action: observe this branch's exact-head checks and inspect metadata
-failure receipt if red. If successful, record not-reproduced status without
-claiming root cause fixed, then close the diagnostic task on exact-head evidence.
-Head/PR/run IDs recorded in PR launch comment. T064 READY but not started.
+ONE next action: observe closeout exact-head checks; diagnose red or mark PR #68
+ready and merge if all green. Do not make another documentation-only closeout.
+T064 READY after merge; do not begin it in the diagnostic closeout phase.

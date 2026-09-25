@@ -4,14 +4,14 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "6f05923dd4e3e0f07ca46107d29564c5cbaa2e0a",
-  "last_completed_task": "T063R",
-  "active_task": "T063M",
+  "last_verified_commit": "5dccf46a61e54c3e98bd4b3c74d7a5ce7e93d69b",
+  "last_completed_task": "T063M",
+  "active_task": null,
   "next_task": "T064",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "Main cdd2299e Linux metadata request exited 1; T063M diagnostic CI pending. Cause unknown.",
+    "Historical Linux metadata exit-1 cause unknown; diagnostic run succeeded. PR68 closeout CI/merge pending.",
     "T063R merged and Arti check passed on main; SDK content is not pinned.",
     "Windows live media retrieval unproven: latest successful CI exercised fail-closed timeout.",
     "Earlier Linux media exit-1 root cause unknown; diagnostic rerun succeeded."
