@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-25",
+  "verified_commit": "7798c67a9a8109a1fec2115d063382f4cafb56a0",
+  "workflow_run": 36126900433,
+  "source": "Receipts transcribed from successful job logs; uploaded receipt artifacts 10860141298 and 10858909354",
+  "receipts": [
+    {
+      "job_id": 108044998361,
+      "schema_version": 1,
+      "target": "x86_64-unknown-linux-gnu",
+      "archive": {
+        "name": "deno-x86_64-unknown-linux-gnu.zip",
+        "bytes": 41596794,
+        "sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490"
+      },
+      "executable": {
+        "bytes": 95830104,
+        "sha256": "ce6a052beb97c2b92de67077e3f3924ba7c9661ede0d8dc2f66a116a3c841f21"
+      },
+      "version_output": "deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "observed_platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "libc": [
+        "glibc",
+        "2.39"
+      ],
+      "scope": "local --version only; not permission isolation or YouTube compatibility"
+    },
+    {
+      "job_id": 108044998705,
+      "schema_version": 1,
+      "target": "x86_64-pc-windows-msvc",
+      "archive": {
+        "name": "deno-x86_64-pc-windows-msvc.zip",
+        "bytes": 42630221,
+        "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238"
+      },
+      "executable": {
+        "bytes": 97462048,
+        "sha256": "e020f3e232bd16e33768dee528e5983349c962952051ced0a5d58ad42f5d9b33"
+      },
+      "version_output": "deno 2.9.7 (stable, release, x86_64-pc-windows-msvc)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "observed_platform": "Windows-2025Server-10.0.26100-SP0",
+      "libc": [
+        "",
+        ""
+      ],
+      "scope": "local --version only; not permission isolation or YouTube compatibility"
+    }
+  ]
+}

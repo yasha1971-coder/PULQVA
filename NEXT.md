@@ -1,22 +1,19 @@
 # NEXT
 
-## CURRENT: T061 assessment complete; closeout CI/merge pending
+## CURRENT: T062 artifact verification complete; closeout CI/merge pending
 
-PR #64, branch task/T061-js-runtime-assessment.
-Verified assessment head: ec01fa0a4f665da7f221d2abbe2c1e89f0c4ee3f,
-all 10 triggered workflows successful. Both official yt-dlp asset hashes and
-embedded EJS 0.8.0 core/lib hashes independently reproduced locally.
+PR #65 branch task/T062-deno-artifact-verification.
+Verified head 7798c67a9a8109a1fec2115d063382f4cafb56a0: all 11 workflows green.
+Deno run 36126900433 passed both OS jobs. Archive identities, extracted hashes/
+sizes and local Deno 2.9.7 --version are recorded in ARTIFACT_VERIFICATION.json.
 
-ADR-0006 accepts Deno 2.9.7 as a trial candidate only. No runtime was enabled.
-T061 is DONE within assessment scope. This closeout commit needs its own CI;
-exact SHA/run IDs are recorded in the PR checkpoint after publication.
+T062 DONE within artifact verification scope. Closeout head still needs CI.
+ONE next action: observe PR #65 exact-head checks; diagnose red or mark ready
+and merge. Do not make another documentation-only closeout commit.
+Then T063 READY: restricted local stdin execution and explicit permission denials.
+Do not start that task in this closeout phase.
 
-ONE next action: observe PR #64 exact-head checks; diagnose red, otherwise mark
-ready and merge. Do not generate another documentation-only closeout commit.
-After merge T062 is READY: verified Deno artifact materialization/identity in CI.
-Do not start T062 before merge or in the same response as this closeout.
-
-Untested: Deno execution, permissions, Linux minimum ABI, YouTube trial and
-complete package. Deno archive digests remain upstream-only until T062.
-Windows positive media retrieval remains unproven; original Linux exit-1
-root cause remains unknown. Neither is erased by component CI success.
+Observed Ubuntu 24.04/glibc 2.39 and Windows Server 2025 build 26100 do not
+establish minimum OS/ABI support. No isolation/network-absence claim follows
+from --version. YouTube, app wiring and full package remain untested.
+Windows positive media gap and earlier unexplained Linux exit-1 remain.
