@@ -33,6 +33,11 @@ jobs:
           rustup toolchain install 1.91.0 --profile minimal
           rustup default 1.91.0
 
+      - name: Select and authenticate Windows native compiler
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/arti_windows_compiler.ps1
+
       - name: Build exact Arti identity candidate without running Tor
         shell: bash
         env:
@@ -89,6 +94,7 @@ jobs:
           path: |
             ${{ runner.temp }}/arti-link.map
             ${{ runner.temp }}/arti-native-inputs.json
+            ${{ runner.temp }}/arti-selected-compiler.json
           if-no-files-found: error
           retention-days: 30
 

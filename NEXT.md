@@ -1,5 +1,22 @@
 # NEXT
 
+## LATEST: T063R explicit native compiler trial
+
+Diagnostic head 97e84ca5 passed all 10 triggered checks; map artifact 10875553956
+resolved changed code to liblzma-sys 0.4.7 lzma2_decode. PR #67 checkpoint
+5836033697 records evidence. Trial now selects MSVC 14.51.36231 explicitly for
+target C/C++/archiver, authenticates 64 compiler-directory EXE/DLL files from
+that artifact, and selects SDK 10.0.26100.0 include/library directories.
+SDK headers/libraries are NOT content-pinned: no hermetic-build claim.
+
+ONE next action: inspect exact-head Windows CI, verify the selected compiler
+receipt and actual cc invocation plus unchanged executable hash. If successful,
+require an independent clean build before claiming reproducibility recovery.
+Unavailable or changed compiler inputs must fail without fallback. PR remains
+draft; T064 blocked. No new executable identity is approved.
+
+Earlier diagnostic-launch instructions below are superseded by this section.
+
 ## OVERRIDE: T063R Windows Arti identity recovery — diagnostic launch
 
 PR #66 merged as main 900cb164acb5734ef9d0a3b2bb04450f95c3f827, now 10/11 green.
