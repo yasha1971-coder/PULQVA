@@ -40,4 +40,4 @@ foreach ($entry in $vars.GetEnumerator()) {
 }
 $bin | Out-File -LiteralPath $env:GITHUB_PATH -Encoding utf8 -Append
 $vars | ConvertTo-Json | Set-Content -LiteralPath "$env:RUNNER_TEMP\arti-selected-compiler.json" -Encoding utf8
-Write-Output "PULQVA_ARTI_COMPILER_VERIFIED toolset=$($pin.toolset) files=$($pin.files.PSObject.Properties.Count) compiler=$compiler"
+Write-Output "PULQVA_ARTI_COMPILER_VERIFIED toolset=$($pin.toolset) files=$(@($pin.files.PSObject.Properties).Count) compiler=$compiler"

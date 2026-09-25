@@ -95,6 +95,7 @@ jobs:
             ${{ runner.temp }}/arti-link.map
             ${{ runner.temp }}/arti-native-inputs.json
             ${{ runner.temp }}/arti-selected-compiler.json
+            ${{ runner.temp }}/pulqva-arti-target/release/build/liblzma-sys-*/output
           if-no-files-found: error
           retention-days: 30
 

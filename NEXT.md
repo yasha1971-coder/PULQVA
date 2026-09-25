@@ -1,5 +1,24 @@
 # NEXT
 
+## CURRENT: T063R independent clean build and invocation evidence
+
+First pinned trial head 96419d7649867a0ea872112d37e2de9aa08395f4 passed all
+10 triggered workflows. Windows job 108164756494, run 36163260806, passed
+compiler authentication and matched approved Arti SHA256 9245c7b5...667f3df.
+Artifacts: executable 10877001743, diagnostics 10877275847.
+
+cc debug commands were not exposed in the normal Cargo success log. Preserve
+liblzma-sys build-script output in the diagnostics artifact on this fresh build.
+Also correct the receipt's cosmetic file-count formatting (all hashes were
+checked by the loop). No compiler, build flags, or approved identity changes.
+
+ONE next action: observe this exact head's CI, inspect preserved liblzma-sys
+output for the actual cl.exe invocation compiling lzma2_decoder.c, and compare
+its executable byte-for-byte with artifact 10877001743. No merge until evidence
+is sufficient. SDK content remains unpinned; T064 remains blocked.
+
+Earlier sections below are historical context.
+
 ## LATEST: T063R explicit native compiler trial
 
 Diagnostic head 97e84ca5 passed all 10 triggered checks; map artifact 10875553956
