@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "status": "assessment_only_not_runtime_configuration",
+  "reviewed_at": "2026-09-25",
+  "runtime": {
+    "name": "deno",
+    "version": "2.9.7",
+    "source_commit": "0c071246a412575e07423263404a5d13e7ed6aa2",
+    "license": "MIT; binary third-party inventory pending"
+  },
+  "hash_evidence": "GitHub official release asset SHA-256 metadata; not locally recomputed",
+  "assets": [
+    {
+      "target": "x86_64-pc-windows-msvc",
+      "name": "deno-x86_64-pc-windows-msvc.zip",
+      "bytes": 42630221,
+      "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238",
+      "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip"
+    },
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "name": "deno-x86_64-unknown-linux-gnu.zip",
+      "bytes": 41596794,
+      "sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490",
+      "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip"
+    }
+  ],
+  "yt_dlp": {
+    "version": "2026.08.19",
+    "source_commit": "3a08beaf031ab68f966401ead017ac81fe8486cf",
+    "asset_manifest": "../yt-dlp/SOURCE_PROOF.json",
+    "license": "Unlicense source; PyInstaller combined binaries GPLv3+ and third-party terms"
+  },
+  "ejs": {
+    "version": "0.8.0",
+    "license": "Unlicense source; bundled dependencies include MIT/ISC",
+    "binary_payload_inspection": "pending",
+    "scripts": [
+      {
+        "name": "yt.solver.core.min.js",
+        "sha256": "18da6ce0758b416e7ae645084f4f8801f9f9d59d6c477c05eaa0ff94ebd8cc00"
+      },
+      {
+        "name": "yt.solver.lib.min.js",
+        "sha256": "c55987fe697e5b9ee18830163f7af85327e9bb5c3e674b969d38c8d205eaa577"
+      }
+    ]
+  },
+  "adoption_gates": [
+    "payload inspection and archive hash recomputation",
+    "Linux minimum ABI and clean Windows launch",
+    "permission and environment negative tests",
+    "Tor-only positive challenge/retrieval on both OSes",
+    "binary licensing inventory"
+  ]
+}

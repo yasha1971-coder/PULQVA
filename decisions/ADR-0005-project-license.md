@@ -1,6 +1,6 @@
 # ADR-0005 — Apache-2.0 for original PULQVA work
 
-Status: Proposed in sponsorship/documentation PR; not yet merged
+Status: Accepted through PR #63, merged 2026-09-25
 Date: 2026-09-25
 
 ## Decision

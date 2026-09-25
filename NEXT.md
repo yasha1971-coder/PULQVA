@@ -1,23 +1,25 @@
 # NEXT
 
-## CURRENT: T060 extraction complete; closeout documentation CI/merge pending
+## CURRENT: T061 compatibility assessment proposed
 
-Verified head: `24a7a066f938bc7d6336deb39cc56c84a132b891`, all 11 workflows green.
-PR #62 branch: task/T060-verified-ffmpeg-archive-extraction.
-Desktop run 36095498238 verifies Windows/Linux extraction; media run 36095497965
-verifies actual Linux retrieval and Windows fail-closed timeout only.
-Earlier Linux failure at c2161c8 remains unexplained, not reproduced; do not claim fixed.
+Base main b89990d34e227e19e5669b2ddfa900eb5e4237c1 verified: all 10 triggered
+push workflows successful. PRs #62 and #63 merged. Desktop was path-filtered.
 
-T060 moved to DONE with acceptance evidence and scope limitations.
-This documentation-only closeout has not yet passed its own CI. Do not merge based
-on parent checks. ONE next action: observe current PR #62 head checks, diagnose any
-failure, otherwise mark ready and merge without another documentation-only checkpoint.
-No new implementation task until merge succeeds.
+Branch: task/T061-js-runtime-assessment. Exact SHA/PR/check IDs are in the PR
+checkpoint after publication. This change remains CI pending.
 
-After merge: T061 (READY) assesses pinned Deno/EJS compatibility; PR #63 separately
-contains requested sponsorship/license documentation. Preserve that PR and verify its
-own head before merge. Runtime FFmpeg publication/prelaunch remains future work.
+ADR-0006 and sidecars/deno/CANDIDATE.json propose a Deno 2.9.7 trial with
+yt-dlp 2026.08.19/EJS 0.8.0. No runtime dependency was enabled.
+Upstream hashes are not locally recomputed; executable EJS payload inspection
+remains pending. T061 is ACTIVE, not DONE.
 
-Deferred research: compare compact local intent parsing; source selection that minimizes
-query recipients; resumable/cancellable downloads; per-binary source/license inventory.
-These are proposals, not implemented features or accepted dependency changes.
+One next action: review this PR's exact head and finish missing payload identity
+verification before closing T061. Diagnose red checks first. Do not merge using
+older checks or start launch wiring in this assessment.
+
+Windows positive live media retrieval remains unproven; original Linux exit-1
+root cause remains unknown. Deno execution, isolation, extracted size, Linux
+minimum ABI and YouTube trial are untested.
+
+Follow-up atomic tasks after assessment: verified packaging, typed launch boundary,
+then bounded Tor-only trial. Full user journey remains the product goal.
