@@ -2,6 +2,10 @@ name: deno-artifact-check
 on:
   pull_request:
     paths:
+      - 'scripts/deno_windows_firewall.*'
+      - 'scripts/deno_linux_netns.py'
+      - 'scripts/deno_restricted_probe.py'
+      - 'scripts/test_deno_restricted_probe.py'
       - 'scripts/verify_deno_artifact.py'
       - 'scripts/test_verify_deno_artifact.py'
       - 'sidecars/deno/**'
@@ -9,6 +13,10 @@ on:
   push:
     branches: ["main"]
     paths:
+      - 'scripts/deno_windows_firewall.*'
+      - 'scripts/deno_linux_netns.py'
+      - 'scripts/deno_restricted_probe.py'
+      - 'scripts/test_deno_restricted_probe.py'
       - 'scripts/verify_deno_artifact.py'
       - 'scripts/test_verify_deno_artifact.py'
       - 'sidecars/deno/**'
@@ -35,7 +43,9 @@ jobs:
       - name: Reject invalid artifacts
         run: python -m unittest discover -s scripts -p test_verify_deno_artifact.py -v
       - name: Verify official archive and local runtime version
-        run: python scripts/verify_deno_artifact.py --target ${{ matrix.target }} --receipt deno-receipt.json
+        run: python scripts/verify_deno_artifact.py --target ${{ matrix.target }} --receipt deno-receipt.json --restricted
+      - name: Verify strict probe result classification
+        run: python -m unittest discover -s scripts -p test_deno_restricted_probe.py -v
       - uses: actions/upload-artifact@v4
         with:
           name: deno-receipt-${{ matrix.target }}

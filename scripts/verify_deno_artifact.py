@@ -9,6 +9,7 @@ from pathlib import Path
 import platform
 import stat
 import subprocess
+import sys
 import tempfile
 import urllib.request
 import zipfile
@@ -74,6 +75,7 @@ def main():
     parser.add_argument("--target", required=True,
                         choices=["x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"])
     parser.add_argument("--receipt", required=True, type=Path)
+    parser.add_argument("--restricted", action="store_true")
     args = parser.parse_args()
     manifest = json.loads((ROOT / "sidecars/deno/CANDIDATE.json").read_text())
     asset = next(a for a in manifest["assets"] if a["target"] == args.target)
@@ -103,6 +105,21 @@ def main():
             "observed_platform": platform.platform(), "libc": platform.libc_ver(),
             "scope": "local --version only; not permission isolation or YouTube compatibility",
         }
+        if args.restricted:
+            if sys.platform == "linux":
+                command = ["sudo", "-n", "/usr/bin/unshare", "--net",
+                           "/usr/bin/python3", str(ROOT / "scripts/deno_linux_netns.py"),
+                           str(executable), str(directory), os.readlink("/proc/self/ns/net"),
+                           str(os.getuid()), str(os.getgid())]
+                probe = subprocess.run(command, capture_output=True, text=True,
+                                       timeout=100, check=True)
+                receipt["restricted_probe"] = json.loads(probe.stdout)
+            elif os.name == "nt":
+                from deno_windows_firewall import run_windows_restricted
+                receipt["restricted_probe"] = run_windows_restricted(executable, directory)
+            else:
+                from deno_restricted_probe import run_restricted
+                receipt["restricted_probe"] = run_restricted(executable, directory)
         args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(receipt, indent=2))
 

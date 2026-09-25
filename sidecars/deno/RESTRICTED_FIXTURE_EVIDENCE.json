@@ -1,0 +1,185 @@
+{
+  "verified_commit": "d68f4fac8e76f7c833bcf4397c3414d89040eed2",
+  "run_id": 36138486228,
+  "scope": "first fixture phase; external egress not monitored or blocked",
+  "jobs": [
+    {
+      "job_id": 108082230510,
+      "schema_version": 1,
+      "target": "x86_64-pc-windows-msvc",
+      "archive": {
+        "name": "deno-x86_64-pc-windows-msvc.zip",
+        "bytes": 42630221,
+        "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238"
+      },
+      "executable": {
+        "bytes": 97462048,
+        "sha256": "e020f3e232bd16e33768dee528e5983349c962952051ced0a5d58ad42f5d9b33"
+      },
+      "version_output": "deno 2.9.7 (stable, release, x86_64-pc-windows-msvc)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "observed_platform": "Windows-2025Server-10.0.26100-SP0",
+      "libc": [
+        "",
+        ""
+      ],
+      "scope": "local --version only; not permission isolation or YouTube compatibility",
+      "restricted_probe": {
+        "flags": [
+          "run",
+          "--ext=js",
+          "--no-code-cache",
+          "--no-prompt",
+          "--no-remote",
+          "--no-lock",
+          "--node-modules-dir=none",
+          "--no-config",
+          "--no-npm",
+          "--cached-only",
+          "-"
+        ],
+        "fixtures": [
+          {
+            "fixture": "compute",
+            "result": {
+              "value": 6
+            },
+            "source_sha256": "1c3094c8a305c964cd2d3e4282704764538417897a471f324ce07d6c094786b1"
+          },
+          {
+            "fixture": "net",
+            "result": {
+              "denied": "net"
+            },
+            "source_sha256": "cab310a7f04cdef5613cbcedba2abeb7fcea57979d1bb44af5904d9f4591b360"
+          },
+          {
+            "fixture": "read",
+            "result": {
+              "denied": "read"
+            },
+            "source_sha256": "cb1b0aff6de8d00059248ce72f246d55b7babd85e729cb82bc13259b4b7a550b"
+          },
+          {
+            "fixture": "write",
+            "result": {
+              "denied": "write"
+            },
+            "source_sha256": "ffc093325131faf99461d725be3d262739c51f10c2ba08c4b9e0d45c9f8e2296"
+          },
+          {
+            "fixture": "env",
+            "result": {
+              "denied": "env"
+            },
+            "source_sha256": "130bac2e065327e0c8a92d196f03c5649a46703f68a096a754455f96331d2ebf"
+          },
+          {
+            "fixture": "run",
+            "result": {
+              "denied": "run"
+            },
+            "source_sha256": "45ec61a8255262b38bc03ea1b63191f2fd8514f8b9ac9beadf38544cf7e2a109"
+          },
+          {
+            "fixture": "remote_import",
+            "result": {
+              "blocked": "remote_import"
+            },
+            "source_sha256": "a6cdcc74267c5915419bab0c7a276f78d55ad0216949c8639e5032446618e13b"
+          }
+        ],
+        "loopback_connections": 0,
+        "scope": "fixture permission denials only; external egress monitoring and OS isolation NOT established"
+      }
+    },
+    {
+      "job_id": 108082230733,
+      "schema_version": 1,
+      "target": "x86_64-unknown-linux-gnu",
+      "archive": {
+        "name": "deno-x86_64-unknown-linux-gnu.zip",
+        "bytes": 41596794,
+        "sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490"
+      },
+      "executable": {
+        "bytes": 95830104,
+        "sha256": "ce6a052beb97c2b92de67077e3f3924ba7c9661ede0d8dc2f66a116a3c841f21"
+      },
+      "version_output": "deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "observed_platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "libc": [
+        "glibc",
+        "2.39"
+      ],
+      "scope": "local --version only; not permission isolation or YouTube compatibility",
+      "restricted_probe": {
+        "flags": [
+          "run",
+          "--ext=js",
+          "--no-code-cache",
+          "--no-prompt",
+          "--no-remote",
+          "--no-lock",
+          "--node-modules-dir=none",
+          "--no-config",
+          "--no-npm",
+          "--cached-only",
+          "-"
+        ],
+        "fixtures": [
+          {
+            "fixture": "compute",
+            "result": {
+              "value": 6
+            },
+            "source_sha256": "1c3094c8a305c964cd2d3e4282704764538417897a471f324ce07d6c094786b1"
+          },
+          {
+            "fixture": "net",
+            "result": {
+              "denied": "net"
+            },
+            "source_sha256": "7bc6abe8d5d87d38387228447c0544fb339e398982809162fd5ebfd5b25e548f"
+          },
+          {
+            "fixture": "read",
+            "result": {
+              "denied": "read"
+            },
+            "source_sha256": "749ace70d1da7eae362d5b06eb35657b408ebd7bfb773ec3ae23e307f4eee72c"
+          },
+          {
+            "fixture": "write",
+            "result": {
+              "denied": "write"
+            },
+            "source_sha256": "aba127e8a72c13b906e3ca5230f6b66f4640dbc93d9cefe894b714d0c6755576"
+          },
+          {
+            "fixture": "env",
+            "result": {
+              "denied": "env"
+            },
+            "source_sha256": "130bac2e065327e0c8a92d196f03c5649a46703f68a096a754455f96331d2ebf"
+          },
+          {
+            "fixture": "run",
+            "result": {
+              "denied": "run"
+            },
+            "source_sha256": "8ee2109ad7f3f32619d4315d5b1b6c2c167c3d432ed881fe051fc2b9cea71471"
+          },
+          {
+            "fixture": "remote_import",
+            "result": {
+              "blocked": "remote_import"
+            },
+            "source_sha256": "a3507d9d2efeee68a85aec0c9d1430920bca25efac6482ecd4b89e8a023d0218"
+          }
+        ],
+        "loopback_connections": 0,
+        "scope": "fixture permission denials only; external egress monitoring and OS isolation NOT established"
+      }
+    }
+  ]
+}

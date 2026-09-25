@@ -1,0 +1,206 @@
+{
+  "verified_head": "c8900e98199def05a5dc2d029b0c8c025a6a0a7e",
+  "workflow_run": 36142395574,
+  "source": "Successful job-log receipts; scope limited to tested fixtures and configured CI network gates",
+  "jobs": [
+    {
+      "job_id": 108095142055,
+      "schema_version": 1,
+      "target": "x86_64-unknown-linux-gnu",
+      "archive": {
+        "name": "deno-x86_64-unknown-linux-gnu.zip",
+        "bytes": 41596794,
+        "sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490"
+      },
+      "executable": {
+        "bytes": 95830104,
+        "sha256": "ce6a052beb97c2b92de67077e3f3924ba7c9661ede0d8dc2f66a116a3c841f21"
+      },
+      "version_output": "deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "observed_platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "libc": [
+        "glibc",
+        "2.39"
+      ],
+      "scope": "local --version only; not permission isolation or YouTube compatibility",
+      "restricted_probe": {
+        "flags": [
+          "run",
+          "--ext=js",
+          "--no-code-cache",
+          "--no-prompt",
+          "--no-remote",
+          "--no-lock",
+          "--node-modules-dir=none",
+          "--no-config",
+          "--no-npm",
+          "--cached-only",
+          "-"
+        ],
+        "fixtures": [
+          {
+            "fixture": "compute",
+            "result": {
+              "value": 6
+            },
+            "source_sha256": "1c3094c8a305c964cd2d3e4282704764538417897a471f324ce07d6c094786b1"
+          },
+          {
+            "fixture": "net",
+            "result": {
+              "denied": "net"
+            },
+            "source_sha256": "2487fecf408ad3287032765299f2600ea9bfb6582c8be21320e1254535cdcc6c"
+          },
+          {
+            "fixture": "read",
+            "result": {
+              "denied": "read"
+            },
+            "source_sha256": "4ec43e4382d8bdf411164eda34a89ceb3b3870da7dd58cb4c2db4eddbafd5a30"
+          },
+          {
+            "fixture": "write",
+            "result": {
+              "denied": "write"
+            },
+            "source_sha256": "d0ee4033715170b08769c9fa52479368ccfe17ecc5ff41e6df8a0a32222f931c"
+          },
+          {
+            "fixture": "env",
+            "result": {
+              "denied": "env"
+            },
+            "source_sha256": "130bac2e065327e0c8a92d196f03c5649a46703f68a096a754455f96331d2ebf"
+          },
+          {
+            "fixture": "run",
+            "result": {
+              "denied": "run"
+            },
+            "source_sha256": "eadb8b655e8f3aac1b6d5496173529c843c744ca3fd714deabc9edbe00bae70d"
+          },
+          {
+            "fixture": "remote_import",
+            "result": {
+              "blocked": "remote_import"
+            },
+            "source_sha256": "b9257041345991c21997d65386ec93fdc538e5d1928f94646c49c8a806ea7c21"
+          }
+        ],
+        "loopback_connections": 0,
+        "scope": "fixture permission denials only; external egress monitoring and OS isolation NOT established",
+        "network_gate": {
+          "kind": "fresh_linux_network_namespace",
+          "different_from_parent": true,
+          "interfaces": [
+            "lo"
+          ],
+          "external_ipv4_route": "ENETUNREACH",
+          "runtime_uid": 1001,
+          "scope": "CI fixture external IP transport blocked; not an application sandbox"
+        }
+      }
+    },
+    {
+      "job_id": 108095142491,
+      "schema_version": 1,
+      "target": "x86_64-pc-windows-msvc",
+      "archive": {
+        "name": "deno-x86_64-pc-windows-msvc.zip",
+        "bytes": 42630221,
+        "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238"
+      },
+      "executable": {
+        "bytes": 97462048,
+        "sha256": "e020f3e232bd16e33768dee528e5983349c962952051ced0a5d58ad42f5d9b33"
+      },
+      "version_output": "deno 2.9.7 (stable, release, x86_64-pc-windows-msvc)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "observed_platform": "Windows-2025Server-10.0.26100-SP0",
+      "libc": [
+        "",
+        ""
+      ],
+      "scope": "local --version only; not permission isolation or YouTube compatibility",
+      "restricted_probe": {
+        "flags": [
+          "run",
+          "--ext=js",
+          "--no-code-cache",
+          "--no-prompt",
+          "--no-remote",
+          "--no-lock",
+          "--node-modules-dir=none",
+          "--no-config",
+          "--no-npm",
+          "--cached-only",
+          "-"
+        ],
+        "fixtures": [
+          {
+            "fixture": "compute",
+            "result": {
+              "value": 6
+            },
+            "source_sha256": "1c3094c8a305c964cd2d3e4282704764538417897a471f324ce07d6c094786b1"
+          },
+          {
+            "fixture": "net",
+            "result": {
+              "denied": "net"
+            },
+            "source_sha256": "298dc3bb4d4f49e5e50843b6e50fd4c600c02539341b7a508cbc66265a55cd87"
+          },
+          {
+            "fixture": "read",
+            "result": {
+              "denied": "read"
+            },
+            "source_sha256": "68027179e117a969258058edaac26087bc27719b40242c55e9080d1fbe8a834c"
+          },
+          {
+            "fixture": "write",
+            "result": {
+              "denied": "write"
+            },
+            "source_sha256": "acf11e4c2993d2e793dbd69ee2fe1773e7e44e0643a9f507bef9f4ccbfc5ea8f"
+          },
+          {
+            "fixture": "env",
+            "result": {
+              "denied": "env"
+            },
+            "source_sha256": "130bac2e065327e0c8a92d196f03c5649a46703f68a096a754455f96331d2ebf"
+          },
+          {
+            "fixture": "run",
+            "result": {
+              "denied": "run"
+            },
+            "source_sha256": "ff8ba8ae5f00e80b70f82288b46d5dfa16cc39a7472d270e521dc58ab65ef03f"
+          },
+          {
+            "fixture": "remote_import",
+            "result": {
+              "blocked": "remote_import"
+            },
+            "source_sha256": "c6a7ee2d914f1b896c575e01c387d4d4b8a81e5f31ece5b3eb10a0ab8b0678a1"
+          }
+        ],
+        "loopback_connections": 0,
+        "scope": "fixture permission denials only; external egress monitoring and OS isolation NOT established",
+        "network_gate": {
+          "profiles_enabled": true,
+          "program": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\pulqva-deno-e23910q8\\deno.exe",
+          "effective_store": "ActiveStore",
+          "action": "Block",
+          "kind": "windows_program_outbound_block",
+          "remote_address": "Any",
+          "protocol": "Any",
+          "cleanup_verified": true,
+          "scope": "Effective outbound rule for exact Deno executable during fixtures; not packet capture, DNS-service isolation or a child-process sandbox"
+        }
+      }
+    }
+  ]
+}
