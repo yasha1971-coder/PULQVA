@@ -1,5 +1,22 @@
 # NEXT
 
+## OVERRIDE: T063R Windows Arti identity recovery — diagnostic launch
+
+PR #66 merged as main 900cb164acb5734ef9d0a3b2bb04450f95c3f827, now 10/11 green.
+Failure: run 36155156130 Windows job 108137774946. PR #66 comment 5835789784
+preserves comparison: 480 bytes differ, 471 in .text; function RVA 0xdb0c40.
+Good artifact 10872482256; failed artifact 10873048740. VS versions differ;
+precise native input cause is unproven. No trusted SHA256 changes.
+
+Branch recovery/T063R-arti-native-diagnostics records a linker map and available
+native input hashes. Inventory alone does not prove selection. ONE next action:
+observe exact-head CI and inspect arti-windows-build-diagnostics to resolve the
+function/library before preparing input-pinning repair. Head/PR/run IDs go in
+the PR launch checkpoint. Do not merge diagnostic work as a completed fix.
+T064 blocked until recovery; a green rerun alone cannot close reproducibility.
+
+The following is historical pre-merge context, superseded by this recovery:
+
 ## CURRENT: T063 local execution verification complete; closeout CI/merge pending
 
 PR #66 branch task/T063-deno-restricted-execution.

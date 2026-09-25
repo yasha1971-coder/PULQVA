@@ -60,7 +60,8 @@ jobs:
             test -f "$RUST_LLD_UNIX"
             RUST_LLD_NATIVE="$(cygpath -w "$RUST_LLD_UNIX")"
             export CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER="$RUST_LLD_NATIVE"
-            export RUSTFLAGS="-C linker-flavor=lld-link -C link-arg=/Brepro -C link-arg=/DEBUG:NONE"
+            # Diagnostic map only; the existing full executable hash gate stays mandatory.
+            export RUSTFLAGS="-C linker-flavor=lld-link -C link-arg=/Brepro -C link-arg=/DEBUG:NONE -C link-arg=/MAP:$(cygpath -m "$RUNNER_TEMP")/arti-link.map"
             LINKER_SHA256="$(sha256sum "$RUST_LLD_UNIX" | awk '{print $1}')"
             echo "PULQVA_ARTI_LINKER_SHA256=$LINKER_SHA256" >> "$GITHUB_ENV"
             echo "PULQVA_ARTI_RUSTFLAGS=$RUSTFLAGS" >> "$GITHUB_ENV"
@@ -74,6 +75,22 @@ jobs:
 
           echo "PULQVA_ARTI_BIN=$ARTI_BIN" >> "$GITHUB_ENV"
           echo "PULQVA_ARTI_VERSION=$ARTI_VERSION" >> "$GITHUB_ENV"
+
+      - name: Inventory Windows native build inputs
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/arti_windows_inputs.ps1
+
+      - name: Preserve Windows linker and input diagnostics
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: arti-windows-build-diagnostics
+          path: |
+            ${{ runner.temp }}/arti-link.map
+            ${{ runner.temp }}/arti-native-inputs.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Verify Arti binary and proxy CLI without bootstrapping
         shell: bash
