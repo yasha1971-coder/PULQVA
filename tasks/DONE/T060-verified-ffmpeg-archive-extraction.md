@@ -1,7 +1,23 @@
 # T060 — Safely extract FFmpeg from the verified packaged archive
 
 Parent: DESKTOP FOUNDATION
-Status: ACTIVE — acceptance audited; closeout checkpoint CI pending
+Status: DONE — extraction implementation verified; documentation closeout/merge pending
+
+## Verified closeout — 2026-09-25
+
+Head `24a7a066f938bc7d6336deb39cc56c84a132b891` passed all 11 workflows. Desktop run 36095498238
+passed Windows/Linux checks; extraction code is unchanged from the audited implementation.
+Media diagnostic run 36095497965 passed: Linux job 107946800673 emitted
+PULQVA_YTDLP_TOR_MEDIA_OK; Windows job 107946800507 emitted
+PULQVA_YTDLP_TOR_MEDIA_WINDOWS_FAIL_CLOSED_OK after readiness timeout.
+Windows live media retrieval is NOT proven by this result.
+The earlier Linux exit-1 cause remains undetermined and was not reproduced.
+Diagnostic capture tests passed on both platforms. No claim that the original cause was fixed.
+
+Scope completed: authenticated source -> bounded extraction -> owned staging receipt.
+Not included: runtime publication, executable activation, full packaged-app journey.
+Existing filesystem race/crash cleanup limitations remain.
+Next work after merge: T061 Deno/EJS compatibility assessment.
 
 ## Acceptance audit — 2026-09-25
 
@@ -27,7 +43,7 @@ failures can leave an owned orphan. Source authentication guarantees the bytes p
 Later executable publication must revalidate stage ownership and content.
 
 Audit result: extraction scope has supporting implementation and green CI evidence.
-T060 remains ACTIVE until this documentation checkpoint is verified and closeout/merge occurs.
+Extraction implementation is complete at the verified head below. This closeout document still requires its own CI and merge.
 No runtime publication, prelaunch activation, packaged-app launch or Deno/EJS test is claimed.
 
 ## Historical implementation checkpoints
