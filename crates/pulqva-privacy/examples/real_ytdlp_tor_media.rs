@@ -1,7 +1,7 @@
 use pulqva_privacy::{
     ArtiRuntimePlan, TorReadinessError, TorSocksEndpoint, YtDlpLaunchPlan,
     YtDlpMediaRequestPlan, YtDlpMediaSourceUrl, launch_prepared_arti,
-    launch_ytdlp_request, prepare_arti_runtime, verify_tor_readiness,
+    prepare_arti_runtime, verify_tor_readiness,
 };
 use std::{
     env,
@@ -80,7 +80,20 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("media proof constructed a metadata-only request".into());
     }
 
-    let mut running_ytdlp = launch_ytdlp_request(request)?;
+    // Diagnostics are opt-in and confined to this fixed public CI fixture.
+    let diagnostics = env::args_os().nth(3).is_some_and(|arg| arg == "--diagnostics");
+    let mut command = std::process::Command::new(request.executable());
+    command.args(request.arguments())
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(if diagnostics { std::process::Stdio::piped() } else { std::process::Stdio::null() });
+    // Same typed argv and Tor gate as the production launcher; no extra request or fallback.
+    let mut running_ytdlp = command.spawn()?;
+    let diagnostic_rx = running_ytdlp.stderr.take().map(|stderr| {
+        let (tx, rx) = std::sync::mpsc::channel();
+        thread::spawn(move || { let _ = tx.send(bounded_diagnostic(stderr)); });
+        rx
+    });
     let deadline = Instant::now() + YTDLP_TIMEOUT;
 
     let status = loop {
@@ -89,7 +102,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if Instant::now() >= deadline {
-            let _ = running_ytdlp.stop_and_wait();
+            let _ = running_ytdlp.kill();
+            let _ = running_ytdlp.wait();
+            report_diagnostic(diagnostic_rx);
             let _ = running_arti.stop_and_wait();
             let _ = fs::remove_dir_all(&root);
             return Err("real yt-dlp media request exceeded its bounded timeout".into());
@@ -99,6 +114,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     if !status.success() {
+        report_diagnostic(diagnostic_rx);
         let _ = running_arti.stop_and_wait();
         let _ = fs::remove_dir_all(&root);
         return Err(format!("real yt-dlp media request failed: {status}").into());
@@ -124,6 +140,49 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("PULQVA_YTDLP_TOR_MEDIA_OK");
     Ok(())
+}
+
+// Drain the pipe continuously, but retain at most 8 KiB in memory. No disk log.
+fn bounded_diagnostic(mut input: impl std::io::Read) -> Vec<u8> {
+    let mut retained = Vec::new();
+    let mut buffer = [0u8; 4096];
+    loop {
+        match input.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(n) => {
+                let keep = n.min(8192usize.saturating_sub(retained.len()));
+                retained.extend_from_slice(&buffer[..keep]);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => break,
+        }
+    }
+    retained
+}
+
+fn report_diagnostic(rx: Option<std::sync::mpsc::Receiver<Vec<u8>>>) {
+    let Some(rx) = rx else { return; };
+    match rx.recv_timeout(Duration::from_secs(1)) {
+        Ok(bytes) => {
+            // Prefix every line and escape control characters; no Actions command injection.
+            for line in String::from_utf8_lossy(&bytes).lines() {
+                let safe: String = line.chars().flat_map(char::escape_default).collect();
+                eprintln!("PULQVA_PUBLIC_FIXTURE_STDERR: {safe}");
+            }
+        }
+        Err(_) => eprintln!("PULQVA_PUBLIC_FIXTURE_STDERR: unavailable within diagnostic deadline"),
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    #[test]
+    fn diagnostic_capture_is_bounded_but_drains_the_entire_pipe() {
+        let mut input = std::io::Cursor::new(vec![b'x'; 65_536]);
+        let retained = super::bounded_diagnostic(&mut input);
+        assert_eq!(retained, vec![b'x'; 8192]);
+        assert_eq!(input.position(), 65_536);
+    }
 }
 
 fn collect_regular_files(root: &Path) -> Result<Vec<(PathBuf, u64)>, Box<dyn Error>> {

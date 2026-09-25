@@ -1,5 +1,21 @@
 # NEXT
 
+## CURRENT: T060 recovery — bounded public-fixture diagnostics pending
+
+Head c2161c85240a834265b1abe71ff82ac3ab5ce473 passed 10 workflows; media run
+36093661300 failed on Linux job 107941193456 after Tor readiness, yt-dlp exit 1.
+Underlying cause is unknown because production stderr is intentionally discarded.
+This recovery changes only the fixed-public-URL example and its CI: explicit --diagnostics,
+same typed executable/argv and Tor gate, continuously drained stderr with 8 KiB retention,
+control-escaped prefixed failure output, no persistent log and bounded diagnostic wait.
+The example directly spawns the typed plan for diagnostics; production launcher is unchanged.
+A cross-platform example unit test proves capture bounds and full pipe draining.
+Local continuity/diff checks only; Rust unavailable locally. New Rust tests and live result
+await CI. No retry/fallback, source replacement or relaxed success criterion.
+ONE next action: observe diagnostic CI; if failed, read the public-fixture stderr and repair
+that specific cause. A passing run alone does not establish the prior failure's cause.
+T060 closeout remains blocked. Exact new head/run IDs are in PR #62.
+
 ## CURRENT: T060 acceptance audited; closeout checkpoint pending
 
 Verified implementation head `d2f746e46f6e933454e0bc28adc189ccb702ce03`: all 11 workflows green.

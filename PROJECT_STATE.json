@@ -10,6 +10,8 @@
   "next_task": "T060",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
-  "known_blockers": [],
+  "known_blockers": [
+    "Linux Tor media probe failed at c2161c8; cause unknown; diagnostic CI pending"
+  ],
   "updated": "2026-09-25"
 }

@@ -26,6 +26,9 @@ jobs:
           rustup toolchain install 1.91.0 --profile minimal
           rustup default 1.91.0
 
+      - name: Test bounded public-fixture diagnostics
+        run: cargo test --locked -p pulqva-privacy --example real_ytdlp_tor_media
+
       - name: Build exact pinned Arti sidecar
         shell: bash
         run: |
@@ -98,7 +101,7 @@ jobs:
             --locked \
             -p pulqva-privacy \
             --example real_ytdlp_tor_media \
-            -- "$ARTI_BIN" "$YTDLP_BIN")"
+            -- "$ARTI_BIN" "$YTDLP_BIN" --diagnostics)"
           echo "$OUTPUT"
 
           if [ "$RUNNER_OS" = "Windows" ]; then
