@@ -1,0 +1,103 @@
+{
+  "head": "a7d1d319d2d82e1801b639bc50de31b200dc10d6",
+  "run_id": 36139924719,
+  "job_id": 108086958317,
+  "receipt": {
+    "schema_version": 1,
+    "target": "x86_64-unknown-linux-gnu",
+    "archive": {
+      "name": "deno-x86_64-unknown-linux-gnu.zip",
+      "bytes": 41596794,
+      "sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490"
+    },
+    "executable": {
+      "bytes": 95830104,
+      "sha256": "ce6a052beb97c2b92de67077e3f3924ba7c9661ede0d8dc2f66a116a3c841f21"
+    },
+    "version_output": "deno 2.9.7 (stable, release, x86_64-unknown-linux-gnu)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+    "observed_platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+    "libc": [
+      "glibc",
+      "2.39"
+    ],
+    "scope": "local --version only; not permission isolation or YouTube compatibility",
+    "restricted_probe": {
+      "flags": [
+        "run",
+        "--ext=js",
+        "--no-code-cache",
+        "--no-prompt",
+        "--no-remote",
+        "--no-lock",
+        "--node-modules-dir=none",
+        "--no-config",
+        "--no-npm",
+        "--cached-only",
+        "-"
+      ],
+      "fixtures": [
+        {
+          "fixture": "compute",
+          "result": {
+            "value": 6
+          },
+          "source_sha256": "1c3094c8a305c964cd2d3e4282704764538417897a471f324ce07d6c094786b1"
+        },
+        {
+          "fixture": "net",
+          "result": {
+            "denied": "net"
+          },
+          "source_sha256": "5e525a09dc03effd825f7db5b3acbe5df53470e9671143c7824f819fb6879f83"
+        },
+        {
+          "fixture": "read",
+          "result": {
+            "denied": "read"
+          },
+          "source_sha256": "a681f481a519393753937c2bad8daa6b2a2939e922aaba88c704279c39efa5c9"
+        },
+        {
+          "fixture": "write",
+          "result": {
+            "denied": "write"
+          },
+          "source_sha256": "6bc21bfc7b23a369a574df45f945171ce543cc40d5644f9b04e16441a9fbc70b"
+        },
+        {
+          "fixture": "env",
+          "result": {
+            "denied": "env"
+          },
+          "source_sha256": "130bac2e065327e0c8a92d196f03c5649a46703f68a096a754455f96331d2ebf"
+        },
+        {
+          "fixture": "run",
+          "result": {
+            "denied": "run"
+          },
+          "source_sha256": "12120386002736ce00b80216b2501fef6b2a96e66f4460920eed3f1ef13e5394"
+        },
+        {
+          "fixture": "remote_import",
+          "result": {
+            "blocked": "remote_import"
+          },
+          "source_sha256": "a024b533c5ce7c3b2bcd4ec37da33f5994e50e27a3b1ad0ab3933a7d648903c7"
+        }
+      ],
+      "loopback_connections": 0,
+      "scope": "fixture permission denials only; external egress monitoring and OS isolation NOT established",
+      "network_gate": {
+        "kind": "fresh_linux_network_namespace",
+        "different_from_parent": true,
+        "interfaces": [
+          "lo"
+        ],
+        "external_ipv4_route": "ENETUNREACH",
+        "runtime_uid": 1001,
+        "scope": "CI fixture external IP transport blocked; not an application sandbox"
+      }
+    }
+  }
+}

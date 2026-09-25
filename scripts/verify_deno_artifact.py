@@ -114,6 +114,9 @@ def main():
                 probe = subprocess.run(command, capture_output=True, text=True,
                                        timeout=100, check=True)
                 receipt["restricted_probe"] = json.loads(probe.stdout)
+            elif os.name == "nt":
+                from deno_windows_firewall import run_windows_restricted
+                receipt["restricted_probe"] = run_windows_restricted(executable, directory)
             else:
                 from deno_restricted_probe import run_restricted
                 receipt["restricted_probe"] = run_restricted(executable, directory)

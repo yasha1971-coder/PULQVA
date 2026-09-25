@@ -1,19 +1,20 @@
 # NEXT
 
-## CURRENT: T063 Linux external-network gate CI pending
+## CURRENT: T063 Windows external-network rule CI pending
 
 PR #66 branch task/T063-deno-restricted-execution.
-Verified head d68f4fac8e76f7c833bcf4397c3414d89040eed2: all 11 workflows green.
-Run 36138486228 jobs 108082230510 (Windows) and 108082230733 (Linux) both
-passed computation, five explicit permission denials, remote import rejection,
-and zero loopback connections. Receipts preserved in RESTRICTED_FIXTURE_EVIDENCE.json.
+Verified head a7d1d319d2d82e1801b639bc50de31b200dc10d6: all 11 workflows green.
+Linux run 36139924719 job 108086958317 confirms fresh net namespace, lo only,
+ENETUNREACH external IPv4 route and runtime UID 1001. Receipt committed.
 
-This phase adds a fresh Linux network namespace with only loopback, verifies
-distinct namespace and no external IPv4 route, drops UID/GID before Deno, and
-runs the same fixtures inside it. CI gate NOT yet observed on this new head.
-No host network namespace is changed; namespace is released when processes exit.
-Reference: https://man7.org/linux/man-pages/man7/network_namespaces.7.html
+This phase adds a temporary exact-program Windows outbound block. Requires
+already-enabled effective profiles and running firewall service; checks ActiveStore
+rule, program/address/protocol before and after fixtures, removes only its unique
+owned rule in finally. Does not change global profile settings.
+Reference: Microsoft Learn New-NetFirewallRule (NetSecurity).
 
-ONE next action: observe exact-head CI, inspect the Linux network_gate receipt
-and diagnose failures. Windows external-egress gate remains pending; T063 ACTIVE.
-No OS sandbox, full privacy, YouTube, minimum-OS or application integration claim.
+ONE next action: observe exact-head CI and inspect Windows network_gate evidence.
+Windows gate has NOT run yet; do not claim it passed. Diagnose red first.
+T063 remains ACTIVE. Effective rule configuration is not packet capture or
+DNS-service/descendant isolation; those broader claims remain unproven.
+No app wiring or YouTube test. Linux result is a CI fixture boundary only.
