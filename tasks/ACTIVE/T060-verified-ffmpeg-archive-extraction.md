@@ -1,7 +1,36 @@
 # T060 — Safely extract FFmpeg from the verified packaged archive
 
 Parent: DESKTOP FOUNDATION
-Status: ACTIVE — owned-stage verified; source snapshot + typed integration CI pending
+Status: ACTIVE — acceptance audited; closeout checkpoint CI pending
+
+## Acceptance audit — 2026-09-25
+
+Audited implementation: `d2f746e46f6e933454e0bc28adc189ccb702ce03`, PR #62.
+All 11 workflows succeeded. Desktop run 36064257789 explicitly passed the real pinned
+archive adapter test on Windows and Linux, in addition to compilation and boundary tests.
+
+| Criterion | Implementation / evidence |
+| --- | --- |
+| Backend kind/version/platform binding | ffmpeg_source::extract_verified_ffmpeg; real integration rejects wrong kind/version/destination |
+| ZIP and tar.xz | ffmpeg_zip / ffmpeg_tar_xz; both real pinned platform archives match independent Python hash and size |
+| Source containment and authenticated consumption | ffmpeg_source::snapshot validates paths/type/identity and hashes one bounded immutable snapshot; size/digest/path rejection tests |
+| Exactly one expected member | ffmpeg_archive_policy; duplicate/missing/path/type tests; ZIP rejects collapsed entry counts |
+| Bounded expansion | metadata count/member/total limits, ZIP actual selected-byte limit, tar global byte budget and XZ decoder memory limit |
+| Owned output and typed identity | ffmpeg_stage exclusive creation; sync and same-handle rehash; receipt binds archive/executable digests, size and owned path; outer result binds version/platform |
+| Preserve existing files / cleanup | stage error and ownership tests; nonrecursive identity-checked Drop cleanup |
+| Cross-platform deterministic checks | desktop boundary tests and explicit real archive integration step succeeded on both OSes |
+| No executable/network/frontend operation | extraction modules use local parsing/hash/filesystem only; no live prelaunch caller |
+
+Limits remain explicit: this is not a guarantee against hostile concurrent ancestor replacement,
+all Windows reparse behaviors or process crashes. Drop cleanup is best-effort; identity-acquisition
+failures can leave an owned orphan. Source authentication guarantees the bytes passed to parsers.
+Later executable publication must revalidate stage ownership and content.
+
+Audit result: extraction scope has supporting implementation and green CI evidence.
+T060 remains ACTIVE until this documentation checkpoint is verified and closeout/merge occurs.
+No runtime publication, prelaunch activation, packaged-app launch or Deno/EJS test is claimed.
+
+## Historical implementation checkpoints
 
 Head `c22dc198182db1058de0474f847de30a9822cffb` passed all 11 workflows. Current phase
 adds verified-artifact/layout binding, bounded same-handle source snapshot + digest validation,

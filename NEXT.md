@@ -1,5 +1,17 @@
 # NEXT
 
+## CURRENT: T060 acceptance audited; closeout checkpoint pending
+
+Verified implementation head `d2f746e46f6e933454e0bc28adc189ccb702ce03`: all 11 workflows green.
+Desktop run 36064257789 passed compilation, boundary tests and explicit real pinned archive
+extraction on Windows/Linux. Acceptance mapping is in the ACTIVE T060 task file.
+This commit updates documentation only; its own CI remains pending. PR #62 stays draft.
+No runtime publication/prelaunch or packaged-app test. No new blockers found within the
+documented extraction scope; filesystem race/crash/cleanup limitations remain unchanged.
+ONE next action: observe this documentation head CI and complete T060 closeout/merge when green.
+Then plan Deno/EJS compatibility from research checkpoint 5826532732 before expanding search.
+
+
 ## CURRENT: T060 authenticated source snapshot + typed integration, CI pending
 
 Supersedes earlier current sections. Head `c22dc198182db1058de0474f847de30a9822cffb`
