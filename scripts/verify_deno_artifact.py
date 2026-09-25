@@ -9,6 +9,7 @@ from pathlib import Path
 import platform
 import stat
 import subprocess
+import sys
 import tempfile
 import urllib.request
 import zipfile
@@ -105,8 +106,17 @@ def main():
             "scope": "local --version only; not permission isolation or YouTube compatibility",
         }
         if args.restricted:
-            from deno_restricted_probe import run_restricted
-            receipt["restricted_probe"] = run_restricted(executable, directory)
+            if sys.platform == "linux":
+                command = ["sudo", "-n", "/usr/bin/unshare", "--net",
+                           "/usr/bin/python3", str(ROOT / "scripts/deno_linux_netns.py"),
+                           str(executable), str(directory), os.readlink("/proc/self/ns/net"),
+                           str(os.getuid()), str(os.getgid())]
+                probe = subprocess.run(command, capture_output=True, text=True,
+                                       timeout=100, check=True)
+                receipt["restricted_probe"] = json.loads(probe.stdout)
+            else:
+                from deno_restricted_probe import run_restricted
+                receipt["restricted_probe"] = run_restricted(executable, directory)
         args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(receipt, indent=2))
 

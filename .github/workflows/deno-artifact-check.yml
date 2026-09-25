@@ -2,6 +2,7 @@ name: deno-artifact-check
 on:
   pull_request:
     paths:
+      - 'scripts/deno_linux_netns.py'
       - 'scripts/deno_restricted_probe.py'
       - 'scripts/test_deno_restricted_probe.py'
       - 'scripts/verify_deno_artifact.py'
@@ -11,6 +12,7 @@ on:
   push:
     branches: ["main"]
     paths:
+      - 'scripts/deno_linux_netns.py'
       - 'scripts/deno_restricted_probe.py'
       - 'scripts/test_deno_restricted_probe.py'
       - 'scripts/verify_deno_artifact.py'

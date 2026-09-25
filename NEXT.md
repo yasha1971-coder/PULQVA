@@ -1,22 +1,19 @@
 # NEXT
 
-## CURRENT: T063 local restricted-fixture phase CI pending
+## CURRENT: T063 Linux external-network gate CI pending
 
-Base main 16e410493460563c5ff71dc0b4efa66d86264ec2 passed all 11 post-merge
-workflows. PR #65 merged. Branch task/T063-deno-restricted-execution.
-Exact head, PR and runs are saved in the publication checkpoint.
+PR #66 branch task/T063-deno-restricted-execution.
+Verified head d68f4fac8e76f7c833bcf4397c3414d89040eed2: all 11 workflows green.
+Run 36138486228 jobs 108082230510 (Windows) and 108082230733 (Linux) both
+passed computation, five explicit permission denials, remote import rejection,
+and zero loopback connections. Receipts preserved in RESTRICTED_FIXTURE_EVIDENCE.json.
 
-Prepared deterministic stdin computation plus explicit permission-denial fixtures
-for net, file read/write, environment and child execution, and a --no-remote
-import diagnostic check. Targets are owned loopback/local fixtures only; an owned
-listener observes attempted loopback connections. The pinned executable/clean
-environment are reused from T062. Local eight harness tests pass.
+This phase adds a fresh Linux network namespace with only loopback, verifies
+distinct namespace and no external IPv4 route, drops UID/GID before Deno, and
+runs the same fixtures inside it. CI gate NOT yet observed on this new head.
+No host network namespace is changed; namespace is released when processes exit.
+Reference: https://man7.org/linux/man-pages/man7/network_namespaces.7.html
 
-ONE next action: observe exact-head CI and inspect both restricted probe receipts.
-Diagnose red before changing unrelated work. T063 ACTIVE, not DONE.
-This phase does NOT satisfy the external-egress monitoring/blocking acceptance
-gate. That gate needs separate evidence before T063 closeout; no OS isolation or
-absence-of-all-network claim. Real Deno fixtures have not yet run on this head.
-
-No app wiring, YouTube trial, minimum-OS certification or complete package.
-Windows positive media retrieval remains unproven; earlier Linux exit-1 cause unknown.
+ONE next action: observe exact-head CI, inspect the Linux network_gate receipt
+and diagnose failures. Windows external-egress gate remains pending; T063 ACTIVE.
+No OS sandbox, full privacy, YouTube, minimum-OS or application integration claim.
