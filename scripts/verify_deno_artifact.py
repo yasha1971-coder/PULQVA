@@ -74,6 +74,7 @@ def main():
     parser.add_argument("--target", required=True,
                         choices=["x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"])
     parser.add_argument("--receipt", required=True, type=Path)
+    parser.add_argument("--restricted", action="store_true")
     args = parser.parse_args()
     manifest = json.loads((ROOT / "sidecars/deno/CANDIDATE.json").read_text())
     asset = next(a for a in manifest["assets"] if a["target"] == args.target)
@@ -103,6 +104,9 @@ def main():
             "observed_platform": platform.platform(), "libc": platform.libc_ver(),
             "scope": "local --version only; not permission isolation or YouTube compatibility",
         }
+        if args.restricted:
+            from deno_restricted_probe import run_restricted
+            receipt["restricted_probe"] = run_restricted(executable, directory)
         args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(receipt, indent=2))
 

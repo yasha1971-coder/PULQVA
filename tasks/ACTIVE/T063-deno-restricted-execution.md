@@ -1,6 +1,6 @@
 # T063 — Verify restricted local Deno execution contract
 
-Status: READY — start after PR #65 merges
+Status: ACTIVE — local fixture phase prepared; CI and external-egress gate pending
 Outcome: executable evidence on Windows/Linux that the selected Deno invocation
 can process stdin JavaScript while denying the capabilities challenge code
 must not have. This advances ADR-0006 before application launch wiring.

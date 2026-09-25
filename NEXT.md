@@ -1,19 +1,22 @@
 # NEXT
 
-## CURRENT: T062 artifact verification complete; closeout CI/merge pending
+## CURRENT: T063 local restricted-fixture phase CI pending
 
-PR #65 branch task/T062-deno-artifact-verification.
-Verified head 7798c67a9a8109a1fec2115d063382f4cafb56a0: all 11 workflows green.
-Deno run 36126900433 passed both OS jobs. Archive identities, extracted hashes/
-sizes and local Deno 2.9.7 --version are recorded in ARTIFACT_VERIFICATION.json.
+Base main 16e410493460563c5ff71dc0b4efa66d86264ec2 passed all 11 post-merge
+workflows. PR #65 merged. Branch task/T063-deno-restricted-execution.
+Exact head, PR and runs are saved in the publication checkpoint.
 
-T062 DONE within artifact verification scope. Closeout head still needs CI.
-ONE next action: observe PR #65 exact-head checks; diagnose red or mark ready
-and merge. Do not make another documentation-only closeout commit.
-Then T063 READY: restricted local stdin execution and explicit permission denials.
-Do not start that task in this closeout phase.
+Prepared deterministic stdin computation plus explicit permission-denial fixtures
+for net, file read/write, environment and child execution, and a --no-remote
+import diagnostic check. Targets are owned loopback/local fixtures only; an owned
+listener observes attempted loopback connections. The pinned executable/clean
+environment are reused from T062. Local eight harness tests pass.
 
-Observed Ubuntu 24.04/glibc 2.39 and Windows Server 2025 build 26100 do not
-establish minimum OS/ABI support. No isolation/network-absence claim follows
-from --version. YouTube, app wiring and full package remain untested.
-Windows positive media gap and earlier unexplained Linux exit-1 remain.
+ONE next action: observe exact-head CI and inspect both restricted probe receipts.
+Diagnose red before changing unrelated work. T063 ACTIVE, not DONE.
+This phase does NOT satisfy the external-egress monitoring/blocking acceptance
+gate. That gate needs separate evidence before T063 closeout; no OS isolation or
+absence-of-all-network claim. Real Deno fixtures have not yet run on this head.
+
+No app wiring, YouTube trial, minimum-OS certification or complete package.
+Windows positive media retrieval remains unproven; earlier Linux exit-1 cause unknown.
