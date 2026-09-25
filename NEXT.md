@@ -1,22 +1,19 @@
 # NEXT
 
-## CURRENT: T062 Deno artifact verification CI pending
+## CURRENT: T062 artifact verification complete; closeout CI/merge pending
 
-Base main c19ece3e7e725fc5acf385842d0bbe164b2c0d57 passed all 10 triggered
-workflows after PR #64 merged. T061 is complete within assessment scope.
+PR #65 branch task/T062-deno-artifact-verification.
+Verified head 7798c67a9a8109a1fec2115d063382f4cafb56a0: all 11 workflows green.
+Deno run 36126900433 passed both OS jobs. Archive identities, extracted hashes/
+sizes and local Deno 2.9.7 --version are recorded in ARTIFACT_VERIFICATION.json.
 
-Branch task/T062-deno-artifact-verification. Exact head/PR/run IDs are in the
-publication checkpoint. T062 ACTIVE, not DONE.
+T062 DONE within artifact verification scope. Closeout head still needs CI.
+ONE next action: observe PR #65 exact-head checks; diagnose red or mark ready
+and merge. Do not make another documentation-only closeout commit.
+Then T063 READY: restricted local stdin execution and explicit permission denials.
+Do not start that task in this closeout phase.
 
-Prepared CI-only verifier: official pinned archive bytes/SHA-256, one expected
-regular executable, bounded extraction into owned temporary storage, controlled
-environment, disabled update checks, absolute-path --version, executable receipt.
-Local negative fixture tests pass; real binaries are not yet tested by this harness.
-
-ONE next action: observe exact-head CI, inspect both deno-artifact-check jobs and
-receipts. Diagnose failures before unrelated work. No application wiring here.
-Observed runner success must not be promoted to a minimum OS/ABI guarantee.
-
-Deno permission isolation, challenge handling, YouTube retrieval and complete
-packaging remain separate gates. Windows positive media retrieval remains
-unproven; original Linux media exit-1 cause remains unknown.
+Observed Ubuntu 24.04/glibc 2.39 and Windows Server 2025 build 26100 do not
+establish minimum OS/ABI support. No isolation/network-absence claim follows
+from --version. YouTube, app wiring and full package remain untested.
+Windows positive media gap and earlier unexplained Linux exit-1 remain.

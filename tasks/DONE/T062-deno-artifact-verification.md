@@ -1,6 +1,6 @@
 # T062 — Verify candidate Deno artifacts on Windows/Linux
 
-Status: ACTIVE — verification harness prepared; real Windows/Linux CI pending
+Status: DONE within artifact verification scope; closeout CI/merge pending
 Outcome: reproducible CI evidence for the two candidate archives and executable
 identities, without enabling Deno in the application.
 
@@ -19,3 +19,12 @@ Acceptance:
 
 Scope excludes application launch wiring, permission isolation certification,
 YouTube retrieval and full distribution licensing clearance. Split those later.
+
+Evidence: 7798c67a9a8109a1fec2115d063382f4cafb56a0 passed all 11 workflows.
+Run 36126900433, jobs 108044998361 (Linux), 108044998705 (Windows):
+archive SHA-256/size, bounded extraction, local Deno 2.9.7 --version and five
+fixture tests passed on both. Receipts are in sidecars/deno/ARTIFACT_VERIFICATION.json.
+Observed Linux glibc 2.39 and Windows Server 2025 build 26100 only.
+Executable sizes: Linux 95,830,104 bytes; Windows 97,462,048 bytes.
+Neither a minimum OS/ABI guarantee nor proof of no network traffic is established
+by a successful --version invocation. No challenge script or application launched.

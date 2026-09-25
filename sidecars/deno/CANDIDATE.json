@@ -8,7 +8,7 @@
     "source_commit": "0c071246a412575e07423263404a5d13e7ed6aa2",
     "license": "MIT; binary third-party inventory pending"
   },
-  "hash_evidence": "GitHub official release asset SHA-256 metadata; not locally recomputed",
+  "hash_evidence": "Official archive bytes/SHA-256 recomputed on both CI runners; see ARTIFACT_VERIFICATION.json",
   "assets": [
     {
       "target": "x86_64-pc-windows-msvc",
