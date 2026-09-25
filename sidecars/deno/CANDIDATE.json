@@ -34,7 +34,7 @@
   "ejs": {
     "version": "0.8.0",
     "license": "Unlicense source; bundled dependencies include MIT/ISC",
-    "binary_payload_inspection": "pending",
+    "binary_payload_inspection": "Both pinned assets verified; see EJS_INSPECTION.json",
     "scripts": [
       {
         "name": "yt.solver.core.min.js",

@@ -33,8 +33,10 @@ At that commit:
   the non-NPM variant additionally uses --no-npm and --cached-only.
 - options.py supports --no-js-runtimes and --no-remote-components.
 
-This establishes the declared bundle contract, not inspection of both executable
-payloads. The trial must verify packaged EJS version/scripts against this contract.
+Both official executable hashes were recomputed and their embedded core/lib
+scripts matched the EJS 0.8.0 release hashes without executing either binary.
+See sidecars/deno/EJS_INSPECTION.json and scripts/inspect_ytdlp_ejs.py.
+This proves script identity, not runtime execution or challenge compatibility.
 
 Deno source: https://github.com/denoland/deno/tree/0c071246a412575e07423263404a5d13e7ed6aa2
 Release: https://github.com/denoland/deno/releases/tag/v2.9.7
@@ -97,7 +99,7 @@ No direct fallback, cookies or remote component enablement to make tests green.
 | Requirement | Current evidence | Missing gate |
 | --- | --- | --- |
 | Source identity | Exact sources and upstream asset hashes in candidate manifest | Locally recomputed downloads and extracted executable receipts |
-| Bundled EJS | Pinned dependency, collection hook, vendor identity | Inspection of both executable payloads |
+| Bundled EJS | Both executable payloads match 0.8.0 core/lib hashes | Runtime challenge compatibility |
 | Tor transport | Existing component CI; main b89990d has 10 successful triggered workflows | Deno descendants network/DNS observation |
 | Windows retrieval | Earlier fail-closed probe only | Positive bounded media retrieval |
 | User demo | Pre-alpha components | Natural request -> choices -> file in one clean package |

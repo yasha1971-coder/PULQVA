@@ -1,6 +1,6 @@
 # T061 — Assess bundled JavaScript runtime compatibility
 
-Status: ACTIVE — assessment drafted; review/CI and executable payload inspection pending
+Status: ACTIVE — assessment and both EJS payload inspections complete; review/CI pending
 Outcome: a reviewed compatibility decision and exact candidate manifest for the
 pinned yt-dlp/EJS + JavaScript runtime on Windows/Linux.
 

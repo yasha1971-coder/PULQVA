@@ -13,8 +13,13 @@ yt-dlp 2026.08.19/EJS 0.8.0. No runtime dependency was enabled.
 Upstream hashes are not locally recomputed; executable EJS payload inspection
 remains pending. T061 is ACTIVE, not DONE.
 
-One next action: review this PR's exact head and finish missing payload identity
-verification before closing T061. Diagnose red checks first. Do not merge using
+Both pinned yt-dlp executable payloads now match EJS 0.8.0 core/lib hashes;
+see sidecars/deno/EJS_INSPECTION.json and scripts/inspect_ytdlp_ejs.py.
+This supersedes the payload-inspection pending statement above. Deno archive
+hashes remain upstream-only. Parent b52a820 passed all 10 triggered workflows.
+
+One next action: review the updated PR's exact-head checks and assessment
+before closing T061. Diagnose red checks first. Do not merge using
 older checks or start launch wiring in this assessment.
 
 Windows positive live media retrieval remains unproven; original Linux exit-1
