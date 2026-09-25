@@ -1,6 +1,6 @@
 # T062 — Verify candidate Deno artifacts on Windows/Linux
 
-Status: READY — start only after PR #64 merges
+Status: ACTIVE — verification harness prepared; real Windows/Linux CI pending
 Outcome: reproducible CI evidence for the two candidate archives and executable
 identities, without enabling Deno in the application.
 

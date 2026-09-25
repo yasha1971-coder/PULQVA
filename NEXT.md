@@ -1,22 +1,22 @@
 # NEXT
 
-## CURRENT: T061 assessment complete; closeout CI/merge pending
+## CURRENT: T062 Deno artifact verification CI pending
 
-PR #64, branch task/T061-js-runtime-assessment.
-Verified assessment head: ec01fa0a4f665da7f221d2abbe2c1e89f0c4ee3f,
-all 10 triggered workflows successful. Both official yt-dlp asset hashes and
-embedded EJS 0.8.0 core/lib hashes independently reproduced locally.
+Base main c19ece3e7e725fc5acf385842d0bbe164b2c0d57 passed all 10 triggered
+workflows after PR #64 merged. T061 is complete within assessment scope.
 
-ADR-0006 accepts Deno 2.9.7 as a trial candidate only. No runtime was enabled.
-T061 is DONE within assessment scope. This closeout commit needs its own CI;
-exact SHA/run IDs are recorded in the PR checkpoint after publication.
+Branch task/T062-deno-artifact-verification. Exact head/PR/run IDs are in the
+publication checkpoint. T062 ACTIVE, not DONE.
 
-ONE next action: observe PR #64 exact-head checks; diagnose red, otherwise mark
-ready and merge. Do not generate another documentation-only closeout commit.
-After merge T062 is READY: verified Deno artifact materialization/identity in CI.
-Do not start T062 before merge or in the same response as this closeout.
+Prepared CI-only verifier: official pinned archive bytes/SHA-256, one expected
+regular executable, bounded extraction into owned temporary storage, controlled
+environment, disabled update checks, absolute-path --version, executable receipt.
+Local negative fixture tests pass; real binaries are not yet tested by this harness.
 
-Untested: Deno execution, permissions, Linux minimum ABI, YouTube trial and
-complete package. Deno archive digests remain upstream-only until T062.
-Windows positive media retrieval remains unproven; original Linux exit-1
-root cause remains unknown. Neither is erased by component CI success.
+ONE next action: observe exact-head CI, inspect both deno-artifact-check jobs and
+receipts. Diagnose failures before unrelated work. No application wiring here.
+Observed runner success must not be promoted to a minimum OS/ABI guarantee.
+
+Deno permission isolation, challenge handling, YouTube retrieval and complete
+packaging remain separate gates. Windows positive media retrieval remains
+unproven; original Linux media exit-1 cause remains unknown.

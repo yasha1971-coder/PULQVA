@@ -1,0 +1,44 @@
+name: deno-artifact-check
+on:
+  pull_request:
+    paths:
+      - 'scripts/verify_deno_artifact.py'
+      - 'scripts/test_verify_deno_artifact.py'
+      - 'sidecars/deno/**'
+      - '.github/workflows/deno-artifact-check.yml'
+  push:
+    branches: ["main"]
+    paths:
+      - 'scripts/verify_deno_artifact.py'
+      - 'scripts/test_verify_deno_artifact.py'
+      - 'sidecars/deno/**'
+      - '.github/workflows/deno-artifact-check.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reject invalid artifacts
+        run: python -m unittest discover -s scripts -p test_verify_deno_artifact.py -v
+      - name: Verify official archive and local runtime version
+        run: python scripts/verify_deno_artifact.py --target ${{ matrix.target }} --receipt deno-receipt.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deno-receipt-${{ matrix.target }}
+          path: deno-receipt.json
+          if-no-files-found: error
+          retention-days: 30
