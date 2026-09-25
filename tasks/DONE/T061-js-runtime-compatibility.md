@@ -1,6 +1,6 @@
 # T061 — Assess bundled JavaScript runtime compatibility
 
-Status: ACTIVE — assessment and both EJS payload inspections complete; review/CI pending
+Status: DONE — assessment only; closeout commit CI/merge pending
 Outcome: a reviewed compatibility decision and exact candidate manifest for the
 pinned yt-dlp/EJS + JavaScript runtime on Windows/Linux.
 
@@ -17,3 +17,16 @@ Acceptance:
 
 Scope: assessment/manifest only; split actual packaging, launch wiring and live test
 into follow-up atomic tasks. Preserve kernel and fail-closed transport.
+
+Acceptance evidence:
+- ADR-0006 records a trial candidate, alternatives, permissions, OS/size limits and
+  bounded Tor-only test plan. Shipping adoption remains deferred.
+- sidecars/deno/CANDIDATE.json pins exact official candidate assets and source.
+- EJS_INSPECTION.json records both hash-authenticated yt-dlp payloads matching
+  EJS 0.8.0 core/lib. Inspection repeated successfully on 2026-09-25.
+- ec01fa0a4f665da7f221d2abbe2c1e89f0c4ee3f: all 10 triggered workflows successful.
+  This does not mean CI itself ran the local payload inspector.
+- Deno archive hashes are upstream metadata, not locally recomputed. Actual
+  Deno launch, Linux minimum ABI, permissions and YouTube trial remain untested.
+
+Next atomic task: T062 verifies Deno artifact materialization in CI, not app wiring.

@@ -1,6 +1,6 @@
 # ADR-0006 — Deno candidate for bundled YouTube challenges
 
-Status: Proposed; T061 assessment, runtime adoption deferred pending executable evidence
+Status: Accepted for compatibility trial only; shipping runtime adoption deferred
 Date: 2026-09-25
 
 ## Decision and kernel purpose
