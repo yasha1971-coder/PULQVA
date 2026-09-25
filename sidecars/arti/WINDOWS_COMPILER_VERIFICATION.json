@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "verified_head": "2bf215fc06bcf6038fdfe94b71f665a932943fc2",
+  "runs": [
+    {
+      "run": 36163260806,
+      "windows_job": 108164756494,
+      "executable_artifact": 10877001743
+    },
+    {
+      "run": 36170088913,
+      "windows_job": 108187233132,
+      "executable_artifact": 10881125230,
+      "diagnostics_artifact": 10880750385
+    }
+  ],
+  "byte_identical": true,
+  "size": 19624960,
+  "sha256": "9245c7b5f71391238539bf2d78a492453cae66f978cf8e479039a26f1667f3df",
+  "compiler_command": "running: \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\18\\\\Enterprise\\\\VC\\\\Tools\\\\MSVC\\\\14.51.36231\\\\bin\\\\Hostx64\\\\x64\\\\cl.exe\" \"-nologo\" \"-MD\" \"-O2\" \"-Brepro\" \"-I\" \"xz/src/liblzma/api\" \"-I\" \"xz/src/liblzma/lzma\" \"-I\" \"xz/src/liblzma/lz\" \"-I\" \"xz/src/liblzma/check\" \"-I\" \"xz/src/liblzma/simple\" \"-I\" \"xz/src/liblzma/delta\" \"-I\" \"xz/src/liblzma/common\" \"-I\" \"xz/src/liblzma/rangecoder\" \"-I\" \"xz/src/common\" \"-I\" \"C:\\\\Users\\\\runneradmin\\\\.cargo\\\\registry\\\\src\\\\index.crates.io-1949cf8c6b5b557f\\\\liblzma-sys-0.4.7\" \"-W4\" \"-DNDEBUG\" \"-DHAVE_CONFIG_H=1\" \"-FoD:\\\\a\\\\_temp/pulqva-arti-target\\\\release\\\\build\\\\liblzma-sys-cb4bdc5d470b432d\\\\out\\\\fcf37daa71d57c9f-lzma2_decoder.o\" \"-c\" \"xz/src/liblzma/lzma\\\\lzma2_decoder.c\"",
+  "scope": "Two observed clean builds; compiler files pinned; SDK content not pinned; historical exact compiler cause unproven"
+}
