@@ -4,13 +4,14 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "c8900e98199def05a5dc2d029b0c8c025a6a0a7e",
-  "last_completed_task": "T063",
+  "last_verified_commit": "2bf215fc06bcf6038fdfe94b71f665a932943fc2",
+  "last_completed_task": "T063R",
   "active_task": null,
   "next_task": "T064",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
+    "T063R compiler pin verified in two clean builds; PR67 closeout CI/merge pending. SDK content is not pinned.",
     "Windows live media retrieval unproven: latest successful CI exercised fail-closed timeout.",
     "Earlier Linux media exit-1 root cause unknown; diagnostic rerun succeeded."
   ],

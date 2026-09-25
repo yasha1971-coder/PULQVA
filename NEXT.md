@@ -1,21 +1,18 @@
 # NEXT
 
-## CURRENT: T063 local execution verification complete; closeout CI/merge pending
+## CURRENT: T063R verified; PR #67 closeout CI/merge pending
 
-PR #66 branch task/T063-deno-restricted-execution.
-Verified head c8900e98199def05a5dc2d029b0c8c025a6a0a7e: all 11 workflows green.
-Run 36142395574: Linux job 108095142055, Windows job 108095142491.
-Full receipts preserved in RESTRICTED_EXECUTION_VERIFICATION.json.
+Branch recovery/T063R-arti-native-diagnostics.
+Verified head 2bf215fc06bcf6038fdfe94b71f665a932943fc2: 10/10 triggered checks green.
+Independent Windows builds 36163260806 and 36170088913 produced byte-identical
+Arti executables with unchanged trusted SHA256. Actual LZMA2 compiler invocation
+confirmed from preserved build-script output. Evidence in
+sidecars/arti/WINDOWS_COMPILER_VERIFICATION.json.
 
-T063 DONE within local fixture scope. Computation and all explicit denials passed.
-Linux has a loopback-only namespace and unprivileged runtime. Windows effective
-exact-program outbound Block was verified and its removal confirmed.
-Policy evidence is not packet capture, DNS-service isolation or an app sandbox.
+ONE next action: observe closeout exact-head CI; diagnose failures or mark PR #67
+ready and merge if green. Do not create another docs-only closeout. T064 remains
+READY after merge, not part of this recovery response.
 
-ONE next action: observe PR #66 closeout exact-head checks; diagnose red or mark
-ready and merge. Do not create another documentation-only closeout.
-T064 READY after merge: typed bundled-Deno selection in yt-dlp Rust launch plans.
-Do not start T064 in this closeout phase.
-
-No actual EJS challenge, integrated yt-dlp/Deno, YouTube, minimum-OS or full
-package proof. Existing Windows positive media gap and unknown Linux exit-1 remain.
+Limits: SDK headers/libraries not content-pinned; pinned compiler availability on
+future runners not guaranteed. Exact old-runner native cause unproven. Windows
+positive live media, integrated Deno/EJS, YouTube and full package remain unproven.

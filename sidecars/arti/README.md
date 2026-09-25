@@ -1,5 +1,16 @@
 # PULQVA Arti sidecar
 
+## Native compiler recovery, 2026-09-25
+
+Windows native builds explicitly select MSVC 14.51.36231 and authenticate 64
+compiler-directory EXE/DLL files using WINDOWS_COMPILER.json before compilation.
+SDK 10.0.26100.0 directories are selected; headers/libraries are not content-pinned.
+Missing or changed compiler inputs fail without another-toolset fallback.
+Two independent clean builds matched the unchanged executable allowlist byte for
+byte; WINDOWS_COMPILER_VERIFICATION.json records artifacts and actual LZMA2
+compiler invocation. This bounds the observed compiler drift; it is not a fully
+hermetic build or a guarantee that future hosted runners retain these files.
+
 Pinned upstream binary package: `arti 2.6.0`.
 
 This directory records both the pinned Arti package version and the exact content identity of the
