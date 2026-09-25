@@ -88,6 +88,10 @@ jobs:
 
           echo "YTDLP_BIN=$EXEC_BIN" >> "$GITHUB_ENV"
 
+      - name: Test bounded metadata diagnostics without network
+        shell: bash
+        run: cargo +1.91.0 test --locked -p pulqva-privacy --example real_ytdlp_tor_metadata
+
       - name: Prove bounded metadata-only yt-dlp request through Tor
         shell: bash
         run: |
@@ -98,7 +102,7 @@ jobs:
             --locked \
             -p pulqva-privacy \
             --example real_ytdlp_tor_metadata \
-            -- "$ARTI_BIN" "$YTDLP_BIN")"
+            -- "$ARTI_BIN" "$YTDLP_BIN" --diagnostics)"
           echo "$OUTPUT"
 
           if [ "$RUNNER_OS" = "Windows" ]; then

@@ -1,18 +1,18 @@
 # NEXT
 
-## CURRENT: T063R verified; PR #67 closeout CI/merge pending
+## CURRENT: T063M metadata failure diagnostic launch
 
-Branch recovery/T063R-arti-native-diagnostics.
-Verified head 2bf215fc06bcf6038fdfe94b71f665a932943fc2: 10/10 triggered checks green.
-Independent Windows builds 36163260806 and 36170088913 produced byte-identical
-Arti executables with unchanged trusted SHA256. Actual LZMA2 compiler invocation
-confirmed from preserved build-script output. Evidence in
-sidecars/arti/WINDOWS_COMPILER_VERIFICATION.json.
+Base main cdd2299e450161ed2842f654878125e5ce125c51: 9/10 checks green.
+Arti compiler recovery passed. Linux metadata workflow 36177458014,
+job 108211426176 exited 1 without retained stderr. Cause unknown.
+PR #67 checkpoint 5839441794 records diagnosis.
 
-ONE next action: observe closeout exact-head CI; diagnose failures or mark PR #67
-ready and merge if green. Do not create another docs-only closeout. T064 remains
-READY after merge, not part of this recovery response.
+Branch recovery/T063M-metadata-diagnostics adds opt-in bounded failure-only
+stderr to the fixed public metadata example and enables it in CI. Production
+launcher, fixture URL, Tor gate, timeout and success criteria remain unchanged.
+Rust execution pending in CI; local Cargo unavailable.
 
-Limits: SDK headers/libraries not content-pinned; pinned compiler availability on
-future runners not guaranteed. Exact old-runner native cause unproven. Windows
-positive live media, integrated Deno/EJS, YouTube and full package remain unproven.
+ONE next action: observe this branch's exact-head checks and inspect metadata
+failure receipt if red. If successful, record not-reproduced status without
+claiming root cause fixed, then close the diagnostic task on exact-head evidence.
+Head/PR/run IDs recorded in PR launch comment. T064 READY but not started.

@@ -4,14 +4,15 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "2bf215fc06bcf6038fdfe94b71f665a932943fc2",
+  "last_verified_commit": "6f05923dd4e3e0f07ca46107d29564c5cbaa2e0a",
   "last_completed_task": "T063R",
-  "active_task": null,
+  "active_task": "T063M",
   "next_task": "T064",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "T063R compiler pin verified in two clean builds; PR67 closeout CI/merge pending. SDK content is not pinned.",
+    "Main cdd2299e Linux metadata request exited 1; T063M diagnostic CI pending. Cause unknown.",
+    "T063R merged and Arti check passed on main; SDK content is not pinned.",
     "Windows live media retrieval unproven: latest successful CI exercised fail-closed timeout.",
     "Earlier Linux media exit-1 root cause unknown; diagnostic rerun succeeded."
   ],
