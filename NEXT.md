@@ -1,18 +1,16 @@
 # NEXT
 
-## CURRENT: T063R verified; PR #67 closeout CI/merge pending
+## CURRENT: T063M diagnostics verified; PR #68 closeout CI/merge pending
 
-Branch recovery/T063R-arti-native-diagnostics.
-Verified head 2bf215fc06bcf6038fdfe94b71f665a932943fc2: 10/10 triggered checks green.
-Independent Windows builds 36163260806 and 36170088913 produced byte-identical
-Arti executables with unchanged trusted SHA256. Actual LZMA2 compiler invocation
-confirmed from preserved build-script output. Evidence in
-sidecars/arti/WINDOWS_COMPILER_VERIFICATION.json.
+Branch recovery/T063M-metadata-diagnostics.
+Verified head 5dccf46a61e54c3e98bd4b3c74d7a5ce7e93d69b: all 10 triggered checks green.
+Metadata run 36191270234, Linux job 108256683386: unit test + real metadata OK.
+Windows job 108256683616: unit test + accepted fail-closed timeout; not positive
+Windows metadata proof. Evidence and scope recorded in tasks/DONE/T063M.
 
-ONE next action: observe closeout exact-head CI; diagnose failures or mark PR #67
-ready and merge if green. Do not create another docs-only closeout. T064 remains
-READY after merge, not part of this recovery response.
+Historical Linux exit-1 did not reproduce; root cause remains unknown. Live
+failure receipt not exercised in this run. Production behavior unchanged.
 
-Limits: SDK headers/libraries not content-pinned; pinned compiler availability on
-future runners not guaranteed. Exact old-runner native cause unproven. Windows
-positive live media, integrated Deno/EJS, YouTube and full package remain unproven.
+ONE next action: observe closeout exact-head checks; diagnose red or mark PR #68
+ready and merge if all green. Do not make another documentation-only closeout.
+T064 READY after merge; do not begin it in the diagnostic closeout phase.
