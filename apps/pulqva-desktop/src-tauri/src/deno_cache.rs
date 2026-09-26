@@ -78,10 +78,15 @@ impl DenoWorkspace {
             #[cfg(unix)]
             {
                 use std::os::unix::fs::FileTypeExt;
-                if fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_socket()) {
-                    if !self.owned() { return Err("workspace-entry-replaced"); }
-                    fs::remove_file(path).map_err(|_| "workspace-entry-cleanup")?;
-                    continue;
+                if let Ok(metadata) = fs::symlink_metadata(&path) {
+                    if metadata.file_type().is_symlink() || metadata.file_type().is_socket() {
+                        // Never follow the target. This path came from the bounded
+                        // snapshot under the owned workspace; re-stat the entry and
+                        // unlink only the directory entry after child termination.
+                        if !self.owned() { return Err("workspace-entry-replaced"); }
+                        fs::remove_file(path).map_err(|_| "workspace-entry-cleanup")?;
+                        continue;
+                    }
                 }
             }
             if !self.owned() || !matches_identity(&path, &id, directory) {
@@ -113,7 +118,14 @@ fn snapshot(path: &Path, depth: usize, entries: &mut Vec<(PathBuf, Handle, bool)
         let path = entry.map_err(|_| "workspace-read")?.path();
         let m = fs::symlink_metadata(&path).map_err(|_| "workspace-stat")?;
         if m.file_type().is_symlink() {
-            eprintln!("PULQVA_DENO_SPECIAL_ENTRY symlink=true fifo=false block=false char=false socket=false");
+            // Deno creates symlinks inside its private cache on Linux. Do not
+            // follow or open them; record the link path for exact unlink only.
+            #[cfg(unix)]
+            {
+                entries.push((path, Handle::from_path("/").map_err(|_| "workspace-entry-identity")?, false));
+                continue;
+            }
+            #[cfg(not(unix))]
             return Err("workspace-special-entry");
         }
         if m.is_dir() {
