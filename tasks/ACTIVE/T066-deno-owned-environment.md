@@ -40,6 +40,15 @@ arbitrary system-root constructor. Workspace apply uses this boundary. Child
 fixture now poisons WINDIR and checks the native result after process creation.
 Source: https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemwindowsdirectoryw
 Reviewed 2026-09-26; shared OS directory avoids per-user Terminal Services path.
+
+T066-B3 native execution passed on both platforms; full green anchor711b294
+after media diagnostic recovery (historical network cause still unresolved).
+T066-B4: enable original workspace replacement test on Windows as well as Linux;
+add real filesystem substitutions of each tracked child and parent directory.
+Assert apply fails without changing Command, explicit cleanup fails, Drop leaves
+foreign and displaced original data untouched. No synthetic handle substitution
+or skip-on-rename-error. Native CI pending. This is sequential replacement
+coverage, not hostile concurrent race prevention or Windows ACL isolation.
 Outcome: explicit backend environment policy and owned cache lifecycle for later
 bundled-runtime integration, following ADR-0006. No default Deno activation.
 

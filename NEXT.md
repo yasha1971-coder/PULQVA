@@ -1,18 +1,18 @@
 # NEXT
 
-## CURRENT: T066-R media failure diagnostics; CI pending
+## CURRENT: T066-B4 native directory replacement tests; CI pending
 
-PR71 branch feat/T066-deno-environment. Last fully verified head remains
-626225107073ecdf5ac0b7112166350f26cd1fdd. Head af6dd14 has10/11 green:
-media run36244931622 Linux108412266354 failed with SOCKS REP1 on three attempts.
-B3 desktop run36244931625 passed both platforms; not an overall green head.
+PR71 branch feat/T066-deno-environment. Verified head
+711b294c6c3c3d07ce1ec6528a717bd02e7565f8: all11 workflows green.
+Media36247336054 Linux108418847826 actual success attempt1; Windows108418847924
+fail-closed only. All five example tests passed both OSes. Historical SOCKS cause
+remains open; live final-failure diagnostic branch was not exercised.
 
-Recovery adds fixed-host remote-DNS SOCKS probes on final media failure, opted
-in by existing --diagnostics. At most5s per host within original180s deadline;
-Arti alive status and numeric REP only. Original failure remains failure.
-Two policy/deadline tests added; local diff check only, no local Rust.
-Exact launch head/run IDs saved in PR checkpoint.
+B4 enables root-directory replacement test on Windows and adds parent plus each
+cache/home/tmp replacement. Real renames, no skips: apply/cleanup must reject,
+Drop must preserve foreign and displaced original data. Local diff check passed;
+no local Rust. Exact head/run IDs saved in PR launch comment.
 
-ONE next action: inspect exact-head CI and failure probe output if emitted.
-Do not infer historical recovery from a successful run that skips diagnostics.
-T066 feature work paused; no merge until exact-head green and scope complete.
+ONE next action: inspect exact-head CI and native replacement tests; diagnose red.
+T066 remains ACTIVE. Process-lifetime coupling and actual Deno cache trial remain.
+No runtime activation, hostile-race, Windows ACL or zero-retention claim.

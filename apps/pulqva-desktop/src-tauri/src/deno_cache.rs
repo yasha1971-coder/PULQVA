@@ -150,17 +150,61 @@ mod tests {
         assert!(operation().is_err()); assert_eq!(fs::read_dir(&parent).unwrap().count(), 0);
         fs::remove_dir(parent).unwrap();
     }
-    #[cfg(unix)]
     #[test]
     fn replacement_is_not_deleted_and_apply_fails() {
-        let parent = parent(); let workspace = DenoWorkspace::create(&parent).unwrap();
+        let parent = parent(); let mut workspace = DenoWorkspace::create(&parent).unwrap();
         let root = workspace.root.path.clone(); let saved = parent.join("saved");
         fs::rename(&root, &saved).unwrap(); fs::create_dir(&root).unwrap();
         fs::write(root.join("foreign"), b"keep").unwrap();
         assert!(workspace.apply(&mut Command::new("unused")).is_err());
+        assert_eq!(workspace.cleanup(), Err("workspace-ownership-lost"));
         drop(workspace); assert_eq!(fs::read(root.join("foreign")).unwrap(), b"keep");
         fs::remove_file(root.join("foreign")).unwrap(); fs::remove_dir(root).unwrap();
         for name in ["cache", "home", "tmp"] { fs::remove_dir(saved.join(name)).unwrap(); }
         fs::remove_dir(saved).unwrap(); fs::remove_dir(parent).unwrap();
+    }
+
+    #[test]
+    fn replaced_cache_home_or_temp_preserves_both_original_and_foreign_data() {
+        for name in ["cache", "home", "tmp"] {
+            let parent = parent(); let mut workspace = DenoWorkspace::create(&parent).unwrap();
+            let root = workspace.root.path.clone();
+            let path = root.join(name); let saved = parent.join("saved-child");
+            fs::write(path.join("original"), b"owned").unwrap();
+            fs::rename(&path, &saved).unwrap(); fs::create_dir(&path).unwrap();
+            fs::write(path.join("foreign"), b"keep").unwrap();
+            let mut command = Command::new("unused");
+            command.env("UNCHANGED", "sentinel");
+            assert_eq!(workspace.apply(&mut command), Err("workspace-ownership-lost"));
+            assert!(command.get_current_dir().is_none());
+            assert_eq!(command.get_envs().count(), 1);
+            assert_eq!(workspace.cleanup(), Err("workspace-ownership-lost"));
+            drop(workspace);
+            assert_eq!(fs::read(path.join("foreign")).unwrap(), b"keep");
+            assert_eq!(fs::read(saved.join("original")).unwrap(), b"owned");
+            fs::remove_file(path.join("foreign")).unwrap();
+            fs::remove_file(saved.join("original")).unwrap(); fs::remove_dir(saved).unwrap();
+            for child in ["cache", "home", "tmp"] { fs::remove_dir(root.join(child)).unwrap(); }
+            fs::remove_dir(root).unwrap(); fs::remove_dir(parent).unwrap();
+        }
+    }
+
+    #[test]
+    fn replaced_parent_prevents_cleanup_even_with_same_child_names() {
+        let parent = parent(); let mut workspace = DenoWorkspace::create(&parent).unwrap();
+        let root_name = workspace.root.path.file_name().unwrap().to_owned();
+        let saved = parent.with_extension("saved");
+        fs::rename(&parent, &saved).unwrap(); fs::create_dir(&parent).unwrap();
+        let foreign_root = parent.join(&root_name); fs::create_dir(&foreign_root).unwrap();
+        fs::write(foreign_root.join("foreign"), b"keep").unwrap();
+        assert_eq!(workspace.apply(&mut Command::new("unused")), Err("workspace-ownership-lost"));
+        assert_eq!(workspace.cleanup(), Err("workspace-ownership-lost"));
+        drop(workspace);
+        assert_eq!(fs::read(foreign_root.join("foreign")).unwrap(), b"keep");
+        let saved_root = saved.join(root_name);
+        for child in ["cache", "home", "tmp"] { fs::remove_dir(saved_root.join(child)).unwrap(); }
+        fs::remove_dir(saved_root).unwrap(); fs::remove_dir(saved).unwrap();
+        fs::remove_file(foreign_root.join("foreign")).unwrap(); fs::remove_dir(foreign_root).unwrap();
+        fs::remove_dir(parent).unwrap();
     }
 }

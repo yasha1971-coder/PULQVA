@@ -1,6 +1,11 @@
 # T066-R — diagnose repeated public media SOCKS failure
 
-Status: ACTIVE, diagnostic CI pending. T066 feature work paused.
+Status: DONE for diagnostic implementation/unit verification only; root cause OPEN.
+Verified head711b294c6c3c3d07ce1ec6528a717bd02e7565f8, all11 workflows green.
+Media36247336054: Linux108418847826 five tests passed and retrieval attempt1;
+Windows108418847924 five tests passed, live fail-closed only.
+No live final-failure probe markers emitted; historical recovery is NOT proven.
+T066 feature work may resume from this verified checkpoint.
 
 Failure head af6dd14f537ea1bcce559406f5add16dcc94e5ae, run36244931622,
 Linux108412266354: generic SOCKS REP1 for all three attempts, 2s/4s backoff,
