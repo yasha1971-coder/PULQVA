@@ -11,7 +11,7 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "T066-B2 passed all 11 workflows; cleanup tests passed Windows/Linux. T066-B3 native Windows directory lookup CI pending. Windows ownership-loss coverage, lifetime coupling and actual Deno cache trial remain.",
+    "af6dd14: 10/11 workflows green; Linux media failed with SOCKS REP1 on all three attempts. B3 desktop tests passed. Fixed-host SOCKS diagnostic recovery CI pending; overall verified anchor unchanged.",
     "Historical Linux metadata exit-1 cause unknown; diagnostic run succeeded. PR68 merged and post-merge CI passed.",
     "T063R merged and Arti check passed on main; SDK content is not pinned.",
     "Windows live media retrieval unproven: earlier successful CI exercised fail-closed timeout.",

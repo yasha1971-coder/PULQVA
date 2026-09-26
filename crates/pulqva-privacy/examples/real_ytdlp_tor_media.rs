@@ -1,3 +1,5 @@
+#[path = "support/media_socks_diagnostic.rs"]
+mod media_socks_diagnostic;
 use pulqva_privacy::{
     ArtiRuntimePlan, TorReadinessError, TorSocksEndpoint, YtDlpLaunchPlan,
     YtDlpMediaRequestPlan, YtDlpMediaSourceUrl, launch_prepared_arti,
@@ -132,6 +134,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             eprintln!("PULQVA_MEDIA_ATTEMPT result=socks-general-failure attempt={attempt} retry_delay_ms={}", delay.as_millis());
             thread::sleep(delay);
             continue;
+        }
+        if diagnostics {
+            eprintln!("PULQVA_MEDIA_ARTI_STATE alive={}", running_arti.try_wait()?.is_none());
+            media_socks_diagnostic::report(deadline);
         }
         let _ = running_arti.stop_and_wait();
         let _ = fs::remove_dir_all(&root);
