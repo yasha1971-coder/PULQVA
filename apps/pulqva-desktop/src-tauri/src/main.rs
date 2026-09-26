@@ -2,6 +2,12 @@ mod arti_materialize;
 mod deno_zip;
 mod deno_stage;
 mod deno_source;
+mod deno_environment;
+mod deno_cache;
+#[cfg(test)]
+mod deno_trial_process;
+#[cfg(test)]
+mod deno_runtime_compat;
 #[cfg(test)]
 mod deno_archive_compat;
 mod ffmpeg_archive_policy;

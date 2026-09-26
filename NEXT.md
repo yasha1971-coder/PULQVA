@@ -1,20 +1,18 @@
 # NEXT
 
-## CURRENT: PR70 recovery verified; final exact-head CI/merge pending
+## CURRENT: committed desktop lock / real Deno spawn diagnosis; CI pending
 
-Branch feat/T065-deno-materialization. Verified implementation
-623aa3c65d91cb6d930ac073a4ed09f4bec42d48: all 12 workflows green.
-Metadata 36234630845: Linux 108384062681 success in 2803 ms with 60s socket/120s
-outer budget; Windows 108384062476 policy tests passed, live fail-closed only.
-Media 36234630869: Linux 108384062597 success attempt=1; Windows 108384062666
-fail-closed only. Both platforms passed three media example tests.
-T065, T065R, T065M and T065N are DONE within their documented scopes.
+PR71 branch feat/T066-deno-environment. Overall verified anchor remainsb6c7130.
+5dbdad0 desktop36258520003 Windows108449766013 / Linux108449766100 compiled
+Tauri and passed native tests/archive materialization. Generated locks match
+byte-for-byte112174 bytes; SHA2566f84196e590bf00f9a62d887beef61c46782064e277120e3da5435f1f8c687d2.
+Committed actual lock, removed generation fallback/exporter. CI requires tracked
+lock; all cargo check/test commands --locked. TOML/YAML/hash/diff locally checked.
 
-ONE next action: inspect final closeout exact-head CI; diagnose red or mark PR70
-ready and merge with expected-head protection if green. Do not add another
-docs-only closeout. Observe main CI; do not start T066 during the merge phase.
+Real Deno runtime test now fails trial-spawn-failed on both OSes. Added test-only
+error kind/raw OS code, no path/environment dump. Writable extraction handles are
+only a hypothesis until diagnostics confirm. New head/run IDs in PR checkpoint.
 
-T066 READY: owned Deno environment/cache. No default activation or completed
-product claim. Live retry/slow-read recovery and positive Windows retrieval remain
-unproven. Historical network/firewall causes, prelaunch races, descendant egress
-and SDK-content limitations remain explicitly unresolved.
+ONE next action: inspect exact-head native spawn code, repair only evidenced
+cause while retaining executable identity/cleanup ownership. No blind rerun or
+runtime activation. Lock recovery not overall-green until native tests complete.

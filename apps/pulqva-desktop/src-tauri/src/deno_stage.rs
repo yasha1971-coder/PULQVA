@@ -102,6 +102,13 @@ impl Drop for OwnedStage {
         if let Some(id) = &self.file_id {
             if !same_regular(&self.path, id, false) { return; }
             if fs::remove_file(&self.path).is_err() { return; }
+        } else {
+            // A sealed executable intentionally has no persistent file handle
+            // across spawn. Revalidate the fixed owned pathname before cleanup;
+            // never recurse and never delete symlinks/special files.
+            let Ok(metadata) = fs::symlink_metadata(&self.path) else { return; };
+            if metadata.file_type().is_symlink() || !metadata.is_file() { return; }
+            if fs::remove_file(&self.path).is_err() { return; }
         }
         // Never recursive cleanup: an unexpected file prevents directory removal.
         if self.parents_owned() { let _ = fs::remove_dir(&self.directory); }
@@ -109,6 +116,28 @@ impl Drop for OwnedStage {
 }
 
 pub(super) struct StagedDeno { owned: OwnedStage, receipt: Receipt }
+
+impl StagedDeno {
+    /// Close the writable extraction handle before executing the verified image.
+    /// The owned stage and identity receipt remain alive for cleanup/revalidation.
+    pub(super) fn seal_for_execution(&mut self) -> Result<(), &'static str> {
+        self.owned.verify(&self.receipt)?;
+        // same_file::Handle owns an open file resource. Keeping file_id alive
+        // after closing the writable File still leaves the executable open and
+        // can block exec (ETXTBSY on Linux / sharing violation on Windows).
+        // Capture no persistent executable handle across the spawn boundary.
+        self.owned.file.take();
+        self.owned.file_id.take();
+        if !self.owned.parents_owned() {
+            return Err("stage-ownership-lost");
+        }
+        let metadata = fs::symlink_metadata(&self.owned.path).map_err(|_| "stage-file-missing")?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            return Err("stage-ownership-lost");
+        }
+        Ok(())
+    }
+}
 impl StagedDeno {
     pub(super) fn path(&self) -> &Path { &self.owned.path }
     pub(super) fn receipt(&self) -> &Receipt { &self.receipt }

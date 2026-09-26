@@ -18,6 +18,13 @@ zip = { version = "=2.4.2", default-features = false, features = ["deflate"] }
 tar = { version = "=0.4.44", default-features = false }
 xz2 = { version = "=0.1.7", features = ["static"] }
 tauri = { version = "=2.11.6" }
+# Recovery constraints from verified b6c7130; freeze full graph in Cargo.lock.
+# Disable added defaults: existing Tauri edges retain their original features.
+tauri-runtime = { version = "=2.11.3", default-features = false }
+tauri-runtime-wry = { version = "=2.11.4", default-features = false }
+tauri-macros = { version = "=2.6.3", default-features = false }
 
 [build-dependencies]
 tauri-build = { version = "=2.6.3", features = [] }
+tauri-codegen = { version = "=2.6.3", default-features = false }
+tauri-utils = { version = "=2.9.3", default-features = false }
