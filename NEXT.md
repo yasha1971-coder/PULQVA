@@ -1,20 +1,16 @@
 # NEXT
 
-## CURRENT: T066-B5 test-only process/workspace lifetime; CI pending
+## CURRENT: B5 Windows child failure diagnosis; CI pending
 
-PR71 branch feat/T066-deno-environment. Verified head
-1379f1167990126c62c0d75b41e15d18883348ec: all11 workflows green.
-Desktop36249829776 Windows108425656837 / Linux108425656974: all five cache
-ownership/cleanup tests passed, with native prevention distinguished from
-successful replacement detection.
+PR71 branch feat/T066-deno-environment. Verified anchor1379f1167990126c62c0d75b41e15d18883348ec.
+Head7d02ee6 desktop36252748613: Windows108433721400 expected success fixture
+exited nonzero, no child output retained. Spawn-failure cleanup passed.
+Linux108433721545 passed. Overall10/11 green, no merge.
 
-B5 introduces test-only single-child execution retaining workspace until observed
-termination, bounded timeout kill/reap grace, and retention on unknown termination.
-Two native tests invoke success/nonzero/timeout fixtures plus spawn-failure check.
-Local diff check passed; no local Rust. Exact launch head/run IDs in PR comment.
+Only diagnostic changes: fixed local fixture stdout/stderr inherited, test helper
+--nocapture, raw ExitStatus/code assertion. Default trial output remains null.
+No environment dump, timeout increase, path assertion or cleanup policy change.
+Local diff check passed; no local Rust. New head/run IDs saved in PR comment.
 
-ONE next action: inspect exact-head CI and B5 native test evidence; diagnose red.
-After green, run actual pinned Deno cache trial with this test boundary and no
-permission to spawn descendants. Production tree lifetime/egress remain separate
-activation gates. No app launcher change or runtime activation; historical Tor
-cause and positive Windows live retrieval remain unresolved.
+ONE next action: read exact-head Windows fixture output; fix only evidenced cause.
+Actual Deno trial and T066 completion remain blocked pending this recovery.

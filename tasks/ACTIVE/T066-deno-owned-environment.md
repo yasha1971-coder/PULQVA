@@ -71,6 +71,14 @@ ignored helpers cover success, nonzero exit, timeout and missing executable.
 CI pending. No production call path, Deno execution or descendant guarantee.
 This supports the next pinned Deno cache trial; production process-tree lifetime
 and egress confinement remain separate mandatory activation gates.
+
+B5 diagnostic recovery: head7d02ee6 desktop36252748613 Windows108433721400
+failed expected-success fixture (nonzero exit); Linux108433721545 passed.
+Spawn-failure cleanup passed Windows. Original child output was discarded and
+status reduced to boolean, so root cause unknown. Add fixture-only inherited
+stdout/stderr and --nocapture plus raw ExitStatus in parent assertion. Default
+trial runner output stays null; no environment dump or production change.
+Diagnostic CI pending; no timeout, path assertion or ownership weakening.
 Outcome: explicit backend environment policy and owned cache lifecycle for later
 bundled-runtime integration, following ADR-0006. No default Deno activation.
 

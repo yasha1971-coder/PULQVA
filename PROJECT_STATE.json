@@ -11,7 +11,7 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "B4 verified1379f11 all11 workflows green; five cache tests passed Windows/Linux. B5 test-only child/workspace lifetime boundary CI pending. Actual Deno cache trial and production descendant lifetime boundary remain.",
+    "B5 head7d02ee6 Windows success fixture exited nonzero; Linux passed. Fixture output/raw exit diagnostic CI pending; verified anchor stays1379f11. Actual Deno trial paused.",
     "Historical Linux metadata exit-1 cause unknown; diagnostic run succeeded. PR68 merged and post-merge CI passed.",
     "T063R merged and Arti check passed on main; SDK content is not pinned.",
     "Windows live media retrieval unproven: earlier successful CI exercised fail-closed timeout.",

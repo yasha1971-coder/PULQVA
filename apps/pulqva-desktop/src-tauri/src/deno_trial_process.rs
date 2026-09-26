@@ -36,12 +36,21 @@ impl Drop for Trial {
     }
 }
 
-pub(super) fn run(workspace: DenoWorkspace, mut command: Command, budget: Duration)
+pub(super) fn run(workspace: DenoWorkspace, command: Command, budget: Duration)
     -> Result<Outcome, &'static str>
+{
+    run_with_fixture_output(workspace, command, budget, false)
+}
+
+fn run_with_fixture_output(workspace: DenoWorkspace, mut command: Command,
+    budget: Duration, fixture_output: bool) -> Result<Outcome, &'static str>
 {
     if budget.is_zero() || budget > Duration::from_secs(120) { return Err("trial-budget-invalid"); }
     workspace.apply(&mut command)?;
     command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    // Only fixed local Rust test fixtures opt in; default trial output stays null.
+    // No inherited environment dump, arbitrary program diagnostics or user data.
+    if fixture_output { command.stdout(Stdio::inherit()).stderr(Stdio::inherit()); }
     let deadline = Instant::now() + budget;
     let child = command.spawn().map_err(|_| "trial-spawn-failed")?;
     let mut trial = Trial { child, workspace: Some(workspace), reaped: false, stop_attempted: false };
@@ -71,7 +80,7 @@ mod tests {
     }
     fn fixture(name: &str) -> Command {
         let mut command = Command::new(std::env::current_exe().unwrap());
-        command.args(["--exact", name, "--ignored", "--test-threads=1"]); command
+        command.args(["--exact", name, "--ignored", "--nocapture", "--test-threads=1"]); command
     }
     fn write_owned_data() {
         let cwd = std::env::current_dir().unwrap();
@@ -98,9 +107,11 @@ mod tests {
             let workspace = DenoWorkspace::create(&parent).unwrap();
             let command = fixture(&format!("deno_trial_process::tests::{name}"));
             let budget = if expected == 2 { Duration::from_secs(2) } else { Duration::from_secs(15) };
-            let outcome = run(workspace, command, budget).unwrap();
+            let outcome = run_with_fixture_output(workspace, command, budget, true)
+                .unwrap_or_else(|error| panic!("fixture={name} runner_error={error}"));
             match outcome {
-                Outcome::Exited(status) => assert_eq!(if status.success() { 0 } else { 1 }, expected),
+                Outcome::Exited(status) => assert_eq!(if status.success() { 0 } else { 1 }, expected,
+                    "fixture={name} raw_status={status:?} code={:?}", status.code()),
                 Outcome::TimedOut => assert_eq!(expected, 2),
             }
             assert_eq!(fs::read_dir(&parent).unwrap().count(), 1);
