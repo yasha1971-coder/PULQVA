@@ -15,8 +15,12 @@ fn pinned_runtime_uses_owned_environment_and_cleans_after_exit() {
     let resources = source.parent().unwrap();
     let root = resources.join("rust-runtime-trial"); fs::create_dir(&root).unwrap();
     let root = fs::canonicalize(root).unwrap();
-    let stage = materialize_deno(resources, &source, &root, target).unwrap();
+    let mut stage = materialize_deno(resources, &source, &root, target).unwrap();
     let executable = stage.path().to_owned();
+    // Windows denies execution of a file still held open for write (ERROR_SHARING_VIOLATION),
+    // and Linux reports ETXTBSY. Seal the authenticated stage before spawn while
+    // retaining its owned identity/lifetime for cleanup.
+    stage.seal_for_execution().unwrap();
     let script = root.join("fixture.js");
     // No permission grants. Query state rather than attempt network/child access.
     // Exit42/43 proves the entire fixed script ran, unlike a generic exit1.

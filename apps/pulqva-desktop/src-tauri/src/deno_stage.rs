@@ -109,6 +109,20 @@ impl Drop for OwnedStage {
 }
 
 pub(super) struct StagedDeno { owned: OwnedStage, receipt: Receipt }
+
+impl StagedDeno {
+    /// Close the writable extraction handle before executing the verified image.
+    /// The owned stage and identity receipt remain alive for cleanup/revalidation.
+    pub(super) fn seal_for_execution(&mut self) -> Result<(), &'static str> {
+        self.owned.verify(&self.receipt)?;
+        self.owned.file.take();
+        if !self.owned.parents_owned()
+            || !self.owned.file_id.as_ref().is_some_and(|id| same_regular(&self.owned.path, id, false)) {
+            return Err("stage-ownership-lost");
+        }
+        Ok(())
+    }
+}
 impl StagedDeno {
     pub(super) fn path(&self) -> &Path { &self.owned.path }
     pub(super) fn receipt(&self) -> &Receipt { &self.receipt }
