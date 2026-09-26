@@ -66,7 +66,11 @@ fn run_observed_inner(workspace: DenoWorkspace, mut command: Command,
     // No inherited environment dump, arbitrary program diagnostics or user data.
     if fixture_output { command.stdout(Stdio::inherit()).stderr(Stdio::inherit()); }
     let deadline = Instant::now() + budget;
-    let child = command.spawn().map_err(|_| "trial-spawn-failed")?;
+    let child = command.spawn().map_err(|error| {
+        // Test-only numeric diagnostics, without environment or path contents.
+        eprintln!("PULQVA_TRIAL_SPAWN_ERROR kind={:?} os_code={:?}", error.kind(), error.raw_os_error());
+        "trial-spawn-failed"
+    })?;
     let mut trial = Trial { child, workspace: Some(workspace), reaped: false, stop_attempted: false };
     let outcome = loop {
         match trial.child.try_wait() {

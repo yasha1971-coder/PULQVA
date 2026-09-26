@@ -1,6 +1,17 @@
 # T066-L — restore desktop dependency reproducibility
 
 Status: ACTIVE. Native CI pending; no local Cargo available.
+
+Observed5dbdad0 desktop36258520003 Windows108449766013 / Linux108449766100:
+Tauri compiles, native unit tests and archive materialization pass. Both generated
+locks are byte-identical112174 bytes, SHA256
+6f84196e590bf00f9a62d887beef61c46782064e277120e3da5435f1f8c687d2.
+Retrieved gzip/base64 from logs, verified against BOTH emitted hashes and parsed
+TOML equality; committed actual Cargo output. Generation fallback/exporter removed;
+CI requires tracked nonempty lock and retains --locked on check/test commands.
+New exact-head CI pending. Separate real Deno test now fails trial-spawn-failed on
+both OSes; numeric kind/raw OS code diagnostics added to test-only runner. Cause
+not yet proven (writable stage handles are a candidate); do not weaken ownership.
 Failure67fd587 desktop36257308177 Linux108446429179 / Windows108446429309
 compiled tauri2.11.6 with incompatible transitive releases. Runtime tests not reached.
 Successful b6c7130 Linux108443175567 resolved runtime2.11.3, runtime-wry2.11.4,

@@ -56,15 +56,13 @@ jobs:
 
           grep -F             "connect-src ipc: http://ipc.localhost"             apps/pulqva-desktop/src-tauri/tauri.conf.json
 
-      - name: Generate desktop lock for recovery if absent
+      - name: Require committed desktop dependency lock
         shell: bash
         run: |
-          if [ ! -f apps/pulqva-desktop/src-tauri/Cargo.lock ]; then
-            cargo +1.91.0 generate-lockfile --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml
-          fi
-          python apps/pulqva-desktop/tests/record_desktop_lock.py
+          git ls-files --error-unmatch apps/pulqva-desktop/src-tauri/Cargo.lock
+          test -s apps/pulqva-desktop/src-tauri/Cargo.lock
 
-      - name: Preserve Cargo-generated desktop lock before compilation
+      - name: Preserve committed desktop lock before compilation
         if: always()
         uses: actions/upload-artifact@v4
         with:

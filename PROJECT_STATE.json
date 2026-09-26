@@ -11,7 +11,7 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "67fd587 failed compiling Tauri after unpinned transitive versions changed. Recovery pins restored from b6c7130; CI lock generation/artifact and --locked checks pending. Full desktop lock must still be committed. Deno trial not reached.",
+    "5dbdad0 restored Tauri compilation/native unit tests both OSes; generated desktop locks byte-identical and now committed. Real Deno trial fails at spawn; numeric OS diagnosis CI pending. Overall green anchor unchanged.",
     "Historical Linux metadata exit-1 cause unknown; diagnostic run succeeded. PR68 merged and post-merge CI passed.",
     "T063R merged and Arti check passed on main; SDK content is not pinned.",
     "Windows live media retrieval unproven: earlier successful CI exercised fail-closed timeout.",
