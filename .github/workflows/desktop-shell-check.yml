@@ -85,6 +85,15 @@ jobs:
             deno_archive_compat::pinned_archive_matches_independent_extractor_and_owned_stage \
             -- --ignored --exact --nocapture
 
+      - name: Verify pinned Deno runtime owned workspace and cleanup
+        shell: bash
+        run: |
+          cargo +1.91.0 test \
+            --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml \
+            --all-targets \
+            deno_runtime_compat::pinned_runtime_uses_owned_environment_and_cleans_after_exit \
+            -- --ignored --exact --nocapture
+
       - name: Preserve independent Deno reference receipt
         if: always()
         uses: actions/upload-artifact@v4

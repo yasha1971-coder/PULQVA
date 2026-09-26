@@ -42,11 +42,25 @@ pub(super) fn run(workspace: DenoWorkspace, command: Command, budget: Duration)
     run_with_fixture_output(workspace, command, budget, false)
 }
 
-fn run_with_fixture_output(workspace: DenoWorkspace, mut command: Command,
+fn run_with_fixture_output(workspace: DenoWorkspace, command: Command,
     budget: Duration, fixture_output: bool) -> Result<Outcome, &'static str>
+{
+    run_observed_inner(workspace, command, budget, fixture_output, &mut |_| Ok(()))
+}
+
+pub(super) fn run_observed(workspace: DenoWorkspace, command: Command, budget: Duration,
+    observer: &mut dyn FnMut(&std::path::Path) -> Result<(), &'static str>) -> Result<Outcome, &'static str>
+{
+    run_observed_inner(workspace, command, budget, false, observer)
+}
+
+fn run_observed_inner(workspace: DenoWorkspace, mut command: Command,
+    budget: Duration, fixture_output: bool,
+    observer: &mut dyn FnMut(&std::path::Path) -> Result<(), &'static str>) -> Result<Outcome, &'static str>
 {
     if budget.is_zero() || budget > Duration::from_secs(120) { return Err("trial-budget-invalid"); }
     workspace.apply(&mut command)?;
+    let working_directory = command.get_current_dir().ok_or("trial-cwd-missing")?.to_owned();
     command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     // Only fixed local Rust test fixtures opt in; default trial output stays null.
     // No inherited environment dump, arbitrary program diagnostics or user data.
@@ -65,6 +79,7 @@ fn run_with_fixture_output(workspace: DenoWorkspace, mut command: Command,
             Ok(None) => thread::sleep(Duration::from_millis(10)),
         }
     };
+    observer(&working_directory)?;
     trial.workspace.as_mut().unwrap().cleanup()?;
     Ok(outcome)
 }

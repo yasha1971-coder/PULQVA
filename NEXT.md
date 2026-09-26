@@ -1,16 +1,17 @@
 # NEXT
 
-## CURRENT: B5 Windows directory identity assertion fix; CI pending
+## CURRENT: T066-C real pinned Deno runtime workspace trial; CI pending
 
-PR71 branch feat/T066-deno-environment. Verified anchor1379f1167990126c62c0d75b41e15d18883348ec.
-Head55b01ae desktop36254943323 Windows108439831192 exposed child panic:
-extended-length HOME path versus ordinary cwd path spelling, exit101.
-Linux108439831295 passed. This is a fixture lexical-comparison error.
+PR71 branch feat/T066-deno-environment. Verified head
+b6c713089fa8bf6c6ee63dad36c7a74ca12ecaf2: all11 workflows green.
+Desktop36256139529 Linux108443175567 / Windows108443175715 passed B5 lifetime tests.
 
-Fix compares actual directory identity with same_file, preserving existence and
-write assertions. No production normalization/prefix stripping, no environment,
-timeout or cleanup policy changes. Local diff check passed; no local Rust.
-Exact new head/run IDs saved in PR checkpoint.
+C adds native ignored test using existing authenticated Deno2.9.7 fixture and
+materialize_deno. Fixed no-import script with no permission grants must reach
+exit42/43; post-exit observer records cache entry count then verifies workspace
+cleanup and executable/script preservation. CI step explicitly invokes both OSes.
+Local diff check passed; no local Rust. New head/run IDs saved in PR checkpoint.
 
-ONE next action: inspect exact-head lifetime test results; diagnose any red.
-After green continue pinned Deno cache trial. No merge or activation yet.
+ONE next action: inspect exact-head CI and PULQVA_DENO_RUNTIME_WORKSPACE_OK;
+diagnose red. Zero cache entries are allowed and must not imply observed analysis
+cache writes. No live EJS, OS egress or descendant confinement claim; no activation.

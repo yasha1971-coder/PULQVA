@@ -86,6 +86,22 @@ spelling of the same path; child exits101. Linux108439831295 passes.
 Replace lexical assertion with same_file filesystem identity, retaining directory
 existence and actual writes. No production prefix stripping or environment change.
 Native verification pending; last fully verified anchor remains1379f11.
+
+B5 verifiedb6c713089fa8bf6c6ee63dad36c7a74ca12ecaf2, all11 green.
+Desktop36256139529 Linux108443175567 / Windows108443175715 passed lifetime tests.
+
+T066-C: real pinned Deno trial added to both desktop CI jobs, after existing
+authenticated archive preparation. Reuses materialize_deno and its pinned hashes;
+retains executable owner and workspace through observed child exit. Fixed local
+script runs without permission grants/imports/network/child creation, checks
+permission states and arithmetic, exits with distinguishable42/43 codes. Injected
+Command env overrides are cleared by workspace apply. Post-exit observer records
+immediate cache entry count (zero is allowed, not an analysis-cache-write claim),
+then requires entire workspace removed and staged executable/script preserved.
+Both script exits are intentional nonzero markers, not normal exit0 or crash;
+generic zero/nonzero/timeout behavior was covered by B5 native fixtures.
+No live EJS, egress monitoring or production descendant lifetime guarantee.
+CI pending; local source/diff verification only, no local Rust/Deno execution.
 Outcome: explicit backend environment policy and owned cache lifecycle for later
 bundled-runtime integration, following ADR-0006. No default Deno activation.
 
