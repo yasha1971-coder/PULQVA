@@ -1,17 +1,22 @@
 # NEXT
 
-## CURRENT: T064 verified; PR #69 closeout CI/merge pending
+## CURRENT: T065-A archive adapter pending CI
 
-Branch feat/T064A-typed-runtime. Verified head
-db06221939d50b268c4a57f3406bba4a7bc27532: all 11 workflows green.
-Metadata run 36216469372: Windows 108333306568, Linux 108333306720;
-each ran 26 ytdlp_ library tests, including native path/full-vector tests.
-Evidence and limitations recorded in tasks/DONE/T064-ytdlp-bundled-runtime-plan.md.
+Base main 66f2b27f356c3e2b26dbfe96f70190d9b21b746d verified: all 11 applicable
+workflows green, including Arti run 36219805072. PR69 merged; T064 DONE.
+Branch feat/T065-deno-materialization. Exact new head/PR/run IDs recorded in PR.
 
-ONE next action: inspect closeout exact-head CI; diagnose red or mark PR #69 ready
-and merge if green. Do not make another docs-only closeout. T065 READY after merge:
-verified Deno materialization boundary. Do not start T065 in this closeout phase.
+T065-A adds private pinned Deno identities and authenticated immutable ZIP extraction
+with archive and executable size/SHA checks, strict single-member policy and bounded
+writer. Tests registered in the separate desktop workspace, whose desktop-shell-check
+runs native Windows/Linux tests. Local Rust unavailable; compilation/tests pending CI.
 
-No live bundled Deno activation, file/hash/environment confinement or YouTube
-proof. Windows live metadata still exercised fail-closed timeout. Existing
-historical Linux failures and SDK-content pinning limitations remain documented.
+ONE next action: inspect exact-head CI; diagnose red first. After A passes, implement
+T065-B source snapshot and owned staging in a later phase. T065-C must test actual
+pinned archives through the Rust adapters on both OSes before T065 is DONE.
+
+No filesystem authority or launch authorization follows from the byte receipt.
+Caller must discard partial writer output on error. No default Deno activation,
+remote fetch, environment/cache/egress confinement or YouTube proof. Prelaunch
+replacement-race revalidation remains required. Historical Linux failures, unpinned
+SDK content and unproven positive Windows live media remain unresolved.

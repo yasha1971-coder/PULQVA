@@ -1,6 +1,6 @@
 # T065 — Verified Deno materialization boundary
 
-Status: READY after PR #69 merges.
+Status: ACTIVE — T065-A implementation pending CI.
 Outcome: owned, hash-verified Deno executable receipt usable by later launch
 integration; syntax-only BundledDenoPath is not sufficient authorization.
 
@@ -21,3 +21,9 @@ Acceptance:
 No default runtime activation, live YouTube, network fallback or user installation.
 Environment allowlist/owned cache and process network confinement are separate
 required integration gates; do not infer them from successful materialization.
+
+## Bounded phases
+A: authenticated immutable ZIP adapter and pinned identities; implemented, CI pending.
+B: regular-file source snapshot and owned staging receipt; not started.
+C: real pinned-artifact adapter/staging validation on Windows/Linux; not started.
+Do not mark DONE or merge A as completed T065. Production launch stays disabled.
