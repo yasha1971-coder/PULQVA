@@ -102,6 +102,13 @@ impl Drop for OwnedStage {
         if let Some(id) = &self.file_id {
             if !same_regular(&self.path, id, false) { return; }
             if fs::remove_file(&self.path).is_err() { return; }
+        } else {
+            // A sealed executable intentionally has no persistent file handle
+            // across spawn. Revalidate the fixed owned pathname before cleanup;
+            // never recurse and never delete symlinks/special files.
+            let Ok(metadata) = fs::symlink_metadata(&self.path) else { return; };
+            if metadata.file_type().is_symlink() || !metadata.is_file() { return; }
+            if fs::remove_file(&self.path).is_err() { return; }
         }
         // Never recursive cleanup: an unexpected file prevents directory removal.
         if self.parents_owned() { let _ = fs::remove_dir(&self.directory); }
