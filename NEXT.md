@@ -1,18 +1,21 @@
 # NEXT
 
-## CURRENT: committed desktop lock / real Deno spawn diagnosis; CI pending
+## CURRENT: T067 PREPARE — first request -> choice -> file vertical slice
 
-PR71 branch feat/T066-deno-environment. Overall verified anchor remainsb6c7130.
-5dbdad0 desktop36258520003 Windows108449766013 / Linux108449766100 compiled
-Tauri and passed native tests/archive materialization. Generated locks match
-byte-for-byte112174 bytes; SHA2566f84196e590bf00f9a62d887beef61c46782064e277120e3da5435f1f8c687d2.
-Committed actual lock, removed generation fallback/exporter. CI requires tracked
-lock; all cargo check/test commands --locked. TOML/YAML/hash/diff locally checked.
+Verified base: main@46776b8c1f274113319edcdc8d7bedb15d0ebfb9, post-merge
+20/20 checks success. T066 is complete within its documented scope.
 
-Real Deno runtime test now fails trial-spawn-failed on both OSes. Added test-only
-error kind/raw OS code, no path/environment dump. Writable extraction handles are
-only a hypothesis until diagnostics confirm. New head/run IDs in PR checkpoint.
+Anti-drift target is the kernel primary journey:
+natural-language request -> privacy-gated interpretation/search -> real candidate
+choices -> explicit selection -> one-click retrieval -> predictable local file.
+No account/API key, no frontend Internet, Tor by default, fail closed.
 
-ONE next action: inspect exact-head native spawn code, repair only evidenced
-cause while retaining executable identity/cleanup ownership. No blind rerun or
-runtime activation. Lock recovery not overall-green until native tests complete.
+T067 is intentionally orchestration, not another infrastructure subsystem.
+First acceptance is deterministic/local so orchestration failures are separable from
+network variance. It must use typed existing boundaries and must never be described
+as proof of live external search/download. The next gate after T067 is bounded live
+Tor-backed evidence through the same coordinator.
+
+ONE next action: inspect the existing typed intent, candidate/search and media
+retrieval interfaces, then implement the smallest coordinator and one integration
+acceptance test. Stop after launching exact-head CI.
