@@ -58,6 +58,19 @@ replacement (refuse apply/cleanup and preserve foreign files). Only Windows
 code5 enters prevention assertions; all other rename errors fail. No production
 handles weakened or test-only identity substitution. New CI pending. Prevention
 evidence must not be described as successful root/parent replacement detection.
+
+B4 recovery verified1379f1167990126c62c0d75b41e15d18883348ec all11 green.
+Desktop36249829776: Windows108425656837 / Linux108425656974 five cache tests passed.
+
+B5: TEST-ONLY single-child trial runner owns workspace through observed exit.
+Spawn error drops unused workspace; normal/nonzero exits explicitly clean;
+timeout kills and polls termination for at most2s before cleanup. Unknown
+termination intentionally retains workspace/handles instead of deleting live
+process data. Drop handles panic/error paths. Two native tests and three invoked
+ignored helpers cover success, nonzero exit, timeout and missing executable.
+CI pending. No production call path, Deno execution or descendant guarantee.
+This supports the next pinned Deno cache trial; production process-tree lifetime
+and egress confinement remain separate mandatory activation gates.
 Outcome: explicit backend environment policy and owned cache lifecycle for later
 bundled-runtime integration, following ADR-0006. No default Deno activation.
 
