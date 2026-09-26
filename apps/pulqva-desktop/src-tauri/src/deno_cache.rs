@@ -135,6 +135,19 @@ fn snapshot(path: &Path, depth: usize, entries: &mut Vec<(PathBuf, Handle, bool)
                     continue;
                 }
             }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::FileTypeExt;
+                eprintln!(
+                    "PULQVA_DENO_SPECIAL_ENTRY fifo={} block={} char={} socket={}",
+                    m.file_type().is_fifo(),
+                    m.file_type().is_block_device(),
+                    m.file_type().is_char_device(),
+                    m.file_type().is_socket()
+                );
+            }
+            #[cfg(not(unix))]
+            eprintln!("PULQVA_DENO_SPECIAL_ENTRY unsupported_native_type");
             return Err("workspace-special-entry");
         }
     }
