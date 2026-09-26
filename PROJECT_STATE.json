@@ -4,19 +4,17 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "b6c713089fa8bf6c6ee63dad36c7a74ca12ecaf2",
-  "last_completed_task": "T065N",
-  "active_task": "T066",
-  "next_task": "T066",
-  "ci": "pending",
+  "last_verified_commit": "46776b8c1f274113319edcdc8d7bedb15d0ebfb9",
+  "last_completed_task": "T066",
+  "active_task": "T067",
+  "next_task": "T067",
+  "ci": "green_base_t067_prepare",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "5dbdad0 restored Tauri compilation/native unit tests both OSes; generated desktop locks byte-identical and now committed. Real Deno trial fails at spawn; numeric OS diagnosis CI pending. Overall green anchor unchanged.",
-    "Historical Linux metadata exit-1 cause unknown; diagnostic run succeeded. PR68 merged and post-merge CI passed.",
-    "T063R merged and Arti check passed on main; SDK content is not pinned.",
-    "Windows live media retrieval unproven: earlier successful CI exercised fail-closed timeout.",
-    "Earlier Linux media exit-1 root cause unknown; diagnostic rerun succeeded.",
-    "BundledDenoPath validates syntax only, not file existence, hash, ownership or process environment."
+    "First reproducible natural-language request -> real choices -> selected file journey is not yet demonstrated end to end.",
+    "Windows live media retrieval remains unproven by a positive live retrieval; fail-closed behavior is verified.",
+    "Descendant egress confinement and hostile concurrent path-race immunity are not established; do not claim audited anonymity or sandboxing.",
+    "Self-contained clean-machine Windows/Linux release packages remain unverified."
   ],
   "updated": "2026-09-26"
 }
