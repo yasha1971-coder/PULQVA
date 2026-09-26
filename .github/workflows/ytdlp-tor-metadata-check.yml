@@ -88,6 +88,10 @@ jobs:
 
           echo "YTDLP_BIN=$EXEC_BIN" >> "$GITHUB_ENV"
 
+      - name: Test native yt-dlp runtime paths and full launch vectors
+        shell: bash
+        run: cargo +1.91.0 test --locked -p pulqva-privacy --lib ytdlp_
+
       - name: Test bounded metadata diagnostics without network
         shell: bash
         run: cargo +1.91.0 test --locked -p pulqva-privacy --example real_ytdlp_tor_metadata

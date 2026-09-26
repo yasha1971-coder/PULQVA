@@ -1,6 +1,6 @@
 # T064 — Typed bundled Deno selection in yt-dlp launch plans
 
-Status: ACTIVE — T064-A representation implemented, CI pending; T064-B not started
+Status: ACTIVE — A/B implemented; Linux verified; native Windows tests pending
 Verified base: main@2b33eccc0b64b71bc133033e2b21f5562125683c (PR #68 merged).
 Outcome: tested Rust launch-plan representation that selects an explicit bundled
 Deno executable and prevents implicit runtime/component discovery.
@@ -21,13 +21,17 @@ Acceptance (parent task is not complete until all are satisfied):
 
 Bounded phases:
 A: additive typed runtime/path and runtime-only argument fragment with unit tests.
-   Implemented, pending CI. Validates missing input and path syntax only; no
+   Verified at 5e672012. Validates missing input and path syntax only; no
    existence, ownership, hash, executable-bit or environment attestation.
-   Production YtDlpLaunchPlan is unchanged; no runtime was automatically enabled.
+   B now consumes this policy; no runtime was automatically enabled.
 B: integrate the representation into base/metadata/media plans and full argv
    tests, retaining the transport capability. Disable implicit discovery even
    when no bundled runtime is selected. Suppress plugins per ADR-0006.
-   NOT STARTED. Do not merge the partial A phase as completed T064.
+   Implemented at 0fae2ad6; all 11 workflows green, Linux tests observed.
+C: close coverage gap: execute ytdlp_ library tests in existing Linux/Windows
+   metadata matrix. Existing rust-check only runs on Linux; example builds do
+   not execute cfg(windows) library tests. Confirm named Windows tests in logs
+   before completing parent acceptance. This is verification, no runtime change.
 
 Scope: typed plan and unit tests, not automatic runtime enablement, shipping
 materialization, process-environment enforcement or live YouTube test.
