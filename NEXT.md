@@ -1,18 +1,18 @@
 # NEXT
 
-## CURRENT: T066-B1 actual child environment probe; CI pending
+## CURRENT: T066-B2 owned workspace cleanup; CI pending
 
 PR71 branch feat/T066-deno-environment. Verified head
-488d996a5c4affe62422ffffb2157f87c0cc2588: all 11 triggered workflows green.
-Desktop run 36241456647, Linux 108402634096 / Windows 108402634265:
-both T066-A policy tests passed. Main merge 10ece61 previously passed 12/12.
+8bc24d62b2d0a5c2dfcf9552b18a7465c8b71766: all 11 workflows green.
+Desktop run 36242334885, Windows 108405062986 / Linux 108405063013:
+actual child environment probe passed with PULQVA_DENO_CHILD_ENVIRONMENT_OK.
 
-B1 adds a bounded native subprocess probe with poisoned intermediate parent and
-actual clean child environment assertions. No Deno or network execution, no files
-written/deleted by the fixture. Windows SystemRoot is a CI fixture input only.
-New exact head and run IDs are saved in the PR launch checkpoint.
+B2 adds owned home/tmp/cache workspace, Unix 0700 directories, bounded cleanup
+with identity checks and rejection of links/special entries. Tests cover cache
+cleanup, error-return cleanup and Unix replacement preservation. Local diff check
+passed; no local Rust compiler. Exact head/run IDs saved in PR checkpoint.
 
-ONE next action: inspect exact-head CI and native probe evidence; diagnose red.
-After green, T066-B2 owned cache/home/temp lifecycle and trusted native directory
-discovery remain. No default activation, release sandbox or completed-product
-claim. Historical network causes and positive Windows retrieval remain unresolved.
+ONE next action: inspect exact-head CI and cleanup test evidence; diagnose red.
+T066 remains ACTIVE. Windows replacement coverage, native system-directory
+lookup, process-lifetime coupling and actual Deno cache trial remain. No default
+activation or race-free sandbox claim. Cleanup failures may retain local data.
