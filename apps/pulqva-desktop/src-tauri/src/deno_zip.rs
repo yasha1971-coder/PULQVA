@@ -52,6 +52,15 @@ fn identity(target: DenoTarget) -> Identity {
     }
 }
 
+pub(super) fn archive_identity(target: DenoTarget) -> (u64, [u8; 32]) {
+    let pinned = identity(target);
+    (pinned.archive_size as u64, pinned.archive_hash)
+}
+
+pub(super) fn executable_name(target: DenoTarget) -> &'static str {
+    identity(target).name
+}
+
 /// Caller owns and must discard partial output on error. This receipt authenticates
 /// bytes only: not a path, permissions, ownership, environment or launch safety.
 pub(super) fn extract(bytes: &[u8], target: DenoTarget, output: &mut impl Write)
