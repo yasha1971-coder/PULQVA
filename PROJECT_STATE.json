@@ -11,7 +11,7 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "B5 head7d02ee6 Windows success fixture exited nonzero; Linux passed. Fixture output/raw exit diagnostic CI pending; verified anchor stays1379f11. Actual Deno trial paused.",
+    "B5 Windows cause confirmed55b01ae: lexical path assertion compares extended-length and ordinary spelling of same directory. Fixture identity comparison fixed; native CI pending. Verified anchor stays1379f11.",
     "Historical Linux metadata exit-1 cause unknown; diagnostic run succeeded. PR68 merged and post-merge CI passed.",
     "T063R merged and Arti check passed on main; SDK content is not pinned.",
     "Windows live media retrieval unproven: earlier successful CI exercised fail-closed timeout.",

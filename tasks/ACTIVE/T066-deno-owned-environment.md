@@ -79,6 +79,13 @@ status reduced to boolean, so root cause unknown. Add fixture-only inherited
 stdout/stderr and --nocapture plus raw ExitStatus in parent assertion. Default
 trial runner output stays null; no environment dump or production change.
 Diagnostic CI pending; no timeout, path assertion or ownership weakening.
+
+B5 cause confirmed at55b01ae: Windows108439831192 (desktop36254943323)
+success_fixture panics comparing extended-length HOME path with ordinary cwd
+spelling of the same path; child exits101. Linux108439831295 passes.
+Replace lexical assertion with same_file filesystem identity, retaining directory
+existence and actual writes. No production prefix stripping or environment change.
+Native verification pending; last fully verified anchor remains1379f11.
 Outcome: explicit backend environment policy and owned cache lifecycle for later
 bundled-runtime integration, following ADR-0006. No default Deno activation.
 

@@ -86,7 +86,12 @@ mod tests {
         let cwd = std::env::current_dir().unwrap();
         for (key, child) in [("HOME", "home"), ("TMP", "tmp"), ("DENO_DIR", "cache")] {
             let path = PathBuf::from(std::env::var_os(key).unwrap());
-            assert_eq!(path, cwd.join(child)); assert!(path.is_dir());
+            // Windows current_dir may omit the extended-length prefix retained
+            // by canonical workspace paths in the environment. Compare identity,
+            // not spelling; both paths must resolve to the intended directory.
+            assert!(same_file::is_same_file(&path, cwd.join(child)).unwrap(),
+                "fixture directory identity mismatch for {key}");
+            assert!(path.is_dir());
             fs::write(path.join("fixture"), b"owned").unwrap();
         }
     }
