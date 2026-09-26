@@ -82,42 +82,60 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Diagnostics are opt-in and confined to this fixed public CI fixture.
     let diagnostics = env::args_os().nth(3).is_some_and(|arg| arg == "--diagnostics");
-    let mut command = std::process::Command::new(request.executable());
-    command.args(request.arguments())
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(if diagnostics { std::process::Stdio::piped() } else { std::process::Stdio::null() });
-    // Same typed argv and Tor gate as the production launcher; no extra request or fallback.
-    let mut running_ytdlp = command.spawn()?;
-    let diagnostic_rx = running_ytdlp.stderr.take().map(|stderr| {
-        let (tx, rx) = std::sync::mpsc::channel();
-        thread::spawn(move || { let _ = tx.send(bounded_diagnostic(stderr)); });
-        rx
-    });
+    // One shared budget across all attempts, never renewed by a retry.
     let deadline = Instant::now() + YTDLP_TIMEOUT;
-
-    let status = loop {
-        if let Some(status) = running_ytdlp.try_wait()? {
-            break status;
-        }
-
-        if Instant::now() >= deadline {
-            let _ = running_ytdlp.kill();
-            let _ = running_ytdlp.wait();
-            report_diagnostic(diagnostic_rx);
+    let mut attempt = 0;
+    loop {
+        if Instant::now() >= deadline || running_arti.try_wait()?.is_some() {
             let _ = running_arti.stop_and_wait();
             let _ = fs::remove_dir_all(&root);
-            return Err("real yt-dlp media request exceeded its bounded timeout".into());
+            return Err("media deadline expired or Tor process stopped".into());
         }
-
-        thread::sleep(Duration::from_millis(100));
-    };
-
-    if !status.success() {
-        report_diagnostic(diagnostic_rx);
+        attempt += 1;
+        let mut command = std::process::Command::new(request.executable());
+        command.args(request.arguments())
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped());
+        // Fixed public CI fixture only: capture for classification, print only if opted in.
+        // Every attempt uses exactly the same typed socks5h argv and ready transport.
+        let mut running_ytdlp = command.spawn()?;
+        let diagnostic_rx = running_ytdlp.stderr.take().map(|stderr| {
+            let (tx, rx) = std::sync::mpsc::channel();
+            thread::spawn(move || { let _ = tx.send(bounded_diagnostic(stderr)); });
+            rx
+        });
+        let status = loop {
+            if let Some(status) = running_ytdlp.try_wait()? { break status; }
+            if Instant::now() >= deadline {
+                let _ = running_ytdlp.kill();
+                let _ = running_ytdlp.wait();
+                if diagnostics { report_diagnostic(diagnostic_rx); }
+                let _ = running_arti.stop_and_wait();
+                let _ = fs::remove_dir_all(&root);
+                return Err("real yt-dlp media request exceeded its shared bounded timeout".into());
+            }
+            thread::sleep(Duration::from_millis(100));
+        };
+        if status.success() {
+            eprintln!("PULQVA_MEDIA_ATTEMPT result=success attempt={attempt}");
+            break;
+        }
+        let captured = diagnostic_rx.and_then(|rx| rx.recv_timeout(Duration::from_secs(1)).ok());
+        if diagnostics {
+            if let Some(bytes) = &captured { print_diagnostic(bytes); }
+        }
+        // Retry only the observed pre-download proxy failure, with no output to reuse.
+        let empty = collect_regular_files(&output_root)?.is_empty();
+        if let Some(delay) = retry_delay(attempt, deadline.saturating_duration_since(Instant::now()),
+                                        captured.as_deref(), empty) {
+            eprintln!("PULQVA_MEDIA_ATTEMPT result=socks-general-failure attempt={attempt} retry_delay_ms={}", delay.as_millis());
+            thread::sleep(delay);
+            continue;
+        }
         let _ = running_arti.stop_and_wait();
         let _ = fs::remove_dir_all(&root);
-        return Err(format!("real yt-dlp media request failed: {status}").into());
+        return Err(format!("real yt-dlp media request failed after {attempt} attempt(s): {status}").into());
     }
 
     let artifacts = collect_regular_files(&output_root)?;
@@ -164,18 +182,56 @@ fn report_diagnostic(rx: Option<std::sync::mpsc::Receiver<Vec<u8>>>) {
     let Some(rx) = rx else { return; };
     match rx.recv_timeout(Duration::from_secs(1)) {
         Ok(bytes) => {
-            // Prefix every line and escape control characters; no Actions command injection.
-            for line in String::from_utf8_lossy(&bytes).lines() {
-                let safe: String = line.chars().flat_map(char::escape_default).collect();
-                eprintln!("PULQVA_PUBLIC_FIXTURE_STDERR: {safe}");
-            }
+            print_diagnostic(&bytes);
         }
         Err(_) => eprintln!("PULQVA_PUBLIC_FIXTURE_STDERR: unavailable within diagnostic deadline"),
     }
 }
 
+fn print_diagnostic(bytes: &[u8]) {
+    for line in String::from_utf8_lossy(bytes).lines() {
+        let safe: String = line.chars().flat_map(char::escape_default).collect();
+        eprintln!("PULQVA_PUBLIC_FIXTURE_STDERR: {safe}");
+    }
+}
+
+// Retry is a bounded recovery policy, not a diagnosis that SOCKS REP 1 is transient.
+fn retry_delay(attempt: u32, remaining: Duration, diagnostic: Option<&[u8]>, output_empty: bool)
+    -> Option<Duration>
+{
+    if !output_empty || !(1..=2).contains(&attempt) { return None; }
+    let text = std::str::from_utf8(diagnostic?).ok()?;
+    if !text.contains("Unable to download webpage")
+        || !text.contains("Socks5Error(1, 'general SOCKS server failure')") {
+        return None;
+    }
+    let delay = Duration::from_secs(2u64.pow(attempt));
+    // Preserve time for a meaningful new request; all processing still shares the deadline.
+    (remaining > delay + Duration::from_secs(5)).then_some(delay)
+}
+
 #[cfg(test)]
 mod diagnostic_tests {
+    const SOCKS: &[u8] = b"Unable to download webpage: Socks5Error(1, 'general SOCKS server failure')";
+    #[test]
+    fn socks_recovery_is_capped_and_uses_one_budget() {
+        use std::time::Duration;
+        assert_eq!(super::retry_delay(1, Duration::from_secs(100), Some(SOCKS), true), Some(Duration::from_secs(2)));
+        assert_eq!(super::retry_delay(2, Duration::from_secs(100), Some(SOCKS), true), Some(Duration::from_secs(4)));
+        for attempt in [0, 3, 4, u32::MAX] {
+            assert_eq!(super::retry_delay(attempt, Duration::from_secs(180), Some(SOCKS), true), None);
+        }
+        assert_eq!(super::retry_delay(1, Duration::from_secs(7), Some(SOCKS), true), None);
+        assert_eq!(super::retry_delay(2, Duration::ZERO, Some(SOCKS), true), None);
+    }
+    #[test]
+    fn permanent_unknown_or_partial_output_failures_do_not_retry() {
+        use std::time::Duration;
+        for bytes in [None, Some(&b"HTTP Error 403"[..]), Some(&b"Socks5Error(2, ruleset denied)"[..]), Some(&b"bad output"[..])] {
+            assert_eq!(super::retry_delay(1, Duration::from_secs(180), bytes, true), None);
+        }
+        assert_eq!(super::retry_delay(1, Duration::from_secs(180), Some(SOCKS), false), None);
+    }
     #[test]
     fn diagnostic_capture_is_bounded_but_drains_the_entire_pipe() {
         let mut input = std::io::Cursor::new(vec![b'x'; 65_536]);

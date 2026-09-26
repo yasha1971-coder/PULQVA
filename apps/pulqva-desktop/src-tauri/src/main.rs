@@ -1,4 +1,9 @@
 mod arti_materialize;
+mod deno_zip;
+mod deno_stage;
+mod deno_source;
+#[cfg(test)]
+mod deno_archive_compat;
 mod ffmpeg_archive_policy;
 mod ffmpeg_zip;
 mod ffmpeg_tar_xz;

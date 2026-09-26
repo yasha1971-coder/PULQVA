@@ -1,17 +1,20 @@
 # NEXT
 
-## CURRENT: T064 verified; PR #69 closeout CI/merge pending
+## CURRENT: PR70 recovery verified; final exact-head CI/merge pending
 
-Branch feat/T064A-typed-runtime. Verified head
-db06221939d50b268c4a57f3406bba4a7bc27532: all 11 workflows green.
-Metadata run 36216469372: Windows 108333306568, Linux 108333306720;
-each ran 26 ytdlp_ library tests, including native path/full-vector tests.
-Evidence and limitations recorded in tasks/DONE/T064-ytdlp-bundled-runtime-plan.md.
+Branch feat/T065-deno-materialization. Verified implementation
+623aa3c65d91cb6d930ac073a4ed09f4bec42d48: all 12 workflows green.
+Metadata 36234630845: Linux 108384062681 success in 2803 ms with 60s socket/120s
+outer budget; Windows 108384062476 policy tests passed, live fail-closed only.
+Media 36234630869: Linux 108384062597 success attempt=1; Windows 108384062666
+fail-closed only. Both platforms passed three media example tests.
+T065, T065R, T065M and T065N are DONE within their documented scopes.
 
-ONE next action: inspect closeout exact-head CI; diagnose red or mark PR #69 ready
-and merge if green. Do not make another docs-only closeout. T065 READY after merge:
-verified Deno materialization boundary. Do not start T065 in this closeout phase.
+ONE next action: inspect final closeout exact-head CI; diagnose red or mark PR70
+ready and merge with expected-head protection if green. Do not add another
+docs-only closeout. Observe main CI; do not start T066 during the merge phase.
 
-No live bundled Deno activation, file/hash/environment confinement or YouTube
-proof. Windows live metadata still exercised fail-closed timeout. Existing
-historical Linux failures and SDK-content pinning limitations remain documented.
+T066 READY: owned Deno environment/cache. No default activation or completed
+product claim. Live retry/slow-read recovery and positive Windows retrieval remain
+unproven. Historical network/firewall causes, prelaunch races, descendant egress
+and SDK-content limitations remain explicitly unresolved.

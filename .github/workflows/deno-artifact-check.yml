@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/deno_windows_firewall.*'
+      - 'scripts/test_deno_windows_firewall.py'
       - 'scripts/deno_linux_netns.py'
       - 'scripts/deno_restricted_probe.py'
       - 'scripts/test_deno_restricted_probe.py'
@@ -14,6 +15,7 @@ on:
     branches: ["main"]
     paths:
       - 'scripts/deno_windows_firewall.*'
+      - 'scripts/test_deno_windows_firewall.py'
       - 'scripts/deno_linux_netns.py'
       - 'scripts/deno_restricted_probe.py'
       - 'scripts/test_deno_restricted_probe.py'
@@ -42,7 +44,9 @@ jobs:
           python-version: '3.12'
       - name: Reject invalid artifacts
         run: python -m unittest discover -s scripts -p test_verify_deno_artifact.py -v
-      - name: Verify official archive and local runtime version
+      - name: Verify firewall timeout diagnostics and cleanup contract
+        run: python -m unittest discover -s scripts -p test_deno_windows_firewall.py -v
+      - name: Verify official archive and restricted runtime fixtures
         run: python scripts/verify_deno_artifact.py --target ${{ matrix.target }} --receipt deno-receipt.json --restricted
       - name: Verify strict probe result classification
         run: python -m unittest discover -s scripts -p test_deno_restricted_probe.py -v
