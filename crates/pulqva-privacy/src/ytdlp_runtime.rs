@@ -1,7 +1,7 @@
 //! Typed runtime arguments for the pinned yt-dlp candidate (ADR-0006).
 //!
 //! This module performs no filesystem, process or network activity. It is not
-//! yet wired into YtDlpLaunchPlan; T064-B must do that and test the full argv.
+//! responsible for binary verification. YtDlpLaunchPlan consumes this policy.
 
 use std::{
     error::Error,

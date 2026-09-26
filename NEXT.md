@@ -1,5 +1,15 @@
 # NEXT
 
+## UPDATE: T064-B integrated, exact-head CI pending
+
+A verified at 5e67201226056d5a3a6164c33d508a7a30e86563 (11 checks green).
+B consumes runtime policy in YtDlpLaunchPlan: disabled by default, explicit
+bundled selection via typed builder, plugin discovery suppressed for every plan.
+Full media/metadata vectors and process fixtures updated. Local Cargo unavailable;
+continuity/diff checks only. No live bundled execution or file/hash gates claimed.
+ONE next action: inspect PR #69 exact-head CI, diagnose red before closeout.
+Do not merge until parent acceptance reviewed. Older A instructions below superseded.
+
 ## CURRENT: T064-A typed runtime representation — exact-head CI pending
 
 Branch: feat/T064A-typed-runtime. Base: main@2b33eccc0b64b71bc133033e2b21f5562125683c.

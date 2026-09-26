@@ -285,6 +285,9 @@ mod tests {
                 OsString::from("--ignore-config"),
                 OsString::from("--proxy"),
                 OsString::from("socks5h://127.0.0.1:19050"),
+                OsString::from("--no-plugin-dirs"),
+                OsString::from("--no-js-runtimes"),
+                OsString::from("--no-remote-components"),
                 OsString::from("--paths"),
                 OsString::from("downloads"),
                 OsString::from("https://example.com/video"),
@@ -319,6 +322,9 @@ mod tests {
                 OsString::from("--ignore-config"),
                 OsString::from("--proxy"),
                 OsString::from("socks5h://127.0.0.1:19050"),
+                OsString::from("--no-plugin-dirs"),
+                OsString::from("--no-js-runtimes"),
+                OsString::from("--no-remote-components"),
                 OsString::from("--skip-download"),
                 OsString::from("--dump-single-json"),
                 OsString::from("--no-playlist"),
@@ -347,6 +353,9 @@ mod tests {
                 OsString::from("--ignore-config"),
                 OsString::from("--proxy"),
                 OsString::from("socks5h://127.0.0.1:19050"),
+                OsString::from("--no-plugin-dirs"),
+                OsString::from("--no-js-runtimes"),
+                OsString::from("--no-remote-components"),
                 OsString::from("--paths"),
                 OsString::from("downloads"),
                 OsString::from("https://example.com/video?id=42"),
@@ -354,5 +363,32 @@ mod tests {
         );
         assert_eq!(request.executable(), Path::new("runtime/yt-dlp"));
         assert_eq!(request.output_root(), Path::new("downloads"));
+    }
+
+    #[test]
+    fn bundled_runtime_preserves_complete_media_and_metadata_vectors() {
+        let path = if cfg!(windows) { r"C:\PULQVA bundle\deno.exe" } else { "/opt/PULQVA bundle/deno" };
+        for metadata in [false, true] {
+            let launch = launch_plan().with_js_runtime(crate::YtDlpJsRuntime::BundledDeno(
+                crate::BundledDenoPath::new(path).unwrap(),
+            ));
+            let source = YtDlpMediaSourceUrl::parse("https://example.com/video").unwrap();
+            let request = if metadata {
+                YtDlpMediaRequestPlan::new_metadata_only(launch, source, "downloads")
+            } else {
+                YtDlpMediaRequestPlan::new(launch, source, "downloads")
+            }.unwrap();
+            let mut expected: Vec<OsString> = [
+                "--ignore-config", "--proxy", "socks5h://127.0.0.1:19050",
+                "--no-plugin-dirs", "--no-js-runtimes", "--js-runtimes",
+            ].into_iter().map(OsString::from).collect();
+            expected.push(OsString::from(format!("deno:{path}")));
+            expected.push(OsString::from("--no-remote-components"));
+            if metadata {
+                expected.extend(["--skip-download", "--dump-single-json", "--no-playlist"].into_iter().map(OsString::from));
+            }
+            expected.extend(["--paths", "downloads", "https://example.com/video"].into_iter().map(OsString::from));
+            assert_eq!(request.arguments(), expected);
+        }
     }
 }
