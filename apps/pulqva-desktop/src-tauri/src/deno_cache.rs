@@ -61,9 +61,9 @@ impl DenoWorkspace {
     fn owned(&self) -> bool {
         self.parent.owned() && self.root.owned() && self.children.iter().all(Directory::owned)
     }
-    pub(crate) fn apply(&self, command: &mut Command, system_root: Option<PathBuf>) -> Result<(), &'static str> {
+    pub(crate) fn apply(&self, command: &mut Command) -> Result<(), &'static str> {
         if !self.owned() { return Err("workspace-ownership-lost"); }
-        DenoEnvironment::new(self.root.path.clone(), system_root)?.apply(command);
+        DenoEnvironment::native(self.root.path.clone())?.apply(command);
         Ok(())
     }
     // Explicit cleanup reports failure; Drop is best effort. Caller must retain
@@ -124,6 +124,9 @@ mod tests {
         let parent = parent(); fs::write(parent.join("keep"), b"user").unwrap();
         let mut workspace = DenoWorkspace::create(&parent).unwrap();
         let root = workspace.root.path.clone();
+        let mut command = Command::new("not-executed");
+        workspace.apply(&mut command).unwrap();
+        assert_eq!(command.get_current_dir(), Some(root.as_path()));
         fs::create_dir(root.join("cache/analysis")).unwrap();
         fs::write(root.join("cache/analysis/data"), b"analysis-cache").unwrap();
         fs::write(root.join("tmp/partial"), b"partial").unwrap();
@@ -154,7 +157,7 @@ mod tests {
         let root = workspace.root.path.clone(); let saved = parent.join("saved");
         fs::rename(&root, &saved).unwrap(); fs::create_dir(&root).unwrap();
         fs::write(root.join("foreign"), b"keep").unwrap();
-        assert!(workspace.apply(&mut Command::new("unused"), None).is_err());
+        assert!(workspace.apply(&mut Command::new("unused")).is_err());
         drop(workspace); assert_eq!(fs::read(root.join("foreign")).unwrap(), b"keep");
         fs::remove_file(root.join("foreign")).unwrap(); fs::remove_dir(root).unwrap();
         for name in ["cache", "home", "tmp"] { fs::remove_dir(saved.join(name)).unwrap(); }

@@ -13,9 +13,12 @@ fn absolute_normal(path: &Path) -> bool {
 }
 
 impl DenoEnvironment {
+    pub(crate) fn native(root: PathBuf) -> Result<Self, &'static str> {
+        Self::new(root, native_system_root()?)
+    }
     // system_root must come from the trusted native platform boundary, never
     // from an arbitrary inherited environment map. Ownership is a separate gate.
-    pub(crate) fn new(root: PathBuf, system_root: Option<PathBuf>) -> Result<Self, &'static str> {
+    fn new(root: PathBuf, system_root: Option<PathBuf>) -> Result<Self, &'static str> {
         if !absolute_normal(&root) || system_root.as_ref().is_some_and(|p| !absolute_normal(p)) {
             return Err("environment paths must be absolute and normal");
         }
@@ -42,6 +45,34 @@ impl DenoEnvironment {
             command.env("SystemRoot", root).env("WINDIR", root);
         }
     }
+}
+
+#[cfg(not(windows))]
+fn native_system_root() -> Result<Option<PathBuf>, &'static str> { Ok(None) }
+
+#[cfg(windows)]
+fn native_system_root() -> Result<Option<PathBuf>, &'static str> {
+    use std::{ffi::OsString, os::windows::ffi::OsStringExt};
+    // Shared OS directory, not the per-user Terminal Services directory.
+    // Contract: learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/
+    // nf-sysinfoapi-getsystemwindowsdirectoryw (reviewed 2026-09-26).
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetSystemWindowsDirectoryW(buffer: *mut u16, size: u32) -> u32;
+    }
+    // Bounded allocation; failure/oversize is an error, never an env fallback.
+    let mut buffer = vec![0u16; 32768];
+    // SAFETY: writable buffer contains size u16 elements; Win32 retains no pointer.
+    let length = unsafe { GetSystemWindowsDirectoryW(buffer.as_mut_ptr(), buffer.len() as u32) } as usize;
+    if length == 0 || length >= buffer.len() || buffer[length] != 0
+        || buffer[..length].contains(&0) {
+        return Err("native-windows-directory-query-failed");
+    }
+    let path = PathBuf::from(OsString::from_wide(&buffer[..length]));
+    if !absolute_normal(&path) || !path.is_dir() {
+        return Err("native-windows-directory-invalid");
+    }
+    Ok(Some(path))
 }
 
 #[cfg(test)]
@@ -126,6 +157,9 @@ mod tests {
         // Poison a separate process, never the multithreaded test runner.
         let mut command = helper("deno_environment::tests::poisoned_parent_fixture");
         for key in POISON_KEYS { command.env(key, "pulqva-test-poison"); }
+        // Keep SystemRoot for the intermediate test executable's native loader;
+        // poison WINDIR to prove runtime policy does not inherit it.
+        command.env("WINDIR", "pulqva-test-poison");
         bounded_success(command);
     }
 
@@ -135,12 +169,8 @@ mod tests {
         for key in POISON_KEYS {
             assert_eq!(std::env::var(key).unwrap(), "pulqva-test-poison");
         }
-        // CI fixture input only: production native-directory discovery remains
-        // a separate gate. The target root already exists and is not modified.
-        let system_root = if cfg!(windows) {
-            Some(PathBuf::from(std::env::var_os("SystemRoot").expect("Windows CI SystemRoot")))
-        } else { None };
-        let policy = DenoEnvironment::new(std::env::current_dir().unwrap(), system_root).unwrap();
+        assert_eq!(std::env::var("WINDIR").unwrap(), "pulqva-test-poison");
+        let policy = DenoEnvironment::native(std::env::current_dir().unwrap()).unwrap();
         let mut command = helper("deno_environment::tests::clean_child_fixture");
         policy.apply(&mut command);
         bounded_success(command);
@@ -169,6 +199,10 @@ mod tests {
         if cfg!(windows) {
             assert_eq!(std::env::var_os("SystemRoot"), std::env::var_os("WINDIR"));
             assert!(std::env::var_os("SystemRoot").is_some());
+            assert_eq!(PathBuf::from(std::env::var_os("SystemRoot").unwrap()), native_system_root().unwrap().unwrap());
+        } else {
+            assert!(std::env::var_os("WINDIR").is_none());
+            assert!(std::env::var_os("SystemRoot").is_none());
         }
         println!("PULQVA_DENO_CHILD_ENVIRONMENT_OK");
     }

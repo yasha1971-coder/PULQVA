@@ -21,7 +21,10 @@ T066-B: owned directory lifecycle, native system-directory discovery, actual chi
 environment probe, ownership-loss and success/failure cleanup tests remain.
 Unavoidable analysis cache must stay in owned DENO_DIR until child exit.
 
-T066-B2: private workspace home/tmp/cache with identity-checked apply/cleanup,
+T066-B2: verified at 626225107073ecdf5ac0b7112166350f26cd1fdd, all 11 workflows green.
+Desktop run 36243575970: Windows 108408506722 passed two cleanup tests;
+Linux 108408506759 passed those plus replacement-preservation test.
+Private workspace home/tmp/cache with identity-checked apply/cleanup,
 bounded postorder cleanup (4096 entries, depth 32), no symlink/special-file
 traversal. Three tests added (replacement test Unix only); CI pending.
 Caller must wait for all children before cleanup/Drop; no process guard yet.
@@ -29,6 +32,14 @@ Limits: same-user races are not atomically prevented; Windows ACL isolation,
 Windows replacement coverage, production system-directory discovery and actual
 Deno cache execution remain unverified. Oversized/special trees remain on disk
 with an explicit cleanup error (Drop is best effort), not a zero-retention claim.
+
+T066-B3: native system-directory lookup implemented, CI pending. Windows uses
+GetSystemWindowsDirectoryW with bounded UTF-16 buffer and fail-closed validation;
+Linux supplies no Windows variables. No inherited environment fallback or public
+arbitrary system-root constructor. Workspace apply uses this boundary. Child
+fixture now poisons WINDIR and checks the native result after process creation.
+Source: https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemwindowsdirectoryw
+Reviewed 2026-09-26; shared OS directory avoids per-user Terminal Services path.
 Outcome: explicit backend environment policy and owned cache lifecycle for later
 bundled-runtime integration, following ADR-0006. No default Deno activation.
 

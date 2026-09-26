@@ -1,18 +1,18 @@
 # NEXT
 
-## CURRENT: T066-B2 owned workspace cleanup; CI pending
+## CURRENT: T066-B3 native Windows system-directory lookup; CI pending
 
 PR71 branch feat/T066-deno-environment. Verified head
-8bc24d62b2d0a5c2dfcf9552b18a7465c8b71766: all 11 workflows green.
-Desktop run 36242334885, Windows 108405062986 / Linux 108405063013:
-actual child environment probe passed with PULQVA_DENO_CHILD_ENVIRONMENT_OK.
+626225107073ecdf5ac0b7112166350f26cd1fdd: all 11 workflows green.
+Desktop 36243575970: Windows 108408506722 passed both cleanup tests;
+Linux 108408506759 also passed replacement-preservation test.
 
-B2 adds owned home/tmp/cache workspace, Unix 0700 directories, bounded cleanup
-with identity checks and rejection of links/special entries. Tests cover cache
-cleanup, error-return cleanup and Unix replacement preservation. Local diff check
-passed; no local Rust compiler. Exact head/run IDs saved in PR checkpoint.
+B3 removes the arbitrary system-root input from workspace apply. Uses bounded
+GetSystemWindowsDirectoryW on Windows, no inherited env fallback; Linux emits
+no Windows directory variables. Actual child fixture poisons WINDIR and checks
+native lookup result. Local diff check passed; native execution pending CI.
+Exact new head/run IDs are in the PR launch checkpoint.
 
-ONE next action: inspect exact-head CI and cleanup test evidence; diagnose red.
-T066 remains ACTIVE. Windows replacement coverage, native system-directory
-lookup, process-lifetime coupling and actual Deno cache trial remain. No default
-activation or race-free sandbox claim. Cleanup failures may retain local data.
+ONE next action: inspect exact-head CI/native child proof; diagnose red.
+Remaining T066: Windows ownership-loss coverage, process-lifetime coupling and
+actual Deno cache trial. No activation, hostile-race or zero-retention claim.
