@@ -11,7 +11,7 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "711b294 passed all 11 workflows; Linux media succeeded attempt1, Windows fail-closed only. Historical SOCKS cause unresolved and live diagnostic branch unexercised. T066-B4 cross-platform directory replacement tests CI pending.",
+    "B4 head0d0c489 Windows root/parent rename tests failed with OS code5 before substitution; child replacement tests passed. Native-denial assertions repaired, CI pending. Verified anchor remains711b294; historical SOCKS cause unresolved.",
     "Historical Linux metadata exit-1 cause unknown; diagnostic run succeeded. PR68 merged and post-merge CI passed.",
     "T063R merged and Arti check passed on main; SDK content is not pinned.",
     "Windows live media retrieval unproven: earlier successful CI exercised fail-closed timeout.",

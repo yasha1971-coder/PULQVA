@@ -49,6 +49,15 @@ Assert apply fails without changing Command, explicit cleanup fails, Drop leaves
 foreign and displaced original data untouched. No synthetic handle substitution
 or skip-on-rename-error. Native CI pending. This is sequential replacement
 coverage, not hostile concurrent race prevention or Windows ACL isolation.
+
+B4 recovery: head0d0c489 desktop36248605915 Windows108422309634 failed
+at root/parent rename with OS code5; child cache/home/tmp replacement passed.
+Linux108422309479 passed. Root/parent tests now distinguish observed native
+rename denial (identity intact, apply and cleanup still work) from completed
+replacement (refuse apply/cleanup and preserve foreign files). Only Windows
+code5 enters prevention assertions; all other rename errors fail. No production
+handles weakened or test-only identity substitution. New CI pending. Prevention
+evidence must not be described as successful root/parent replacement detection.
 Outcome: explicit backend environment policy and owned cache lifecycle for later
 bundled-runtime integration, following ADR-0006. No default Deno activation.
 

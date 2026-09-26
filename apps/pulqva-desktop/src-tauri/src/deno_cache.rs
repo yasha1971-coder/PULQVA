@@ -154,7 +154,19 @@ mod tests {
     fn replacement_is_not_deleted_and_apply_fails() {
         let parent = parent(); let mut workspace = DenoWorkspace::create(&parent).unwrap();
         let root = workspace.root.path.clone(); let saved = parent.join("saved");
-        fs::rename(&root, &saved).unwrap(); fs::create_dir(&root).unwrap();
+        if let Err(error) = fs::rename(&root, &saved) {
+            // Windows may prevent moving an ancestor of our open child handles.
+            // This verifies prevention, never claims post-replacement detection.
+            assert!(cfg!(windows) && error.raw_os_error() == Some(5), "unexpected rename error: {error}");
+            assert!(!saved.exists()); assert!(workspace.owned());
+            for name in ["cache", "home", "tmp"] { assert!(root.join(name).is_dir()); }
+            workspace.apply(&mut Command::new("unused")).unwrap();
+            workspace.cleanup().unwrap(); drop(workspace);
+            assert!(!root.exists()); fs::remove_dir(parent).unwrap();
+            eprintln!("PULQVA_WORKSPACE_ROOT_RENAME_BLOCKED_BY_OS");
+            return;
+        }
+        fs::create_dir(&root).unwrap();
         fs::write(root.join("foreign"), b"keep").unwrap();
         assert!(workspace.apply(&mut Command::new("unused")).is_err());
         assert_eq!(workspace.cleanup(), Err("workspace-ownership-lost"));
@@ -162,6 +174,7 @@ mod tests {
         fs::remove_file(root.join("foreign")).unwrap(); fs::remove_dir(root).unwrap();
         for name in ["cache", "home", "tmp"] { fs::remove_dir(saved.join(name)).unwrap(); }
         fs::remove_dir(saved).unwrap(); fs::remove_dir(parent).unwrap();
+        eprintln!("PULQVA_WORKSPACE_ROOT_REPLACEMENT_REJECTED");
     }
 
     #[test]
@@ -186,6 +199,7 @@ mod tests {
             fs::remove_file(saved.join("original")).unwrap(); fs::remove_dir(saved).unwrap();
             for child in ["cache", "home", "tmp"] { fs::remove_dir(root.join(child)).unwrap(); }
             fs::remove_dir(root).unwrap(); fs::remove_dir(parent).unwrap();
+            eprintln!("PULQVA_WORKSPACE_CHILD_REPLACEMENT_REJECTED child={name}");
         }
     }
 
@@ -194,7 +208,19 @@ mod tests {
         let parent = parent(); let mut workspace = DenoWorkspace::create(&parent).unwrap();
         let root_name = workspace.root.path.file_name().unwrap().to_owned();
         let saved = parent.with_extension("saved");
-        fs::rename(&parent, &saved).unwrap(); fs::create_dir(&parent).unwrap();
+        if let Err(error) = fs::rename(&parent, &saved) {
+            assert!(cfg!(windows) && error.raw_os_error() == Some(5), "unexpected rename error: {error}");
+            assert!(!saved.exists()); assert!(workspace.owned());
+            fs::write(parent.join("neighbor"), b"keep").unwrap();
+            workspace.apply(&mut Command::new("unused")).unwrap();
+            workspace.cleanup().unwrap(); drop(workspace);
+            assert_eq!(fs::read(parent.join("neighbor")).unwrap(), b"keep");
+            assert_eq!(fs::read_dir(&parent).unwrap().count(), 1);
+            fs::remove_file(parent.join("neighbor")).unwrap(); fs::remove_dir(parent).unwrap();
+            eprintln!("PULQVA_WORKSPACE_PARENT_RENAME_BLOCKED_BY_OS");
+            return;
+        }
+        fs::create_dir(&parent).unwrap();
         let foreign_root = parent.join(&root_name); fs::create_dir(&foreign_root).unwrap();
         fs::write(foreign_root.join("foreign"), b"keep").unwrap();
         assert_eq!(workspace.apply(&mut Command::new("unused")), Err("workspace-ownership-lost"));
@@ -206,5 +232,6 @@ mod tests {
         fs::remove_dir(saved_root).unwrap(); fs::remove_dir(saved).unwrap();
         fs::remove_file(foreign_root.join("foreign")).unwrap(); fs::remove_dir(foreign_root).unwrap();
         fs::remove_dir(parent).unwrap();
+        eprintln!("PULQVA_WORKSPACE_PARENT_REPLACEMENT_REJECTED");
     }
 }
