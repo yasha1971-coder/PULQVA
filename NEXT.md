@@ -1,20 +1,17 @@
 # NEXT
 
-## CURRENT: T064 native platform verification, PR #69
+## CURRENT: T064 verified; PR #69 closeout CI/merge pending
 
-Branch feat/T064A-typed-runtime. A/B implemented.
-Head 0fae2ad6a6448c70e275e5c726806b70f64930d7 passed all 11 registered workflows.
-Rust run 36208643038 job 108310435349 explicitly passed Linux runtime/path,
-base route and bundled media/metadata full-vector tests.
+Branch feat/T064A-typed-runtime. Verified head
+db06221939d50b268c4a57f3406bba4a7bc27532: all 11 workflows green.
+Metadata run 36216469372: Windows 108333306568, Linux 108333306720;
+each ran 26 ytdlp_ library tests, including native path/full-vector tests.
+Evidence and limitations recorded in tasks/DONE/T064-ytdlp-bundled-runtime-plan.md.
 
-Coverage gap: rust-check is Linux-only; prior Windows examples did not execute
-library unit tests. Added filtered ytdlp_ library tests to existing Windows/Linux
-metadata workflow. No runtime behavior change in this verification phase.
+ONE next action: inspect closeout exact-head CI; diagnose red or mark PR #69 ready
+and merge if green. Do not make another docs-only closeout. T065 READY after merge:
+verified Deno materialization boundary. Do not start T065 in this closeout phase.
 
-ONE next action: inspect exact-head CI and named Windows runtime/path/full-vector
-test results in metadata workflow. Diagnose red; if green, finish parent T064
-acceptance and record next materialization/prelaunch task. Do not merge while
-Windows acceptance is unverified. Head/run IDs in PR launch checkpoint.
-
-No file existence/hash/ownership or environment confinement is established by
-the syntax type; live Deno/EJS/YouTube and positive Windows media remain unproven.
+No live bundled Deno activation, file/hash/environment confinement or YouTube
+proof. Windows live metadata still exercised fail-closed timeout. Existing
+historical Linux failures and SDK-content pinning limitations remain documented.
