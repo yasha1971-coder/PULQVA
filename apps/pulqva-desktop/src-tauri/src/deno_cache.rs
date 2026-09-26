@@ -112,7 +112,10 @@ fn snapshot(path: &Path, depth: usize, entries: &mut Vec<(PathBuf, Handle, bool)
         if entries.len() >= 4096 { return Err("workspace-entry-limit"); }
         let path = entry.map_err(|_| "workspace-read")?.path();
         let m = fs::symlink_metadata(&path).map_err(|_| "workspace-stat")?;
-        if m.file_type().is_symlink() { return Err("workspace-special-entry"); }
+        if m.file_type().is_symlink() {
+            eprintln!("PULQVA_DENO_SPECIAL_ENTRY symlink=true fifo=false block=false char=false socket=false");
+            return Err("workspace-special-entry");
+        }
         if m.is_dir() {
             let id = Handle::from_path(&path).map_err(|_| "workspace-entry-identity")?;
             snapshot(&path, depth + 1, entries)?;
