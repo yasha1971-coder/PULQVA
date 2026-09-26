@@ -115,9 +115,17 @@ impl StagedDeno {
     /// The owned stage and identity receipt remain alive for cleanup/revalidation.
     pub(super) fn seal_for_execution(&mut self) -> Result<(), &'static str> {
         self.owned.verify(&self.receipt)?;
+        // same_file::Handle owns an open file resource. Keeping file_id alive
+        // after closing the writable File still leaves the executable open and
+        // can block exec (ETXTBSY on Linux / sharing violation on Windows).
+        // Capture no persistent executable handle across the spawn boundary.
         self.owned.file.take();
-        if !self.owned.parents_owned()
-            || !self.owned.file_id.as_ref().is_some_and(|id| same_regular(&self.owned.path, id, false)) {
+        self.owned.file_id.take();
+        if !self.owned.parents_owned() {
+            return Err("stage-ownership-lost");
+        }
+        let metadata = fs::symlink_metadata(&self.owned.path).map_err(|_| "stage-file-missing")?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
             return Err("stage-ownership-lost");
         }
         Ok(())
