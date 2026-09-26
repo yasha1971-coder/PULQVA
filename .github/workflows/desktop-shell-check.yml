@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "apps/pulqva-desktop/**"
+      - "sidecars/deno/**"
       - ".github/workflows/desktop-shell-check.yml"
   push:
     branches: ["main"]
     paths:
       - "apps/pulqva-desktop/**"
+      - "sidecars/deno/**"
       - ".github/workflows/desktop-shell-check.yml"
   workflow_dispatch:
 
@@ -69,6 +71,27 @@ jobs:
       - name: Prepare authenticated real FFmpeg archive and reference hash
         shell: bash
         run: python apps/pulqva-desktop/tests/prepare_ffmpeg_fixture.py
+
+      - name: Prepare authenticated real Deno archive and independent reference
+        shell: bash
+        run: python apps/pulqva-desktop/tests/prepare_deno_fixture.py
+
+      - name: Verify real Deno source extraction staging and cleanup
+        shell: bash
+        run: |
+          cargo +1.91.0 test \
+            --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml \
+            --all-targets \
+            deno_archive_compat::pinned_archive_matches_independent_extractor_and_owned_stage \
+            -- --ignored --exact --nocapture
+
+      - name: Preserve independent Deno reference receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deno-compat-reference-${{ matrix.os }}
+          path: ${{ runner.temp }}/deno-compat-reference.json
+          if-no-files-found: warn
 
       - name: Verify actual pinned archive with the production extraction adapters
         shell: bash
