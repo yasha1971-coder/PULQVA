@@ -1,24 +1,18 @@
 # NEXT
 
-## CURRENT: T065-C real Deno archive proof pending CI
+## CURRENT: T065 verified; PR70 closeout CI/merge pending
 
-PR70 branch feat/T065-deno-materialization. Verified parent
-f2a47abe0fa631e6a33c271ba641eb6f655a6df7: all 11 workflows green.
-Desktop 36224411245: Windows 108355535489, Linux 108355535542; native
-source/stage/ZIP tests passed. A and B verified; T065 remains ACTIVE.
+Branch feat/T065-deno-materialization. Verified implementation
+75f06b16e7f4568ecf026427197f0515893ad306: all 11 workflows green.
+Desktop run 36226635072: Linux 108361831992, Windows 108361832119;
+both real pinned Deno source/ZIP/stage proofs passed, independent hashes/sizes
+agree, cleanup=ok. See T065 DONE and materialization evidence.
 
-C adds CI-only download of existing pinned 2.9.7 artifacts, independent Python ZIP
-reference hashes and a Rust integration test invoking materialize_deno through
-source/ZIP/stage. It verifies actual disk bytes, receipt, native name, Unix mode,
-cleanup, unrelated-file preservation and missing/directory/wrong-target rejection.
-No binary execution. Exact head and run IDs saved in PR70 launch checkpoint.
+ONE next action: inspect closeout exact-head CI; diagnose red, or mark PR70 ready
+and merge if green. Do not add another docs-only closeout. T066 READY after merge;
+do not start its implementation in the merge phase.
 
-ONE next action: inspect exact-head desktop-shell-check logs on BOTH platforms for
-PULQVA_DENO_COMPAT and independent receipt agreement. Diagnose red before other work.
-Only after all checks pass record real-artifact evidence and prepare T065 closeout.
-Local Python syntax/YAML/continuity/diff checked; Rust unavailable locally.
-
-No runtime activation or permanent publication. Environment/cache, process egress,
-Windows ACL isolation and prelaunch replacement-race controls remain separate gates.
-Historical Linux failures, SDK content pinning and positive Windows live media
-limitations remain unchanged.
+No default activation or live EJS/YouTube proof. Environment/owned cache, prelaunch
+revalidation and descendant egress remain required separate gates. Materialization
+is not race-free confinement or Windows ACL isolation. Historical retrieval and
+SDK limitations remain documented.
