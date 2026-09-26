@@ -92,4 +92,84 @@ mod tests {
         let wrong = if cfg!(windows) { None } else { Some(root.clone()) };
         assert!(DenoEnvironment::new(root, wrong).is_err());
     }
+
+    const POISON_KEYS: &[&str] = &[
+        "PULQVA_ENV_POISON", "DENO_FLAGS", "DENO_DIR", "NODE_OPTIONS",
+        "PYTHONPATH", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+    ];
+
+    fn helper(name: &str) -> Command {
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command.args(["--exact", name, "--ignored", "--nocapture", "--test-threads=1"]);
+        command
+    }
+
+    fn bounded_success(mut command: Command) {
+        use std::time::{Duration, Instant};
+        let mut child = command.spawn().expect("spawn environment fixture");
+        let deadline = Instant::now() + Duration::from_secs(20);
+        loop {
+            match child.try_wait() {
+                Ok(Some(status)) => { assert!(status.success(), "environment fixture failed"); return; }
+                Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(20)),
+                other => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    panic!("environment fixture timeout/wait failure: {other:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn native_child_does_not_inherit_poisoned_parent_environment() {
+        // Poison a separate process, never the multithreaded test runner.
+        let mut command = helper("deno_environment::tests::poisoned_parent_fixture");
+        for key in POISON_KEYS { command.env(key, "pulqva-test-poison"); }
+        bounded_success(command);
+    }
+
+    #[test]
+    #[ignore = "invoked only by native_child_does_not_inherit_poisoned_parent_environment"]
+    fn poisoned_parent_fixture() {
+        for key in POISON_KEYS {
+            assert_eq!(std::env::var(key).unwrap(), "pulqva-test-poison");
+        }
+        // CI fixture input only: production native-directory discovery remains
+        // a separate gate. The target root already exists and is not modified.
+        let system_root = if cfg!(windows) {
+            Some(PathBuf::from(std::env::var_os("SystemRoot").expect("Windows CI SystemRoot")))
+        } else { None };
+        let policy = DenoEnvironment::new(std::env::current_dir().unwrap(), system_root).unwrap();
+        let mut command = helper("deno_environment::tests::clean_child_fixture");
+        policy.apply(&mut command);
+        bounded_success(command);
+    }
+
+    #[test]
+    #[ignore = "invoked only by poisoned_parent_fixture"]
+    fn clean_child_fixture() {
+        let root = std::env::current_dir().unwrap();
+        for key in POISON_KEYS.iter().filter(|key| **key != "DENO_DIR") {
+            assert!(std::env::var_os(key).is_none(), "unexpected inherited key: {key}");
+        }
+        for (key, child) in [("DENO_DIR", "cache"), ("HOME", "home"),
+            ("USERPROFILE", "home"), ("TMP", "tmp"), ("TEMP", "tmp"), ("TMPDIR", "tmp")] {
+            assert_eq!(std::env::var_os(key).unwrap(), root.join(child).into_os_string());
+        }
+        for key in ["DENO_NO_UPDATE_CHECK", "DENO_NO_PROMPT", "NO_COLOR"] {
+            assert_eq!(std::env::var(key).unwrap(), "1");
+        }
+        let allowed = ["HOME", "USERPROFILE", "TMP", "TEMP", "TMPDIR", "DENO_DIR",
+            "DENO_NO_UPDATE_CHECK", "DENO_NO_PROMPT", "NO_COLOR", "SYSTEMROOT", "WINDIR"];
+        for (key, _) in std::env::vars_os() {
+            let key = key.to_string_lossy().to_ascii_uppercase();
+            assert!(allowed.contains(&key.as_str()), "unexpected environment key: {key}");
+        }
+        if cfg!(windows) {
+            assert_eq!(std::env::var_os("SystemRoot"), std::env::var_os("WINDIR"));
+            assert!(std::env::var_os("SystemRoot").is_some());
+        }
+        println!("PULQVA_DENO_CHILD_ENVIRONMENT_OK");
+    }
 }

@@ -1,29 +1,18 @@
 # NEXT
 
-## CURRENT: T066-A command environment policy; CI pending
+## CURRENT: T066-B1 actual child environment probe; CI pending
 
-PR70 merged. Exact main 10ece61f6b42919cea8fc4c8d07e6216007ef4f5 passed all
-12 workflows. Branch feat/T066-deno-environment. New head/PR/run IDs are in the
-launch checkpoint comment. Native CI must verify the two new policy tests;
-no local Rust toolchain. No runtime activation or owned lifecycle claim.
-ONE next action: inspect exact-head CI; diagnose red, otherwise continue T066-B
-owned cache/home/temp lifecycle and actual child environment probe.
+PR71 branch feat/T066-deno-environment. Verified head
+488d996a5c4affe62422ffffb2157f87c0cc2588: all 11 triggered workflows green.
+Desktop run 36241456647, Linux 108402634096 / Windows 108402634265:
+both T066-A policy tests passed. Main merge 10ece61 previously passed 12/12.
 
-The following historical pre-merge checkpoint is superseded:
+B1 adds a bounded native subprocess probe with poisoned intermediate parent and
+actual clean child environment assertions. No Deno or network execution, no files
+written/deleted by the fixture. Windows SystemRoot is a CI fixture input only.
+New exact head and run IDs are saved in the PR launch checkpoint.
 
-Branch feat/T065-deno-materialization. Verified implementation
-623aa3c65d91cb6d930ac073a4ed09f4bec42d48: all 12 workflows green.
-Metadata 36234630845: Linux 108384062681 success in 2803 ms with 60s socket/120s
-outer budget; Windows 108384062476 policy tests passed, live fail-closed only.
-Media 36234630869: Linux 108384062597 success attempt=1; Windows 108384062666
-fail-closed only. Both platforms passed three media example tests.
-T065, T065R, T065M and T065N are DONE within their documented scopes.
-
-ONE next action: inspect final closeout exact-head CI; diagnose red or mark PR70
-ready and merge with expected-head protection if green. Do not add another
-docs-only closeout. Observe main CI; do not start T066 during the merge phase.
-
-T066 READY: owned Deno environment/cache. No default activation or completed
-product claim. Live retry/slow-read recovery and positive Windows retrieval remain
-unproven. Historical network/firewall causes, prelaunch races, descendant egress
-and SDK-content limitations remain explicitly unresolved.
+ONE next action: inspect exact-head CI and native probe evidence; diagnose red.
+After green, T066-B2 owned cache/home/temp lifecycle and trusted native directory
+discovery remain. No default activation, release sandbox or completed-product
+claim. Historical network causes and positive Windows retrieval remain unresolved.

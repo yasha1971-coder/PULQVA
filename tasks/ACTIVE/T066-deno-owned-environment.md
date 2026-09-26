@@ -2,12 +2,17 @@
 
 Status: ACTIVE. PR70 merged; main 10ece61f6b42919cea8fc4c8d07e6216007ef4f5 passed all 12 workflows.
 
-T066-A: explicit command environment policy implemented; CI pending.
+T066-A: verified at 488d996a5c4affe62422ffffb2157f87c0cc2588, all 11 workflows green.
+Desktop run 36241456647: Linux 108402634096 and Windows 108402634265 both
+passed the two environment policy tests.
 Inspected ADR-0006, T063 clean_environment and desktop launch boundary.
 Clear inherited and explicit overrides, redirect HOME/temp/cache, suppress updates,
 retain only explicitly supplied Windows system directory. No caller enables Deno.
 Path syntax is NOT ownership or trusted native directory discovery.
-Tests inspect Command state; actual child inheritance remains for T066-B.
+T066-B1: native subprocess fixture added; CI pending. A poisoned intermediate
+process verifies poison exists, applies the policy, then launches a clean child
+that checks its actual environment and working directory. No global env mutation,
+network access or Deno execution. Each subprocess wait has a 20-second bound.
 
 T066-B: owned directory lifecycle, native system-directory discovery, actual child
 environment probe, ownership-loss and success/failure cleanup tests remain.
