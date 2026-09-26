@@ -1,17 +1,20 @@
 # NEXT
 
-## CURRENT: T065N explicit metadata timeout budget pending CI
+## CURRENT: PR70 recovery verified; final exact-head CI/merge pending
 
-PR70 feat/T065-deno-materialization, parent 07927a001182fde1bf12a8a8f51350f7e171076f.
-Metadata run 36233341608 Linux 108380519026 failed read timeout=20.0; other 11
-workflows passed. Last all-green remains 810abe3e9778105ad1952833c67ad7b9eff7339e.
+Branch feat/T065-deno-materialization. Verified implementation
+623aa3c65d91cb6d930ac073a4ed09f4bec42d48: all 12 workflows green.
+Metadata 36234630845: Linux 108384062681 success in 2803 ms with 60s socket/120s
+outer budget; Windows 108384062476 policy tests passed, live fail-closed only.
+Media 36234630869: Linux 108384062597 success attempt=1; Windows 108384062666
+fail-closed only. Both platforms passed three media example tests.
+T065, T065R, T065M and T065N are DONE within their documented scopes.
 
-Fix in public metadata fixture: socket 60s, outer process 120s; one attempt, explicit
-zero HTTP/extractor retries, unchanged typed Tor route and no-download assertions.
-Unit test checks exact policy, preserved route/source and coherent limits. Local
-Rust unavailable; native tests/live request pending. Exact head/runs in PR70.
+ONE next action: inspect final closeout exact-head CI; diagnose red or mark PR70
+ready and merge with expected-head protection if green. Do not add another
+docs-only closeout. Observe main CI; do not start T066 during the merge phase.
 
-ONE next action: inspect metadata CI budget/elapsed/result and all exact-head checks.
-Diagnose red; if green close T065M/N recovery together, no repeated docs-only cycle.
-Media parent proof passed at attempt=1, so live retry behavior was not exercised.
-No GitHub throttling/exit-node diagnosis established. T066 not started.
+T066 READY: owned Deno environment/cache. No default activation or completed
+product claim. Live retry/slow-read recovery and positive Windows retrieval remain
+unproven. Historical network/firewall causes, prelaunch races, descendant egress
+and SDK-content limitations remain explicitly unresolved.

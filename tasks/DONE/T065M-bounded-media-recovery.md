@@ -1,6 +1,11 @@
 # T065M — Bounded Tor media fixture recovery
 
-Status: ACTIVE, implementation pending native CI.
+Status: DONE for bounded CI-fixture recovery policy and native tests.
+Verified head: 623aa3c65d91cb6d930ac073a4ed09f4bec42d48, all 12 workflows green.
+Media run 36234630869: Linux 108384062597 and Windows 108384062666 each passed
+three example tests. Linux retrieved the file on attempt=1; Windows exercised
+fail-closed bootstrap timeout. Live retry branch and positive Windows retrieval
+were NOT proven. External failure cause remains unknown; no availability guarantee.
 Observed failure: d5ade9b91d7dbeb6559a8556b7ba3a53186a5f33,
 run 36232028938, Linux job 108376857791: yt-dlp generic pre-download request
 returned ProxyError/Socks5Error(1, general SOCKS server failure). Windows media
