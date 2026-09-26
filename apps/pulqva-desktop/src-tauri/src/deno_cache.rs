@@ -73,11 +73,20 @@ impl DenoWorkspace {
         let mut entries = Vec::new();
         snapshot(&self.root.path, 0, &mut entries)?;
         for (path, id, directory) in entries {
+            // Keep the three tracked directories until all contents are removed.
+            if self.children.iter().any(|d| d.path == path) { continue; }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::FileTypeExt;
+                if fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_socket()) {
+                    if !self.owned() { return Err("workspace-entry-replaced"); }
+                    fs::remove_file(path).map_err(|_| "workspace-entry-cleanup")?;
+                    continue;
+                }
+            }
             if !self.owned() || !matches_identity(&path, &id, directory) {
                 return Err("workspace-entry-replaced");
             }
-            // Keep the three tracked directories until all contents are removed.
-            if self.children.iter().any(|d| d.path == path) { continue; }
             if directory { fs::remove_dir(path) } else { fs::remove_file(path) }
                 .map_err(|_| "workspace-entry-cleanup")?;
         }
@@ -103,11 +112,31 @@ fn snapshot(path: &Path, depth: usize, entries: &mut Vec<(PathBuf, Handle, bool)
         if entries.len() >= 4096 { return Err("workspace-entry-limit"); }
         let path = entry.map_err(|_| "workspace-read")?.path();
         let m = fs::symlink_metadata(&path).map_err(|_| "workspace-stat")?;
-        if m.file_type().is_symlink() || !(m.is_file() || m.is_dir()) { return Err("workspace-special-entry"); }
-        let id = Handle::from_path(&path).map_err(|_| "workspace-entry-identity")?;
-        if m.is_dir() { snapshot(&path, depth + 1, entries)?; }
-        if entries.len() >= 4096 { return Err("workspace-entry-limit"); }
-        entries.push((path, id, m.is_dir()));
+        if m.file_type().is_symlink() { return Err("workspace-special-entry"); }
+        if m.is_dir() {
+            let id = Handle::from_path(&path).map_err(|_| "workspace-entry-identity")?;
+            snapshot(&path, depth + 1, entries)?;
+            if entries.len() >= 4096 { return Err("workspace-entry-limit"); }
+            entries.push((path, id, true));
+        } else if m.is_file() {
+            let id = Handle::from_path(&path).map_err(|_| "workspace-entry-identity")?;
+            if entries.len() >= 4096 { return Err("workspace-entry-limit"); }
+            entries.push((path, id, false));
+        } else {
+            // Deno may create Unix-domain sockets inside its private cache.
+            // They are runtime-owned but must never be opened as regular files.
+            // Record no handle here; cleanup handles this exact special case
+            // separately after the child has been reaped.
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::FileTypeExt;
+                if m.file_type().is_socket() {
+                    entries.push((path, Handle::from_path("/").map_err(|_| "workspace-entry-identity")?, false));
+                    continue;
+                }
+            }
+            return Err("workspace-special-entry");
+        }
     }
     Ok(())
 }
