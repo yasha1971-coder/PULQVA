@@ -1,19 +1,17 @@
 # NEXT
 
-## CURRENT: T065M bounded Tor media recovery pending CI
+## CURRENT: T065N explicit metadata timeout budget pending CI
 
-PR70 branch feat/T065-deno-materialization. Base d5ade9b91d7dbeb6559a8556b7ba3a53186a5f33
-failed Linux media run 36232028938 job 108376857791 with generic SOCKS REP 1 before
-download. Other 11 workflows, including Deno/firewall, passed. Last all-green head
-remains 810abe3e9778105ad1952833c67ad7b9eff7339e.
+PR70 feat/T065-deno-materialization, parent 07927a001182fde1bf12a8a8f51350f7e171076f.
+Metadata run 36233341608 Linux 108380519026 failed read timeout=20.0; other 11
+workflows passed. Last all-green remains 810abe3e9778105ad1952833c67ad7b9eff7339e.
 
-Fix: narrowly classified pre-download SOCKS failure allows at most 3 attempts with
-2/4-second backoff inside the SAME 180-second budget. Same typed Tor route and URL.
-No partial-output retry, no timeout reset or direct fallback. Attempt logs retained.
-Unit tests cover budget/count/classification; actual native tests pending CI.
-Research and precise limitations: tasks/ACTIVE/T065M-bounded-media-recovery.md.
+Fix in public metadata fixture: socket 60s, outer process 120s; one attempt, explicit
+zero HTTP/extractor retries, unchanged typed Tor route and no-download assertions.
+Unit test checks exact policy, preserved route/source and coherent limits. Local
+Rust unavailable; native tests/live request pending. Exact head/runs in PR70.
 
-ONE next action: inspect exact-head Rust tests and real media result/attempt count.
-If red diagnose exact logs; if green record whether retry branch was exercised,
-then complete recovery. Do not represent successful first-attempt CI as proof an
-external network outage is fixed. T066 remains unstarted, PR70 not merge-ready.
+ONE next action: inspect metadata CI budget/elapsed/result and all exact-head checks.
+Diagnose red; if green close T065M/N recovery together, no repeated docs-only cycle.
+Media parent proof passed at attempt=1, so live retry behavior was not exercised.
+No GitHub throttling/exit-node diagnosis established. T066 not started.

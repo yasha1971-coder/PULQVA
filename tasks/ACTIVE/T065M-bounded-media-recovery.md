@@ -33,3 +33,5 @@ connection failure while preserving the privacy route, but cannot repair an
 external Tor relay/destination outage. The underlying network cause remains unknown.
 Acceptance: native tests and actual same-fixture Tor retrieval; preserve failures
 and attempt counts. Do not claim a first-attempt success proves the retry branch.
+
+Parent verification: 07927a001182fde1bf12a8a8f51350f7e171076f passed media unit tests (3) and Linux live retrieval at attempt=1, run 36233341632 job 108380519966. Live retry not exercised; closeout deferred during T065N metadata recovery.
