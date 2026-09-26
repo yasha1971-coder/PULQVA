@@ -1,18 +1,18 @@
 # NEXT
 
-## CURRENT: T065R Windows firewall diagnostic run pending
+## CURRENT: T065/T065R verified; final PR70 closeout CI pending
 
-PR70 branch feat/T065-deno-materialization. Failed head
-66ebf2348a94a9e0884e22e749e5f8d235e0ceee: deno-artifact-check 36228028781,
-Windows job 108365700285 Install timed out at 30 seconds; other 11 workflows green.
-T065 materialization evidence remains at 75f06b16e7f4568ecf026427197f0515893ad306.
+Branch feat/T065-deno-materialization. Verified head
+810abe3e9778105ad1952833c67ad7b9eff7339e: all 12 workflows green.
+Deno run 36229536187: Windows 108369938904, Linux 108369939025.
+Windows Install/Verify/Remove succeeded, cleanup_verified=true, restricted fixtures
+passed. Script last-marker times: 2162/1063/1255 ms; not whole-process timings.
+Historical Install timeout cause remains unknown; diagnostic success is not a fix.
+See tasks/DONE/T065R-windows-firewall-diagnostics.md.
 
-Added PowerShell stderr substep/timing markers and bounded escaped timeout output.
-Five mocked Python tests passed locally. Native Windows execution pending. Timeout,
-firewall policy, fail-closed fixtures and owned-rule cleanup are unchanged. Exact
-diagnostic head/run IDs are in PR70 checkpoint.
+ONE next action: inspect final exact-head CI. Diagnose any red; otherwise mark PR70
+ready and merge with expected-head protection. No further docs-only closeout.
+Observe main CI after merge; do not begin T066 in the merge phase.
 
-ONE next action: inspect diagnostic exact-head CI and Windows log phases/cleanup.
-If red, diagnose substep before repairing. If green, record evidence as a successful
-diagnostic run, not proof the historical timeout cause was fixed, and complete
-T065R recovery before PR merge. No T066 implementation while recovery is active.
+T066 READY: owned environment/cache. Runtime activation, prelaunch revalidation,
+descendant egress, positive Windows retrieval and SDK pinning gaps remain.
