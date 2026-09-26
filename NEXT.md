@@ -1,16 +1,17 @@
 # NEXT
 
-## CURRENT: T063M diagnostics verified; PR #68 closeout CI/merge pending
+## CURRENT: T064 verified; PR #69 closeout CI/merge pending
 
-Branch recovery/T063M-metadata-diagnostics.
-Verified head 5dccf46a61e54c3e98bd4b3c74d7a5ce7e93d69b: all 10 triggered checks green.
-Metadata run 36191270234, Linux job 108256683386: unit test + real metadata OK.
-Windows job 108256683616: unit test + accepted fail-closed timeout; not positive
-Windows metadata proof. Evidence and scope recorded in tasks/DONE/T063M.
+Branch feat/T064A-typed-runtime. Verified head
+db06221939d50b268c4a57f3406bba4a7bc27532: all 11 workflows green.
+Metadata run 36216469372: Windows 108333306568, Linux 108333306720;
+each ran 26 ytdlp_ library tests, including native path/full-vector tests.
+Evidence and limitations recorded in tasks/DONE/T064-ytdlp-bundled-runtime-plan.md.
 
-Historical Linux exit-1 did not reproduce; root cause remains unknown. Live
-failure receipt not exercised in this run. Production behavior unchanged.
+ONE next action: inspect closeout exact-head CI; diagnose red or mark PR #69 ready
+and merge if green. Do not make another docs-only closeout. T065 READY after merge:
+verified Deno materialization boundary. Do not start T065 in this closeout phase.
 
-ONE next action: observe closeout exact-head checks; diagnose red or mark PR #68
-ready and merge if all green. Do not make another documentation-only closeout.
-T064 READY after merge; do not begin it in the diagnostic closeout phase.
+No live bundled Deno activation, file/hash/environment confinement or YouTube
+proof. Windows live metadata still exercised fail-closed timeout. Existing
+historical Linux failures and SDK-content pinning limitations remain documented.

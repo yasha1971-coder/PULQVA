@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::ReadyTorTransport;
+use crate::{ReadyTorTransport, YtDlpJsRuntime};
 
 /// Pure-data launch plan for the pinned yt-dlp sidecar.
 ///
@@ -13,6 +13,7 @@ use crate::ReadyTorTransport;
 pub struct YtDlpLaunchPlan {
     executable: PathBuf,
     proxy_url: String,
+    runtime: YtDlpJsRuntime,
 }
 
 impl YtDlpLaunchPlan {
@@ -25,11 +26,19 @@ impl YtDlpLaunchPlan {
         Self {
             executable: executable.into(),
             proxy_url: transport.proxy_url(),
+            runtime: YtDlpJsRuntime::Disabled,
         }
     }
 
     pub fn executable(&self) -> &Path {
         &self.executable
+    }
+
+    /// Selects typed runtime policy; the path is not a verified binary.
+    /// Materialization/hash/ownership and environment checks remain prelaunch gates.
+    pub fn with_js_runtime(mut self, runtime: YtDlpJsRuntime) -> Self {
+        self.runtime = runtime;
+        self
     }
 
     /// Deterministic base arguments for all future yt-dlp requests.
@@ -38,11 +47,14 @@ impl YtDlpLaunchPlan {
     /// overriding PULQVA's routing contract. The plan deliberately contains no
     /// media URL and performs no process or network activity.
     pub fn arguments(&self) -> Vec<OsString> {
-        vec![
+        let mut arguments = vec![
             OsString::from("--ignore-config"),
             OsString::from("--proxy"),
             OsString::from(&self.proxy_url),
-        ]
+            OsString::from("--no-plugin-dirs"),
+        ];
+        arguments.extend(self.runtime.arguments());
+        arguments
     }
 }
 
@@ -83,6 +95,9 @@ mod tests {
                 OsString::from("--ignore-config"),
                 OsString::from("--proxy"),
                 OsString::from("socks5h://127.0.0.1:19050"),
+                OsString::from("--no-plugin-dirs"),
+                OsString::from("--no-js-runtimes"),
+                OsString::from("--no-remote-components"),
             ]
         );
     }
@@ -101,6 +116,9 @@ mod tests {
                 OsString::from("--ignore-config"),
                 OsString::from("--proxy"),
                 OsString::from("socks5h://[::1]:19050"),
+                OsString::from("--no-plugin-dirs"),
+                OsString::from("--no-js-runtimes"),
+                OsString::from("--no-remote-components"),
             ]
         );
     }
@@ -109,7 +127,7 @@ mod tests {
     fn base_plan_contains_no_media_locator() {
         let plan = YtDlpLaunchPlan::new("runtime/yt-dlp", ready_v4());
 
-        assert_eq!(plan.arguments().len(), 3);
+        assert_eq!(plan.arguments().len(), 6);
         assert!(
             plan.arguments()
                 .iter()
@@ -121,6 +139,9 @@ mod tests {
                 .all(|argument| {
                     let text = argument.to_string_lossy();
                     text == "--ignore-config"
+                        || text == "--no-plugin-dirs"
+                        || text == "--no-js-runtimes"
+                        || text == "--no-remote-components"
                         || text == "--proxy"
                         || text.starts_with("socks5h://")
                 })
