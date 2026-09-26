@@ -1,6 +1,17 @@
 # T066 — Owned Deno environment and cache boundary
 
-Status: READY after PR70 merges.
+Status: ACTIVE. PR70 merged; main 10ece61f6b42919cea8fc4c8d07e6216007ef4f5 passed all 12 workflows.
+
+T066-A: explicit command environment policy implemented; CI pending.
+Inspected ADR-0006, T063 clean_environment and desktop launch boundary.
+Clear inherited and explicit overrides, redirect HOME/temp/cache, suppress updates,
+retain only explicitly supplied Windows system directory. No caller enables Deno.
+Path syntax is NOT ownership or trusted native directory discovery.
+Tests inspect Command state; actual child inheritance remains for T066-B.
+
+T066-B: owned directory lifecycle, native system-directory discovery, actual child
+environment probe, ownership-loss and success/failure cleanup tests remain.
+Unavoidable analysis cache must stay in owned DENO_DIR until child exit.
 Outcome: explicit backend environment policy and owned cache lifecycle for later
 bundled-runtime integration, following ADR-0006. No default Deno activation.
 

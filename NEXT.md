@@ -1,6 +1,15 @@
 # NEXT
 
-## CURRENT: PR70 recovery verified; final exact-head CI/merge pending
+## CURRENT: T066-A command environment policy; CI pending
+
+PR70 merged. Exact main 10ece61f6b42919cea8fc4c8d07e6216007ef4f5 passed all
+12 workflows. Branch feat/T066-deno-environment. New head/PR/run IDs are in the
+launch checkpoint comment. Native CI must verify the two new policy tests;
+no local Rust toolchain. No runtime activation or owned lifecycle claim.
+ONE next action: inspect exact-head CI; diagnose red, otherwise continue T066-B
+owned cache/home/temp lifecycle and actual child environment probe.
+
+The following historical pre-merge checkpoint is superseded:
 
 Branch feat/T065-deno-materialization. Verified implementation
 623aa3c65d91cb6d930ac073a4ed09f4bec42d48: all 12 workflows green.
