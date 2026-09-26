@@ -1,17 +1,20 @@
 # NEXT
 
-## CURRENT: T066-C real pinned Deno runtime workspace trial; CI pending
+## CURRENT: T066-L desktop dependency recovery; CI pending
 
-PR71 branch feat/T066-deno-environment. Verified head
-b6c713089fa8bf6c6ee63dad36c7a74ca12ecaf2: all11 workflows green.
-Desktop36256139529 Linux108443175567 / Windows108443175715 passed B5 lifetime tests.
+PR71 branch feat/T066-deno-environment. Verified anchor remains
+b6c713089fa8bf6c6ee63dad36c7a74ca12ecaf2.
+67fd587 desktop36257308177 failed BOTH OSes compiling Tauri after transitive
+version drift; Deno runtime test never ran. See T066-L task for exact versions.
 
-C adds native ignored test using existing authenticated Deno2.9.7 fixture and
-materialize_deno. Fixed no-import script with no permission grants must reach
-exit42/43; post-exit observer records cache entry count then verifies workspace
-cleanup and executable/script preservation. CI step explicitly invokes both OSes.
-Local diff check passed; no local Rust. New head/run IDs saved in PR checkpoint.
+Restored five evidenced Tauri component versions with exact constraints; CI will
+generate Cargo.lock, validate pins and preserve artifact before compiling.
+Lock SHA256/compressed text emitted for retrieval. All cargo check/test commands
+use --locked. This is transitional until full lock is committed.
+Local TOML/YAML/Python syntax and diff checks passed; no local Cargo.
+New head/run IDs saved in PR checkpoint.
 
-ONE next action: inspect exact-head CI and PULQVA_DENO_RUNTIME_WORKSPACE_OK;
-diagnose red. Zero cache entries are allowed and must not imply observed analysis
-cache writes. No live EJS, OS egress or descendant confinement claim; no activation.
+ONE next action: inspect CI, retrieve BOTH generated lock files and compare;
+if failures diagnose exact logs first. Commit reviewed Cargo-generated lock and
+remove generation fallback/exporter in next recovery phase. Then verify both OSes
+and existing pinned Deno trial. No hand-written lock, merge or activation.

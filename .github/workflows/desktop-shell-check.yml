@@ -56,15 +56,31 @@ jobs:
 
           grep -F             "connect-src ipc: http://ipc.localhost"             apps/pulqva-desktop/src-tauri/tauri.conf.json
 
+      - name: Generate desktop lock for recovery if absent
+        shell: bash
+        run: |
+          if [ ! -f apps/pulqva-desktop/src-tauri/Cargo.lock ]; then
+            cargo +1.91.0 generate-lockfile --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml
+          fi
+          python apps/pulqva-desktop/tests/record_desktop_lock.py
+
+      - name: Preserve Cargo-generated desktop lock before compilation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-cargo-lock-${{ matrix.os }}
+          path: apps/pulqva-desktop/src-tauri/Cargo.lock
+          if-no-files-found: error
+
       - name: Compile Tauri desktop shell
         shell: bash
         run: |
-          cargo +1.91.0 check             --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml             --all-targets
+          cargo +1.91.0 check --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml --all-targets
 
       - name: Run desktop boundary tests
         shell: bash
         run: |
-          cargo +1.91.0 test \
+          cargo +1.91.0 test --locked \
             --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml \
             --all-targets
 
@@ -79,7 +95,7 @@ jobs:
       - name: Verify real Deno source extraction staging and cleanup
         shell: bash
         run: |
-          cargo +1.91.0 test \
+          cargo +1.91.0 test --locked \
             --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml \
             --all-targets \
             deno_archive_compat::pinned_archive_matches_independent_extractor_and_owned_stage \
@@ -88,7 +104,7 @@ jobs:
       - name: Verify pinned Deno runtime owned workspace and cleanup
         shell: bash
         run: |
-          cargo +1.91.0 test \
+          cargo +1.91.0 test --locked \
             --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml \
             --all-targets \
             deno_runtime_compat::pinned_runtime_uses_owned_environment_and_cleans_after_exit \
@@ -105,7 +121,7 @@ jobs:
       - name: Verify actual pinned archive with the production extraction adapters
         shell: bash
         run: |
-          cargo +1.91.0 test \
+          cargo +1.91.0 test --locked \
             --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml \
             --all-targets \
             ffmpeg_archive_compat::pinned_archive_matches_independent_extractor \
