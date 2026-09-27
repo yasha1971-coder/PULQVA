@@ -1,7 +1,7 @@
 //! Endpoint-private HTTPS executor. All production requests use a freshly verified
 //! owned Arti child. Local controlled tests are not live Tor/E2E evidence.
-use crate::{CommonsSearch, CommonsSearchPlan, CommonsTransport, DiscoveryError};
-use pulqva_privacy::{ReadyTorTransport, RunningArti, verify_tor_readiness};
+use crate::{CommonsSearch, CommonsSearchPlan, CommonsTransport, DiscoveryError, NetworkFailure, ReadinessFailure};
+use pulqva_privacy::{ReadyTorTransport, RunningArti, TorReadinessError, verify_tor_readiness};
 use std::{future::{Future, poll_fn}, net::IpAddr, sync::{Arc, atomic::{AtomicBool, Ordering}},
           task::Poll, time::Duration};
 
@@ -29,7 +29,7 @@ impl<'a> CommonsHttpsTransport<'a> {
     pub fn new(arti: &'a mut RunningArti) -> Result<Self, DiscoveryError> {
         if tokio::runtime::Handle::try_current().is_ok() { return Err(DiscoveryError::Transport); }
         let ready = verify_tor_readiness(arti, Duration::from_secs(90))
-            .map_err(|_| DiscoveryError::Transport)?;
+            .map_err(readiness_failure)?;
         Ok(Self { arti, ready, cancellation: DiscoveryCancellation::default() })
     }
     pub fn cancellation(&self) -> DiscoveryCancellation { self.cancellation.clone() }
@@ -49,6 +49,23 @@ impl CommonsTransport for CommonsHttpsTransport<'_> {
                 plan.max_response_bytes(), trusted_roots(), &cancel,
                 || matches!(arti.try_wait(), Ok(None)))
     }
+}
+
+// Classify without formatting or retaining a possibly URL-bearing source chain.
+fn readiness_failure(error: TorReadinessError) -> DiscoveryError {
+    DiscoveryError::Readiness(match error {
+        TorReadinessError::Timeout => ReadinessFailure::Timeout,
+        TorReadinessError::BootstrapActivation(_) => ReadinessFailure::BootstrapActivation,
+        TorReadinessError::ChildExited(_) => ReadinessFailure::ChildExited,
+        TorReadinessError::Protocol(_) => ReadinessFailure::Protocol,
+        TorReadinessError::Io { .. } => ReadinessFailure::Io,
+    })
+}
+fn network_failure(error: reqwest::Error) -> DiscoveryError {
+    DiscoveryError::Network(if error.is_timeout() { NetworkFailure::Timeout }
+        else if error.is_connect() { NetworkFailure::ConnectOrTls }
+        else if error.is_body() { NetworkFailure::Body }
+        else { NetworkFailure::Other })
 }
 
 fn trusted_roots() -> rustls::RootCertStore {
@@ -96,19 +113,19 @@ async fn receive(client: reqwest::Client, url: &str, agent: &str, cap: usize)
     let mut response = client.get(url).header(reqwest::header::USER_AGENT, agent)
         .header(reqwest::header::ACCEPT, "application/json")
         .header(reqwest::header::ACCEPT_ENCODING, "identity")
-        .send().await.map_err(|_| DiscoveryError::Transport)?;
-    if response.status() != reqwest::StatusCode::OK { return Err(DiscoveryError::RemoteRejected); }
+        .send().await.map_err(network_failure)?;
+    if response.status() != reqwest::StatusCode::OK { return Err(DiscoveryError::HttpStatus(response.status().as_u16())); }
     if response.headers().get(reqwest::header::CONTENT_ENCODING)
-        .is_some_and(|v| v.as_bytes() != b"identity") { return Err(DiscoveryError::InvalidResponse); }
+        .is_some_and(|v| v.as_bytes() != b"identity") { return Err(DiscoveryError::ContentEncoding); }
     let content_type = response.headers().get(reqwest::header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok()).and_then(|v| v.split(';').next());
     if !content_type.is_some_and(|s| s.trim().eq_ignore_ascii_case("application/json")) {
-        return Err(DiscoveryError::InvalidResponse);
+        return Err(DiscoveryError::ContentType);
     }
     let declared = response.content_length();
     if declared.is_some_and(|size| size > cap as u64) { return Err(DiscoveryError::ResponseTooLarge); }
     let mut out = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|_| DiscoveryError::Transport)? {
+    while let Some(chunk) = response.chunk().await.map_err(network_failure)? {
         if chunk.len() > cap.saturating_sub(out.len()) { return Err(DiscoveryError::ResponseTooLarge); }
         out.extend_from_slice(&chunk);
     }
@@ -150,13 +167,16 @@ where L: FnMut() -> bool
     let deadline = std::time::Instant::now() + budget;
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()
         .map_err(|_| DiscoveryError::Transport)?;
-    runtime.block_on(async {
+    let outcome = runtime.block_on(async {
         tokio::time::timeout(budget, async {
             let client = build_client(proxy, budget, roots)?;
             supervise(receive(client, url, agent, cap), cancel,
                       || std::time::Instant::now() < deadline && alive()).await
-        }).await.map_err(|_| DiscoveryError::Transport)?
-    })
+        }).await.map_err(|_| DiscoveryError::Network(NetworkFailure::Timeout))?
+    });
+    if matches!(&outcome, Err(DiscoveryError::Transport)) && std::time::Instant::now() >= deadline {
+        Err(DiscoveryError::Network(NetworkFailure::Timeout))
+    } else { outcome }
 }
 
 #[cfg(test)]

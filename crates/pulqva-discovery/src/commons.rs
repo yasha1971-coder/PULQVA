@@ -100,21 +100,30 @@ pub struct CommonsSearch<T> {
     transport: T,
     proxy: String,
     last_results: Vec<DiscoveredMedia>,
+    last_error: Option<DiscoveryError>,
 }
 impl<T: CommonsTransport> CommonsSearch<T> {
     pub fn new(transport: T, ready: ReadyTorTransport) -> Self {
-        Self { transport, proxy: ready.proxy_url(), last_results: Vec::new() }
+        Self { transport, proxy: ready.proxy_url(), last_results: Vec::new(), last_error: None }
     }
     /// Only the latest successful response is retained; errors clear it.
     pub fn last_results(&self) -> &[DiscoveredMedia] { &self.last_results }
+    /// Safe category of the latest invocation of discover/search, not raw network data.
+    /// A request rejected by the outer coordinator before search does not update this.
+    pub fn last_error(&self) -> Option<DiscoveryError> { self.last_error }
     pub fn discover(&mut self, intent: &SearchIntent) -> Result<Vec<SearchCandidate>, DiscoveryError> {
         self.last_results.clear();
-        let plan = CommonsSearchPlan::from_verified_proxy(intent, self.proxy.clone())?;
-        let body = self.transport.fetch(&plan)?;
-        let results = parse_response(&body)?;
-        let candidates = results.iter().map(|r| r.candidate.clone()).collect();
-        self.last_results = results;
-        Ok(candidates)
+        self.last_error = None;
+        let outcome = (|| {
+            let plan = CommonsSearchPlan::from_verified_proxy(intent, self.proxy.clone())?;
+            let body = self.transport.fetch(&plan)?;
+            let results = parse_response(&body)?;
+            let candidates = results.iter().map(|r| r.candidate.clone()).collect();
+            self.last_results = results;
+            Ok(candidates)
+        })();
+        self.last_error = outcome.as_ref().err().copied();
+        outcome
     }
 }
 impl<T: CommonsTransport> CandidateSearch for CommonsSearch<T> {
@@ -208,10 +217,20 @@ fn valid_media_url(value: &str) -> bool {
     true
 }
 
+/// Fixed vocabulary only: never store error messages, URLs, bodies or identifiers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReadinessFailure { Timeout, BootstrapActivation, ChildExited, Protocol, Io }
+
+/// ConnectOrTls does NOT claim to distinguish a SOCKS circuit from a TLS failure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NetworkFailure { Timeout, ConnectOrTls, Body, Other }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiscoveryError {
     InvalidRequest, ResponseTooLarge, InvalidResponse, RemoteRejected,
     UntrustedCandidate, TooFewChoices, Transport,
+    Readiness(ReadinessFailure), Network(NetworkFailure), HttpStatus(u16),
+    ContentType, ContentEncoding,
 }
 impl fmt::Display for DiscoveryError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -223,6 +242,11 @@ impl fmt::Display for DiscoveryError {
             Self::UntrustedCandidate => "discovery candidate failed validation",
             Self::TooFewChoices => "fewer than two supported media choices",
             Self::Transport => "discovery transport failed",
+            Self::ContentType => "discovery response content type was rejected",
+            Self::ContentEncoding => "discovery response content encoding was rejected",
+            Self::Readiness(kind) => return write!(f, "discovery readiness: {kind:?}"),
+            Self::Network(kind) => return write!(f, "discovery network: {kind:?}"),
+            Self::HttpStatus(status) => return write!(f, "discovery HTTP status: {status}"),
         })
     }
 }
@@ -261,7 +285,7 @@ mod tests {
         // Private struct initialization simulates route data only. No public
         // readiness token constructor is introduced and no network is opened.
         CommonsSearch { transport: Fixture { body: good_body(), calls:0, fail:false, urls:Vec::new() },
-            proxy:"socks5h://127.0.0.1:19050".into(), last_results:Vec::new() }
+            proxy:"socks5h://127.0.0.1:19050".into(), last_results:Vec::new(), last_error:None }
     }
     #[test]
     fn request_to_response_choices_uses_existing_coordinator() {
@@ -365,5 +389,71 @@ mod tests {
         assert_eq!(accepted[1].declared_size(), MAX_MEDIA_BYTES);
         at_limit["imageinfo"][0]["size"] = json!(MAX_MEDIA_BYTES + 1);
         assert_eq!(parse_response(&body(vec![page(1, "A.webm"), at_limit])), Err(DiscoveryError::TooFewChoices));
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+    use pulqva_core::request_choices;
+    use std::collections::VecDeque;
+    struct Scripted(VecDeque<Result<Vec<u8>, DiscoveryError>>);
+    impl CommonsTransport for Scripted {
+        fn fetch(&mut self, _: &CommonsSearchPlan) -> Result<Vec<u8>, DiscoveryError> {
+            self.0.pop_front().expect("unexpected additional request")
+        }
+    }
+    fn good() -> Vec<u8> {
+        let pages: Vec<_> = (1..=2).map(|id| serde_json::json!({
+            "pageid": id, "ns": 6, "title": format!("File:{id}.webm"),
+            "imageinfo": [{"url": format!("{MEDIA_PREFIX}a/ab/{id}.webm"),
+                "size": 32, "sha1": "a".repeat(40), "mime": "video/webm"}]
+        })).collect();
+        serde_json::to_vec(&serde_json::json!({"query":{"pages":pages}})).unwrap()
+    }
+    #[test]
+    fn safe_cause_survives_coordinator_and_resets_after_success() {
+        let cases = [
+            Err(DiscoveryError::HttpStatus(403)), Err(DiscoveryError::HttpStatus(429)),
+            Err(DiscoveryError::Network(NetworkFailure::ConnectOrTls)),
+            Err(DiscoveryError::Network(NetworkFailure::Timeout)),
+            Err(DiscoveryError::Readiness(ReadinessFailure::Timeout)),
+            Err(DiscoveryError::ContentType), Err(DiscoveryError::ContentEncoding),
+            Ok(b"not json".to_vec()), Ok(br#"{"error":{"code":"maxlag","info":"PRIVATE"}}"#.to_vec()),
+            Ok(br#"{"warnings":{"query":{"warnings":"PRIVATE"}}}"#.to_vec()),
+        ];
+        for response in cases {
+            let expected = match &response {
+                Err(error) => *error,
+                Ok(body) => parse_response(body).unwrap_err(),
+            };
+            let mut search = CommonsSearch {
+                transport: Scripted(VecDeque::from([Ok(good()), response, Ok(good())])),
+                proxy: "socks5h://127.0.0.1:19050".into(),
+                last_results: Vec::new(), last_error: None,
+            };
+            request_choices(&mut search, "fixture").unwrap();
+            assert_eq!(search.last_error(), None);
+            assert_eq!(request_choices(&mut search, "fixture"), Err(JourneyError::SearchFailed));
+            assert_eq!(search.last_error(), Some(expected));
+            assert!(search.last_results().is_empty());
+            let diagnostic = format!("{expected:?}: {expected}");
+            assert!(!diagnostic.contains("PRIVATE") && !diagnostic.contains("://"));
+            assert!(diagnostic.len() < 160);
+            request_choices(&mut search, "fixture").unwrap();
+            assert_eq!(search.last_error(), None);
+            assert_eq!(search.last_results().len(), 2);
+            assert!(search.transport.0.is_empty());
+        }
+    }
+    #[test]
+    fn local_validation_error_replaces_old_cause_without_fetch() {
+        let mut search = CommonsSearch {
+            transport: Scripted(VecDeque::new()), proxy: "socks5h://127.0.0.1:19050".into(),
+            last_results: Vec::new(), last_error: Some(DiscoveryError::HttpStatus(403)),
+        };
+        let intent = SearchIntent::new("x".repeat(513)).unwrap();
+        assert_eq!(search.discover(&intent), Err(DiscoveryError::InvalidRequest));
+        assert_eq!(search.last_error(), Some(DiscoveryError::InvalidRequest));
     }
 }

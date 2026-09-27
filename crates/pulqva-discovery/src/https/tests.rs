@@ -117,23 +117,24 @@ fn tls_success_domain_forwarding_and_parser_integration() {
 fn tls_rejects_untrusted_root_and_wrong_hostname_before_http() {
     for (cert, trust) in [(CERT, trusted_roots()), (WRONG, roots())] {
         let f = fixture(Some(cert), okay(), Duration::ZERO);
-        assert_eq!(run(&f, trust, Duration::from_secs(5)), Err(DiscoveryError::Transport));
+        assert_eq!(run(&f, trust, Duration::from_secs(5)), Err(DiscoveryError::Network(NetworkFailure::ConnectOrTls)));
         assert_eq!(f.finish(), 0);
     }
 }
 #[test]
 fn proxy_denial_never_returns_success_or_retries() {
     let f = fixture(None, vec![], Duration::ZERO);
-    assert_eq!(run(&f, roots(), Duration::from_secs(5)), Err(DiscoveryError::Transport));
+    assert_eq!(run(&f, roots(), Duration::from_secs(5)), Err(DiscoveryError::Network(NetworkFailure::ConnectOrTls)));
     assert_eq!(f.finish(), 0);
 }
 #[test]
 fn rejects_redirect_error_encoding_type_and_declared_oversize() {
     let cases = [
-        (response("302 Found", "Location: https://example.invalid/\r\nContent-Length: 0\r\n", b""), DiscoveryError::RemoteRejected),
-        (response("429 Too Many Requests", "Content-Length: 0\r\n", b""), DiscoveryError::RemoteRejected),
-        (response("200 OK", "Content-Encoding: gzip\r\nContent-Length: 0\r\n", b""), DiscoveryError::InvalidResponse),
-        (b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n".to_vec(), DiscoveryError::InvalidResponse),
+        (response("302 Found", "Location: https://example.invalid/\r\nContent-Length: 0\r\n", b""), DiscoveryError::HttpStatus(302)),
+        (response("429 Too Many Requests", "Content-Length: 0\r\n", b""), DiscoveryError::HttpStatus(429)),
+        (response("403 Forbidden", "Content-Length: 0\r\n", b""), DiscoveryError::HttpStatus(403)),
+        (response("200 OK", "Content-Encoding: gzip\r\nContent-Length: 0\r\n", b""), DiscoveryError::ContentEncoding),
+        (b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 0\r\n\r\n".to_vec(), DiscoveryError::ContentType),
         (response("200 OK", "Content-Length: 262145\r\n", b""), DiscoveryError::ResponseTooLarge),
     ];
     for (reply, error) in cases {
@@ -157,7 +158,7 @@ fn chunked_streams_are_bounded_and_truncation_is_not_success() {
 #[test]
 fn deadline_is_total_and_does_not_retry_stalled_server() {
     let f = fixture(Some(CERT), okay(), Duration::from_secs(2));
-    assert_eq!(run(&f, roots(), Duration::from_secs(1)), Err(DiscoveryError::Transport));
+    assert_eq!(run(&f, roots(), Duration::from_secs(1)), Err(DiscoveryError::Network(NetworkFailure::Timeout)));
     assert_eq!(f.finish(), 1);
 }
 #[test]
@@ -215,4 +216,23 @@ fn ambient_proxy_cert_and_keylog_environment_does_not_override_policy() {
     let no_log = !root.join("keys").exists();
     if !no_log { std::fs::remove_file(root.join("keys")).unwrap(); }
     std::fs::remove_dir(root).unwrap(); assert!(success); assert!(no_log);
+}
+
+#[test]
+fn readiness_categories_do_not_expose_underlying_messages() {
+    use pulqva_privacy::ArtiProcessError;
+    let cases = [
+        (TorReadinessError::Timeout, ReadinessFailure::Timeout),
+        (TorReadinessError::Protocol("PRIVATE"), ReadinessFailure::Protocol),
+        (TorReadinessError::Io { operation: "PRIVATE", source: std::io::Error::other("PRIVATE") }, ReadinessFailure::Io),
+        (TorReadinessError::BootstrapActivation(ArtiProcessError::Io {
+            operation: "PRIVATE", source: std::io::Error::other("PRIVATE"),
+        }), ReadinessFailure::BootstrapActivation),
+    ];
+    for (source, expected) in cases {
+        let error = readiness_failure(source);
+        assert_eq!(error, DiscoveryError::Readiness(expected));
+        assert!(!format!("{error:?}: {error}").contains("PRIVATE"));
+        assert!(std::error::Error::source(&error).is_none());
+    }
 }

@@ -1,49 +1,57 @@
 # NEXT
 
-## CURRENT: T068-C1 — first real Commons discovery acceptance LAUNCH
+## CURRENT: T068-C1 diagnostic recovery — safe categories across the existing path
 
-PR73 / feat/T068-live-tor-e2e; main unchanged. Exact parent
-fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0 is 11/11 associated workflows green.
-Native discovery-contract-check 36314712742 passed on Windows/Linux. Those tests
-prove controlled local TLS/response behavior, not live Commons or the entire E2E.
-The adopted graph and existing library executor are unchanged in this pass.
+PR73 / feat/T068-live-tor-e2e; main untouched. Last fully verified anchor:
+fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0. Do not mark T068 complete.
+Parent 82bb76ac8ce9f9c003ef6cf727227b964c5c52e2: 11/12 associated workflows
+successful; live discovery 36317718659 failed on both OSes. Linux passed readiness
+then returned SearchFailed; Windows stopped during readiness. Exact logs were
+already inspected in PR checkpoint 5855788840. Neither cause was established.
 
-ONE atomic outcome: execute CommonsHttpsTransport -> CommonsSearch -> request_choices
-against the actual Commons API through an owned pinned Arti process, requiring at
-least two externally obtained validated choices. The native acceptance example
-real_commons_discovery uses the fixed public full-text request `countdown`, selects
-index 1 from the returned set, records bounded JSON evidence, then exercises sticky
-cancellation through the same coordinator and requires stale results to be cleared.
-No synthetic successful response, hard-coded media URL, alternative HTTP client,
-provider expansion or dependency regeneration. This is not AI intent interpretation.
+ONE recovery outcome implemented in source: preserve the safe failure category.
+CommonsSearch.last_error retains the latest invoked discover/search failure before
+the existing coordinator maps it to JourneyError. Every invoked search clears
+old choices; successful searches clear the error. An input rejected before the
+coordinator calls search does not update that snapshot; do not treat it as a trace.
+The HTTPS adapter now classifies TorReadinessError variants, reqwest timeout /
+connect-or-TLS / body / other, observed numeric HTTP status, and content-type /
+content-encoding rejection. Existing parser categories distinguish API rejection,
+invalid response, untrusted candidates, too few results and excessive bytes.
+No raw source chain, query, URL, response body, header, certificate or identifier
+is retained in the diagnostic value. Production library does not log it; only the
+fixed-public-fixture harness prints stage plus safe category on failure.
 
-commons-tor-discovery-check compiles the actual library/harness before building the
-existing pinned Arti sidecar and runs the same positive criterion on Windows/Linux.
-A readiness/search failure fails the job; Windows fail-closed-only is NOT success.
-The example explicitly stops/reaps the owned Arti process on returned errors and
-cleans its exclusively created temporary root before writing successful evidence.
-Artifacts contain public fixture choices/declared metadata only, retained 7 days;
-no raw HTTPS reply, secret, keylog, downloaded media or personal request is uploaded.
-Output file creation refuses overwrite. These are source properties, not a hostile
-filesystem race proof or an assertion that the new native run has already passed.
+This is a minimal taxonomy, not invented precision: ConnectOrTls cannot identify
+a circuit/exit/TLS root cause. API errors and warnings remain grouped as
+RemoteRejected; setup/cancellation/liveness can still return Transport. A request
+budget expiration is classified as Network(Timeout), including the existing
+supervision expiry exit; timeout amounts and success criteria are unchanged.
 
-ONE NEXT ACTION: inspect this exact head's commons-tor-discovery-check (both OSes)
-and existing checks. Diagnose failures at readiness/search/validation first; never
-replace a missing external candidate with a canned result. If green, inspect the
-choice evidence and connect its actual selected locator to existing typed yt-dlp
-retrieval in the SAME coordinator. Preserve the selected-file, byte/digest, actual
-Tor-loss and same-flow fail-closed gates before declaring parent T068 complete.
-Do not introduce another candidate graph generator or a parallel demo downloader.
+Added 3 Rust test functions: 10-case coordinator error-preservation/reset matrix,
+local-validation replacement without fetch, and readiness redaction categories.
+Existing controlled TLS/SOCKS tests now assert the corresponding categories and
+HTTP 302/403/429 remain numeric. All original tests and network refusal conditions
+remain. New tests are NOT claimed passing before native execution.
 
-Local checks: example/workflow UTF-8 and JSON byte round-trip, independently computed
-Git blob hashes, YAML parsing, native matrix and read-only permission assertions.
-No local Cargo/rustc is installed; Rust compilation and live requests are PENDING.
-Source publication SHA and run IDs belong in PR73 checkpoint. No E2E percentage claim.
+Local checks: exact baseline Git hashes, asserted source edits, UTF-8/JSON byte
+round-trip, independent new blob hashes. Query/parser/media validation and full
+route/client policy blocks compare byte-for-byte unchanged. No local rustc/Cargo;
+no local Rust test/compilation or live Tor request occurred. Four uploaded source
+blob IDs match their locally computed hashes. Publication SHA/run IDs: PR73.
 
-Entry/exit primary-source review, 2026-09-27:
-https://www.mediawiki.org/wiki/API:Etiquette
-https://www.mediawiki.org/wiki/API:Search
-https://www.mediawiki.org/wiki/API:Imageinfo
-Descriptive User-Agent and a serial generator query retained. No latest-version or
-exhaustive security-audit claim. API metadata hashes are not downloaded-file proof.
-T066 race/retention, descendant confinement, SDK-content and packaging gates remain.
+ONE NEXT ACTION: inspect the new exact-head deterministic discovery-contract-check
+AND live commons-tor-discovery-check; read the bounded PULQVA_COMMONS_FAILURE line
+on each failed OS. Distinguish code-regression evidence, operational failure and
+unresolved attribution; do not guess 403, change provider, relax TLS or add blind
+retries. A diagnostic live failure is not proof of a code defect or E2E success.
+Use the observed category for the next targeted recovery. No second generator.
+
+Test-pyramid discussion retained: code correctness and live operational availability
+are separate evidence. This commit does NOT change required checks, add a schedule,
+install Chutney/Shadow or implement tri-state canary/SLO accounting. Such changes
+must not relabel local tests as C1 live discovery or an unfinished E2E as complete.
+C2 selected-file retrieval, actual Tor-loss integration, positive native full E2E,
+T066 race/retention, descendant confinement, SDK-content and packaging remain open.
+
+Current primary-source review: decisions/T068-C1-safe-diagnostics.md.

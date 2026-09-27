@@ -14,11 +14,21 @@ const SELECTED_INDEX: usize = 1; // Explicit test choice from the returned set, 
 
 fn discover(arti: &mut RunningArti) -> Result<Value, Box<dyn Error>> {
     eprintln!("PULQVA_COMMONS_STAGE readiness");
-    let transport = CommonsHttpsTransport::new(arti)?;
+    let transport = CommonsHttpsTransport::new(arti).map_err(|error| {
+        // DiscoveryError contains only fixed categories and a numeric HTTP status.
+        eprintln!("PULQVA_COMMONS_FAILURE stage=readiness category={error:?}");
+        error
+    })?;
     let cancellation = transport.cancellation();
     let mut search = transport.into_search();
     eprintln!("PULQVA_COMMONS_STAGE external_search");
-    let choices = request_choices(&mut search, QUERY)?;
+    let choices = match request_choices(&mut search, QUERY) {
+        Ok(choices) => choices,
+        Err(error) => {
+            eprintln!("PULQVA_COMMONS_FAILURE stage=external_search category={:?}", search.last_error());
+            return Err(error.into());
+        }
+    };
     let selected = choices.select(SELECTED_INDEX)?;
     if choices.candidates().len() != search.last_results().len() {
         return Err("presented choices differ from discovered metadata".into());
