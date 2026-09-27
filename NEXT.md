@@ -1,42 +1,44 @@
 # NEXT
 
-## CURRENT: T068-B recovery — Windows regression assumed LF-only checkout
+## CURRENT: T068-B real HTTPS executor implemented; first locked native CI PENDING
 
-Branch feat/T068-live-tor-e2e; PR #73 remains draft. Main is untouched.
-At 95664cec8afac630db02337750bbcac843fdea3f all 13 workflows completed:
-12 success, only t068-production-graph-candidate 36311576973 failed.
-Linux candidate 108598413781 passed preflight, prepare, Cargo, compilation and
-artifact export. Windows 108598413887 passed Python syntax, JSON byte round-trip
-and the actual fresh-directory PREPARE smoke test. Two LF-only byte-marker
-assertions failed with count=0. This is NOT the earlier SyntaxError returning.
+PR #73, branch feat/T068-live-tor-e2e, main untouched. Verified parent:
+c6ce5494d6432604bbf30f8f486d01f358362d87, all 13 associated workflows success.
+The historical Python/Windows/LF/CRLF recovery is CLOSED, not the current task.
 
-Exact baseline source/test Git hashes reproduced locally. With Python 3.13.5,
-the baseline passes 4 tests with LF and fails the same two assertions with CRLF.
-Repair changes only tests: accept one real LF or CRLF statement separator;
-retain rejection of literal backslash+n, syntax validation and exact-byte JSON/
-hash checks. New regression exercises BOTH newline spellings on EVERY runner.
-Local repaired suite: 5/5 with LF, 5/5 with CRLF, including real PREPARE in paths
-with spaces. This is local checkout-format coverage, NOT native Windows proof.
-Test blob 9e7ca81dc348dfc0cc7891a4b162187bbeee86c5; 5581 bytes;
-SHA256 4d507634b679fcafee4d71f60cf6eee0fa4c359c8a35f8cd1a410bdbe900633d.
-GitHub create_blob hash matches the locally tested bytes before publication.
+This implementation uses the exact staged B0 graph: Cargo.lock blob
+8279158c7f7fd5dbd243942669f8b4c929a8831b (33037 bytes, SHA256
+ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5),
+manifest blob 5563edc728a4eff70213be391105a31f2dcbb737. No re-resolution.
 
-ONE NEXT ACTION: inspect the repair head's existing native candidate workflow.
-On red, inspect the exact failing stage. On green, use already verified B0 lock
-and manifest bytes for the substantive endpoint-private CommonsTransport; do not
-create another generator or optional parser task. Publication SHA/run IDs are in
-PR #73's checkpoint. Do not merge this unfinished T068 parent or call it E2E.
+CommonsHttpsTransport is now library code, not an example. Its constructor verifies
+readiness on the owned RunningArti it borrows; into_search reuses the SAME
+CommonsSearch/CandidateSearch/T067 coordinator. Requests have an explicit loopback
+socks5h route, certificate/name validation with pinned roots, no ambient proxy,
+redirect/retry/cookie/referer/decompression/keylog, bounded streaming response,
+whole-request deadline, sticky cancellation and child-liveness supervision.
+The adapter is synchronous: invoke on a backend blocking worker. Existing readiness
+bootstrap has a separate 90s budget; request cancellation does not interrupt bootstrap.
 
-Existing mounted /mnt/data/t068-win2.zip and /mnt/data/t068-linux2.zip can be read
-with Python zipfile; no Files materialization is needed. The full B0 Cargo.lock is
-33037 bytes, SHA256 ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5.
-Do not normalize lock/artifact bytes for an integrity comparison. Library adoption,
-production executor, controlled TLS/body/deadline/liveness tests and same-coordinator
-real external request -> choices -> selected file remain uncompleted.
+The old parser/tests were moved byte-for-byte to commons.rs. The maintained native
+discovery-contract-check now tests the actual locked library on Windows/Linux.
+Temporary copy-generators, their example clients and two duplicate candidate
+workflows are retired after adoption, not used to append dependencies again.
+Required SOCKS refusal/domain/poison assertions moved into the real executor's tests.
+New tests additionally exercise real local TLS, wrong-name/untrusted certificates,
+redirect/status/encoding/type rejection, chunked/oversized/truncated responses,
+stall timeout and cancellation/liveness. All network fixtures are LOOPBACK ONLY.
+Their private test roots/keys are cfg(test), never production trust overrides.
 
-Entry/exit primary-source review, 2026-09-27:
-https://docs.python.org/3.12/reference/lexical_analysis.html#physical-lines
-https://git-scm.com/docs/gitattributes
-Python accepts LF and CRLF on every platform; Git may convert checkout line endings.
-No global Git/EOL setting, shipping code, manifest/lock, Tor/kernel or permissions
-changed to make the test pass. Last verified anchor remains cd785a3; new CI pending.
+ONE NEXT ACTION: inspect the new exact-head discovery-contract-check and existing
+CI. On red, diagnose the precise log before further edits. If green, assess remaining
+B evidence (actual Arti loss/cancellation while a real request is in flight) and wire
+the SAME coordinator to live Commons choices and existing retrieval for C. Do not
+start another dependency candidate generator or claim a complete E2E from these tests.
+
+Native compilation/tests PENDING; no local rustc/Cargo exists in this container.
+Only source-byte/hash/JSON checks and test-certificate generation ran locally.
+No live Commons request, downloaded file, positive Windows E2E, UI or ZIP proof.
+T066 race/retention, descendant confinement and SDK-content limitations remain.
+Current-world review and acceptance boundaries: decisions/ADR-0008-commons-https-executor.md.
+Publication head/run IDs are recorded in PR73's checkpoint, not inferred from old CI.

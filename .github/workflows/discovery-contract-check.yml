@@ -26,10 +26,13 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Install pinned Rust
         run: rustup toolchain install 1.91.0 --profile minimal
-      - name: Local discovery contracts and readiness compile-fail boundary (not live E2E)
-        run: cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery
+      - name: Locked production discovery and local SOCKS TLS contracts (not live E2E)
+        run: cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture
