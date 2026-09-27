@@ -1,34 +1,32 @@
 # NEXT
 
-## CURRENT: T068-B0 native HTTPS dependency/API trial pending
+## CURRENT: T068-B0 Windows local SOCKS fixture repair; native CI pending
 
 Branch feat/T068-live-tor-e2e; PR #73 remains draft. Main is unchanged.
-Verified PR head b223f3a8825256c002b91bffd8508ecb9ba275be: all 11 associated
-workflows succeeded, including discovery-contract-check 36300961027. A's query
-correction is no longer pending. Parent T068 has not delivered live E2E.
+Last verified PR head b223f3a8825256c002b91bffd8508ecb9ba275be remains the anchor.
+Parent 3c84e61182e8c2b7a700f843e32ce9aac085c034: 11/12 associated workflows
+succeeded. Only discovery-https-candidate-check 36302674079 was red.
+Linux job 108573162130 passed. Windows job 108573162014 resolved and verified the
+candidate graph and compiled, then local read_exact failed with Winsock 10035 /
+WouldBlock. The same helper caused the poisoned-environment child failure.
 
-B0 is the required dependency step for the real HTTPS executor, not a new provider
-or alternative demo coordinator. A new native Windows/Linux candidate workflow
-copies the checkout, adds four exact HTTP/TLS/runtime pins to the COPY, asks Cargo
-to resolve them while retaining existing registry identities, and tests API
-compatibility plus observed SOCKS domain forwarding and refusal under poisoned
-proxy environment. Shipping manifests and Cargo.lock are untouched. Local Python
-syntax/YAML checks passed; no local Rust execution (Cargo absent, clone DNS failed).
+Repair is confined to the test fixture: explicitly set accepted TcpStream to
+blocking mode before applying the existing finite read/write timeouts. Keep the
+listener nonblocking for bounded accept and no-retry observation. A new regression
+forces a nonblocking accepted stream on either OS and proves the reset honors an
+idle-read timeout while the listener still returns WouldBlock without a new peer.
+No production client, dependency pin, shipping manifest/lock or Tor policy changed.
+Root cause/source review and exact publication head are checkpointed in PR #73.
+Local rustc/Cargo remain absent; repaired Rust/native tests are NOT RUN locally.
 
-ONE next action: inspect this exact head's discovery-https-candidate-check. If red,
-recover its exact failing log. If green, retrieve BOTH candidate artifacts, verify
-receipt hashes and compare the actual generated locks/features before accepting
-one as the committed workspace graph. No manually invented checksums or full-graph
-blind upgrade. Then implement the endpoint-private CommonsTransport executor using
-the accepted graph and existing CommonsSearchPlan; remove the one-off generator
-once its lock is imported. No further optional parser work.
+ONE next action: inspect the repair head's discovery-https-candidate-check. Diagnose
+red first. If green, retrieve BOTH platform candidate artifacts, verify receipt
+hashes and compare Cargo-generated locks/features before adopting the graph with
+the real endpoint-private CommonsTransport executor. Retire the one-off generator
+when the real lock is imported. No blind dependency upgrade or parser expansion.
 
-B0 local refusal is NOT TLS success, live Tor, real Commons discovery, OS egress
-confinement or completed B. B still needs controlled HTTPS positive/negative tests,
-streaming limits, one deadline, Tor liveness and cancellation. C connects real
-external choices and existing retrieval through the SAME coordinator, validates
-actual file bytes and records positive Windows/Linux results separately from
-fail-closed evidence. Kernel/UX/privacy, T066 limitations and packaging gates remain.
-
-Milestone entry/exit primary-source review: decisions/T068-B0-https-candidate-2026-09-27.md.
-Exact new commit and native run IDs belong in PR #73's launch checkpoint.
+B0 is local dependency/SOCKS evidence, not successful TLS, live Tor, Commons search
+or E2E. B still needs HTTPS positive/negative, streaming/deadline/liveness tests.
+C must obtain real choices and download the selected file through the SAME
+coordinator and existing retrieval boundary. Separate positive Windows/Linux and
+fail-closed evidence remain required. T066 limitations and packaging gates remain.

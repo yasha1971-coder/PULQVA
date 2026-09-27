@@ -11,7 +11,7 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "T068-A correction passed all 11 associated workflows; B0 candidate HTTPS dependency/API and native SOCKS tests await CI.",
+    "T068-B0 parent 3c84e61 passed 11/12 workflows; Windows local SOCKS fixture failed with 10035/WouldBlock after successful compilation. Accepted-stream mode repair and regression await native CI.",
     "B0 generated locks are not shipping adoption: retrieve and verify both platform artifacts before modifying the existing --locked workspace graph.",
     "T068-B production Tor-only Commons HTTPS executor is not implemented; TLS positive/negative tests, streaming/deadline/liveness and cancellation remain.",
     "Real external request -> choices -> selected file through the same coordinator remains unproven.",

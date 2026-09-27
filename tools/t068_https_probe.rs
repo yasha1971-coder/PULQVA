@@ -54,6 +54,15 @@ mod tests {
     use super::*;
     use std::{io::{Read, Write}, net::{TcpListener, TcpStream}, process::Command, thread, time::Instant};
 
+    fn configure_accepted_stream(stream: &TcpStream) {
+        // Winsock accept inherits listener properties; Unix need not. Read/Write
+        // below are blocking APIs. Timeouts do not reset a nonblocking socket.
+        // Keep the listener nonblocking for bounded accept/no-retry observation.
+        stream.set_nonblocking(false).unwrap();
+        stream.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+        stream.set_write_timeout(Some(Duration::from_secs(3))).unwrap();
+    }
+
     fn accept_bounded(listener: &TcpListener) -> TcpStream {
         listener.set_nonblocking(true).unwrap();
         let deadline = Instant::now() + Duration::from_secs(5);
@@ -61,8 +70,7 @@ mod tests {
             match listener.accept() {
                 Ok((stream, peer)) => {
                     assert!(peer.ip().is_loopback());
-                    stream.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
-                    stream.set_write_timeout(Some(Duration::from_secs(3))).unwrap();
+                    configure_accepted_stream(&stream);
                     return stream;
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock && Instant::now() < deadline => {
@@ -71,6 +79,27 @@ mod tests {
                 Err(e) => panic!("local SOCKS was not used: {e}"),
             }
         }
+    }
+
+    #[test]
+    fn accepted_nonblocking_stream_is_reset_and_idle_reads_remain_bounded() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let _idle_peer = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let mut stream = accept_bounded(&listener);
+        // Force the inherited Windows state on every OS, so Linux also detects
+        // a future removal of the reset. The peer sends nothing and stays open.
+        stream.set_nonblocking(true).unwrap();
+        configure_accepted_stream(&stream);
+        assert_eq!(stream.read_timeout().unwrap(), Some(Duration::from_secs(3)));
+        assert_eq!(stream.write_timeout().unwrap(), Some(Duration::from_secs(3)));
+        stream.set_read_timeout(Some(Duration::from_millis(150))).unwrap();
+        let started = Instant::now();
+        let error = stream.read_exact(&mut [0u8; 1]).unwrap_err();
+        assert!(matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut));
+        assert!(started.elapsed() >= Duration::from_millis(100),
+            "idle read returned immediately instead of honoring the finite timeout");
+        // Resetting the accepted stream must not make accept/retry checks block.
+        assert_eq!(listener.accept().unwrap_err().kind(), std::io::ErrorKind::WouldBlock);
     }
 
     fn remote_name_refusal_probe() {
