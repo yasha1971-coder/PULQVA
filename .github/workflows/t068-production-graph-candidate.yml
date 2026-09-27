@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'tools/t068_production_graph.py'
+      - 'tools/test_t068_production_graph.py'
       - 'tools/t068_https_executor.rs'
       - '.github/workflows/t068-production-graph-candidate.yml'
 permissions:
@@ -23,6 +24,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Compile Python preparation source before installing Rust
+        run: python -m py_compile tools/t068_production_graph.py tools/test_t068_production_graph.py
+      - name: Offline preparation regressions before installing Rust
+        run: python tools/test_t068_production_graph.py -v
       - name: Install pinned Rust
         run: rustup toolchain install 1.91.0 --profile minimal
       - name: Prepare isolated production candidate
@@ -36,11 +41,12 @@ jobs:
         shell: bash
         run: cargo +1.91.0 test --locked --manifest-path "$T068_PROD/Cargo.toml" -p pulqva-discovery --example t068_https_executor
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && env.T068_PROD != '' }}
         with:
           name: t068-production-graph-${{ matrix.os }}
           path: |
             ${{ env.T068_PROD }}/Cargo.lock
             ${{ env.T068_PROD }}/crates/pulqva-discovery/Cargo.toml
             ${{ env.T068_PROD }}/production-receipt.json
+          if-no-files-found: error
           retention-days: 7

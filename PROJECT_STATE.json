@@ -8,9 +8,10 @@
   "last_completed_task": "T067",
   "active_task": "T068",
   "next_task": "T068",
-  "ci": "green_b0",
+  "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
+    "ec8c438 candidate PREPARE failed on both OSes before Cargo. Actual byte correction and four locally passing offline regressions now await native CI; earlier claimed read-back success was incorrect.",
     "T068-B production Tor-only Commons HTTPS executor is not implemented; controlled TLS/body/deadline/liveness tests remain.",
     "Real external request -> choices -> selected file through the same coordinator remains unproven.",
     "Commons live query availability and at least two usable small WebM candidates remain unverified.",
@@ -25,6 +26,16 @@
     "candidate_lock_sha256": "ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5",
     "candidate_lock_bytes": 33037,
     "kind": "B0 native Windows/Linux dependency/API/SOCKS evidence; not live E2E"
+  },
+  "recovery": {
+    "failed_head": "ec8c4380b74908c71aa4e2c6c7d79f643fe3f1c7",
+    "failed_run": 36310993392,
+    "corrected_script_blob": "3ed6ee12f5b686727eb3c06e51b4290f3d6fae75",
+    "corrected_script_sha256": "d242b73c12f3af14d58c51cb11655e73793fa78b7e32eb40000a93ed3cb00b71",
+    "local_python": "3.13.5",
+    "offline_regressions_passed": 4,
+    "native_ci": "pending",
+    "new_head_and_runs": "See PR73 publication checkpoint"
   },
   "updated": "2026-09-27"
 }
