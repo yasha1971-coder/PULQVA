@@ -117,7 +117,7 @@ impl<T: CommonsTransport> CommonsSearch<T> {
         let outcome = (|| {
             let plan = CommonsSearchPlan::from_verified_proxy(intent, self.proxy.clone())?;
             let body = self.transport.fetch(&plan)?;
-            let results = parse_response(&body)?;
+            let results = parse_response_classified(&body)?;
             let candidates = results.iter().map(|r| r.candidate.clone()).collect();
             self.last_results = results;
             Ok(candidates)
@@ -159,6 +159,15 @@ struct ImageInfo { url: String, size: u64, sha1: String, mime: String }
 /// No I/O, pagination, canned fallback results, or implicit file fetching.
 /// Unknown additional metadata is ignored, but typed fields and limits are strict.
 pub fn parse_response(bytes: &[u8]) -> Result<Vec<DiscoveredMedia>, DiscoveryError> {
+    // Preserve the original public parser error contract. The coordinator uses
+    // the same implementation directly so it retains the safe rejection reason.
+    parse_response_classified(bytes).map_err(|error| match error {
+        DiscoveryError::CandidateRejected(_) => DiscoveryError::UntrustedCandidate,
+        other => other,
+    })
+}
+
+fn parse_response_classified(bytes: &[u8]) -> Result<Vec<DiscoveredMedia>, DiscoveryError> {
     if bytes.len() > MAX_RESPONSE_BYTES { return Err(DiscoveryError::ResponseTooLarge); }
     let reply: Reply = serde_json::from_slice(bytes).map_err(|_| DiscoveryError::InvalidResponse)?;
     if reply.error.is_some() || reply.errors.is_some() || reply.warnings.is_some() {
@@ -170,22 +179,24 @@ pub fn parse_response(bytes: &[u8]) -> Result<Vec<DiscoveredMedia>, DiscoveryErr
     let mut urls = HashSet::new();
     let mut results = Vec::new();
     for page in pages {
-        if page.pageid == 0 || page.ns != 6 || !page.title.starts_with("File:")
-            || page.title.len() > 512 || page.title.chars().any(char::is_control) {
-            return Err(DiscoveryError::UntrustedCandidate);
-        }
-        if !ids.insert(page.pageid) { return Err(DiscoveryError::UntrustedCandidate); }
+        // Same predicates and evaluation order; only the error value changes.
+        if page.pageid == 0 { return Err(rejected(CandidateFailure::PageId)); }
+        if page.ns != 6 { return Err(rejected(CandidateFailure::Namespace)); }
+        if !page.title.starts_with("File:") { return Err(rejected(CandidateFailure::TitlePrefix)); }
+        if page.title.len() > 512 { return Err(rejected(CandidateFailure::TitleLength)); }
+        if page.title.chars().any(char::is_control) { return Err(rejected(CandidateFailure::TitleControl)); }
+        if !ids.insert(page.pageid) { return Err(rejected(CandidateFailure::DuplicatePageId)); }
         // Missing/deleted media contributes no fabricated candidate.
         if page.imageinfo.is_empty() { continue; }
         if page.imageinfo.len() != 1 { return Err(DiscoveryError::InvalidResponse); }
         let info = page.imageinfo.into_iter().next().ok_or(DiscoveryError::InvalidResponse)?;
         if info.mime != "video/webm" || info.size == 0 || info.size > MAX_MEDIA_BYTES { continue; }
-        if !valid_media_url(&info.url) || info.sha1.len() != 40
-            || !info.sha1.bytes().all(|b| b.is_ascii_hexdigit()) || !urls.insert(info.url.clone()) {
-            return Err(DiscoveryError::UntrustedCandidate);
-        }
+        validate_media_url(&info.url).map_err(rejected)?;
+        if info.sha1.len() != 40 { return Err(rejected(CandidateFailure::DigestLength)); }
+        if !info.sha1.bytes().all(|b| b.is_ascii_hexdigit()) { return Err(rejected(CandidateFailure::DigestEncoding)); }
+        if !urls.insert(info.url.clone()) { return Err(rejected(CandidateFailure::DuplicateMediaUrl)); }
         let candidate = SearchCandidate::new(page.title, info.url)
-            .map_err(|_| DiscoveryError::UntrustedCandidate)?;
+            .map_err(|_| rejected(CandidateFailure::CoreContract))?;
         results.push(DiscoveredMedia { page_id: page.pageid, candidate,
             declared_size: info.size, declared_sha1: info.sha1.to_ascii_lowercase() });
     }
@@ -195,26 +206,51 @@ pub fn parse_response(bytes: &[u8]) -> Result<Vec<DiscoveredMedia>, DiscoveryErr
 
 // Deliberately narrower than general URL parsing: one HTTPS authority, a fixed
 // media path prefix, no query/fragment/credentials/backslashes or decoded traversal.
-fn valid_media_url(value: &str) -> bool {
-    if value.len() > 2048 || !value.is_ascii() || value.bytes().any(|b| b <= 32 || b == 127)
-        || value.contains(['?', '#', '\\']) || !value.ends_with(".webm") { return false; }
-    let Some(path) = value.strip_prefix(MEDIA_PREFIX) else { return false; };
+fn validate_media_url(value: &str) -> Result<(), CandidateFailure> {
+    use CandidateFailure::*;
+    if value.len() > 2048 { return Err(UrlLength); }
+    if !value.is_ascii() { return Err(UrlNonAscii); }
+    if value.bytes().any(|b| b <= 32 || b == 127) { return Err(UrlControlOrSpace); }
+    if value.contains(['?', '#']) { return Err(UrlQueryOrFragment); }
+    if value.contains('\\') { return Err(UrlBackslash); }
+    if !value.ends_with(".webm") { return Err(UrlExtension); }
+    // Splitting the existing literal prefix is diagnostic, not normalization.
+    // Neither alternate schemes/authorities nor alternate path prefixes pass.
+    let Some(path) = value.strip_prefix(MEDIA_PREFIX) else {
+        return Err(if value.starts_with("https://upload.wikimedia.org/") {
+            UrlPathPrefix
+        } else { UrlAuthority });
+    };
     for part in path.split('/') {
         let mut decoded = Vec::new();
         let mut bytes = part.bytes();
         while let Some(b) = bytes.next() {
             if b == b'%' {
-                let (Some(a), Some(c)) = (bytes.next(), bytes.next()) else { return false; };
-                let (Some(a), Some(c)) = ((a as char).to_digit(16), (c as char).to_digit(16)) else { return false; };
+                let (Some(a), Some(c)) = (bytes.next(), bytes.next()) else { return Err(UrlEscape); };
+                let (Some(a), Some(c)) = ((a as char).to_digit(16), (c as char).to_digit(16)) else { return Err(UrlEscape); };
                 decoded.push((a * 16 + c) as u8);
             } else { decoded.push(b); }
         }
-        if decoded.is_empty() || decoded == b"." || decoded == b".."
-            || decoded.iter().any(|b| *b < 32 || *b == 127 || b"/\\".contains(b)) {
-            return false;
+        if decoded.is_empty() { return Err(UrlEmptySegment); }
+        if decoded == b"." || decoded == b".." { return Err(UrlTraversal); }
+        if decoded.iter().any(|b| *b < 32 || *b == 127 || b"/\\".contains(b)) {
+            return Err(UrlDecodedControlOrSeparator);
         }
     }
-    true
+    Ok(())
+}
+
+/// First failed candidate predicate; fixed vocabulary, no provider-controlled data.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CandidateFailure {
+    PageId, Namespace, TitlePrefix, TitleLength, TitleControl, DuplicatePageId,
+    UrlLength, UrlNonAscii, UrlControlOrSpace, UrlQueryOrFragment, UrlBackslash,
+    UrlExtension, UrlAuthority, UrlPathPrefix, UrlEscape, UrlEmptySegment,
+    UrlTraversal, UrlDecodedControlOrSeparator, DigestLength, DigestEncoding,
+    DuplicateMediaUrl, CoreContract,
+}
+fn rejected(kind: CandidateFailure) -> DiscoveryError {
+    DiscoveryError::CandidateRejected(kind)
 }
 
 /// Fixed vocabulary only: never store error messages, URLs, bodies or identifiers.
@@ -230,7 +266,7 @@ pub enum DiscoveryError {
     InvalidRequest, ResponseTooLarge, InvalidResponse, RemoteRejected,
     UntrustedCandidate, TooFewChoices, Transport,
     Readiness(ReadinessFailure), Network(NetworkFailure), HttpStatus(u16),
-    ContentType, ContentEncoding,
+    ContentType, ContentEncoding, CandidateRejected(CandidateFailure),
 }
 impl fmt::Display for DiscoveryError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -240,6 +276,7 @@ impl fmt::Display for DiscoveryError {
             Self::InvalidResponse => "discovery response has an invalid schema",
             Self::RemoteRejected => "discovery provider returned an error or warning",
             Self::UntrustedCandidate => "discovery candidate failed validation",
+            Self::CandidateRejected(kind) => return write!(f, "discovery candidate: {kind:?}"),
             Self::TooFewChoices => "fewer than two supported media choices",
             Self::Transport => "discovery transport failed",
             Self::ContentType => "discovery response content type was rejected",
@@ -457,3 +494,6 @@ mod diagnostic_tests {
         assert_eq!(search.last_error(), Some(DiscoveryError::InvalidRequest));
     }
 }
+
+#[cfg(test)]
+mod candidate_tests;

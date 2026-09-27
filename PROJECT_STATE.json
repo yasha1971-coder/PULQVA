@@ -11,9 +11,10 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "C1 parent 82bb76a failed public discovery: Linux after readiness, Windows during readiness. Safe category recovery is implemented; native and live results pending.",
+    "C1 Linux at 843bfea received a response but rejected a candidate. Exact first-predicate classification is implemented; new native/live evidence pending.",
+    "C1 Windows at 843bfea returned Readiness(Timeout) before external search; underlying probe cause unresolved.",
     "Selected-file retrieval through the same coordinator and verified downloaded bytes/digest remain unproven.",
-    "Actual Arti loss during an in-flight network request remains unproven; the earlier supervision test uses a pending future.",
+    "Actual Arti loss during in-flight network I/O remains unproven; prior supervision test uses a pending future.",
     "Positive Windows/Linux full E2E and same-flow Tor-unavailable evidence remain required.",
     "T066 cleanup ownership/race limitations, descendant egress confinement and Arti SDK-content pinning remain unresolved.",
     "YouTube compatibility and self-contained clean-machine Windows/Linux packages remain separate unverified gates."
@@ -26,16 +27,20 @@
     "adopted_lock_blob": "8279158c7f7fd5dbd243942669f8b4c929a8831b",
     "adopted_lock_sha256": "ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5",
     "adopted_lock_bytes": 33037,
-    "kind": "verified library and controlled native TLS tests; live external discovery NOT verified"
+    "kind": "global verified anchor; live external discovery NOT verified"
   },
-  "diagnostic_recovery": {
-    "parent": "82bb76ac8ce9f9c003ef6cf727227b964c5c52e2",
-    "failed_live_run": 36317718659,
-    "linux_job": 108615474190,
-    "windows_job": 108615474292,
-    "source_implemented": true,
+  "candidate_recovery": {
+    "parent": "843bfead07632c72e9360024bf9c41e141dd32c6",
+    "parent_rust_check": 36320828391,
+    "parent_native_contract_check": 36320828421,
+    "parent_code_checks": "success",
+    "failed_live_run": 36320828608,
+    "linux_job": 108624201645,
+    "windows_job": 108624201776,
+    "linux_observed": "UntrustedCandidate",
+    "windows_observed": "Readiness(Timeout)",
     "new_native_tests": "pending",
-    "live_root_cause": "not yet established",
+    "acceptance_policy": "unchanged; fixed safe categories only",
     "publication": "See PR73 checkpoint; no global verified-anchor advancement"
   },
   "updated": "2026-09-27"
