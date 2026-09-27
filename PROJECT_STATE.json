@@ -11,8 +11,8 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "C1 Linux at 5dea95d rejects UrlQueryOrFragment. Source-derived original-file UTM compatibility is implemented; native/live verification pending. Exact previous URL was not retained.",
-    "C1 Windows at 5dea95d returned Readiness(Timeout) before search; underlying cause unresolved and unchanged.",
+    "C1 Linux verified at 8934c3e with 10 real choices; no selected-file C2 or new-head revalidation claimed.",
+    "Windows C1 readiness cause remains unknown. Readiness migration and IPv4/IPv6 regression recovery await native verification.",
     "Selected-file retrieval through the same coordinator and verified downloaded bytes/digest remain unproven.",
     "Actual Arti loss during in-flight network I/O remains unproven; prior supervision test uses a pending future.",
     "Positive Windows/Linux full E2E and same-flow Tor-unavailable evidence remain required.",
@@ -56,10 +56,38 @@
     "scope": "Commons original URL exact public provenance normalization",
     "primary_source_api_blob": "b95c00ba26314d281cd11072b27119bca918fbe8",
     "new_rust_test_functions": 6,
-    "native_tests": "pending",
+    "native_tests": "passed at 8934c3e; six provenance tests executed",
     "actual_live_suffix_known": false,
-    "operational_fix_verified": false,
-    "publication": "See latest PR73 checkpoint for exact source head and run IDs"
+    "operational_fix_verified": true,
+    "publication": "See latest PR73 checkpoint for exact source head and run IDs",
+    "verified_head": "8934c3e81c51ac6c24e3cbb1099d4d321629981c",
+    "live_run": 36327480415,
+    "linux_job": 108642912589,
+    "linux_choices": 10,
+    "windows_job": 108642912535,
+    "windows": "Readiness(Timeout); not C1 success"
   },
-  "updated": "2026-09-27"
+  "updated": "2026-09-27",
+  "readiness_recovery": {
+    "parent": "04ac183089b7ba1e54877d66be869055bf1b933e",
+    "parent_workflows": {
+      "completed": 13,
+      "success": 10,
+      "failure": 3
+    },
+    "parent_rust_check": 36343498991,
+    "parent_rust_job": 108688018537,
+    "parent_failure": "E0308 in https/tests.rs: former unit Timeout used as a value",
+    "parent_live_run": 36343498990,
+    "parent_live": "skipped on both OSes after failed contracts",
+    "scope": "typed timeout test mapping, restored retry trace, complete-workspace native preflight",
+    "new_rust_test_functions": 4,
+    "expanded_mapping_test_timeout_stages": 3,
+    "local_python_tests_passed": 25,
+    "native_verification": "pending",
+    "full_local_repository_inventory": false,
+    "source_inventory": "git grep on native exact checkout before all-target compilation",
+    "cross_workflow_ordering": false,
+    "limits": "No local Rust execution. Whole-workspace is four root members, not all external workspaces. Original Windows root cause and deadline overshoot remain open."
+  }
 }

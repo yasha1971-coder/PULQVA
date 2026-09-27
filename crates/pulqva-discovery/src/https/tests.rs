@@ -220,9 +220,11 @@ fn ambient_proxy_cert_and_keylog_environment_does_not_override_policy() {
 
 #[test]
 fn readiness_categories_do_not_expose_underlying_messages() {
-    use pulqva_privacy::ArtiProcessError;
+    use pulqva_privacy::{ArtiProcessError, TorReadinessTimeout};
     let cases = [
-        (TorReadinessError::Timeout, ReadinessFailure::Timeout),
+        (TorReadinessError::Timeout(TorReadinessTimeout { stage: TorReadinessStage::Listener }), ReadinessFailure::ListenerTimeout),
+        (TorReadinessError::Timeout(TorReadinessTimeout { stage: TorReadinessStage::Negotiation }), ReadinessFailure::NegotiationTimeout),
+        (TorReadinessError::Timeout(TorReadinessTimeout { stage: TorReadinessStage::Destination }), ReadinessFailure::DestinationTimeout),
         (TorReadinessError::Protocol("PRIVATE"), ReadinessFailure::Protocol),
         (TorReadinessError::Io { operation: "PRIVATE", source: std::io::Error::other("PRIVATE") }, ReadinessFailure::Io),
         (TorReadinessError::BootstrapActivation(ArtiProcessError::Io {

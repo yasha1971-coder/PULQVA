@@ -109,15 +109,26 @@ fn socks_connect_probe(
         )),
     ];
 
+    probe_loopbacks(addresses, |local| socks_connect_probe_at(local, timeout))
+}
+
+// Keep the pre-diagnostics IPv4/IPv6 attempt order for EVERY retryable failure.
+// "Furthest" is only observed protocol progress, not a bootstrap/root-cause claim.
+// The private seam lets tests verify action traces without public-network I/O.
+fn probe_loopbacks(
+    addresses: [SocketAddr; 2],
+    mut probe: impl FnMut(SocketAddr) -> Result<(), SocksProbeError>,
+) -> Result<IpAddr, SocksProbeError> {
+    let mut furthest = TorReadinessStage::Listener;
     for local in addresses {
-        match socks_connect_probe_at(local, timeout) {
+        match probe(local) {
             Ok(()) => return Ok(local.ip()),
-            Err(SocksProbeError::Retryable(TorReadinessStage::Listener)) => continue,
+            Err(SocksProbeError::Retryable(stage)) => furthest = furthest.max(stage),
             Err(error) => return Err(error),
         }
     }
 
-    Err(SocksProbeError::Retryable(TorReadinessStage::Listener))
+    Err(SocksProbeError::Retryable(furthest))
 }
 
 fn socks_connect_probe_at(
@@ -198,6 +209,7 @@ fn is_retryable_io(source: &io::Error) -> bool {
     )
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum SocksProbeError {
     Retryable(TorReadinessStage),
     Protocol(&'static str),
@@ -240,3 +252,6 @@ impl Error for TorReadinessError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

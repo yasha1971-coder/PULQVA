@@ -1,56 +1,59 @@
 # NEXT
 
-## CURRENT: T068-C1 Commons original-URL provenance compatibility
+## CURRENT: T068 coherent readiness migration recovery
 
-PR73 / feat/T068-live-tor-e2e; main unchanged; T068 ACTIVE.
-Parent 5dea95d7c03f6a2c10b25b261f734e63ab45a924: all 12 associated
-workflows completed, 11 success. rust-check36325638292 and native
-contract-check36325638342 passed. Native preflight/evidence is VERIFIED on both
-OSes: 24 Python tests, locked contracts, preserved code=PASS/live=FAIL receipts
-with independently matched artifact hashes (PR73 OBSERVE/CLOSE checkpoint).
-Do not rebuild generic evidence infrastructure or re-download old logs/artifacts.
-Global verified anchor stays fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0.
+PR73 / feat/T068-live-tor-e2e. Parent 04ac183089b7ba1e54877d66be869055bf1b933e.
+Main unchanged. Global verified anchor remains fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0.
+Separate Linux C1 anchor: 8934c3e81c51ac6c24e3cbb1099d4d321629981c,
+live run36327480415/job108642912589, ten real choices. Not file-download proof.
 
-Existing live run36325638211: Ubuntu108637766074 rejected
-CandidateRejected(UrlQueryOrFragment); Windows108637766318 returned
-Readiness(Timeout) before search. The actual suppressed URL was not retained.
+Parent run set completed: 10/13 workflow successes. rust-check36343498991
+job108688018537 showed E0308: https/tests.rs still used the old unit Timeout as
+a value. Live run36343498990 stopped at contracts on both OSes; Arti/live steps
+were skipped, not Windows network evidence. Do not download these logs again.
 
-Primary-source research 2026-09-27 found a concrete provider incompatibility:
-MediaWiki File::getUrl calls appendRequestProvenance, which conditionally adds
-utm_source, utm_campaign, utm_content. ApiQueryImageInfo::getInfo explicitly sets
-generator=imageinfo and format=original. This real supported URL form is rejected
-by our blanket query ban. This does not prove the exact earlier suppressed suffix.
-https://doc.wikimedia.org/mediawiki-core/master/php/File_8php_source.html
-https://github.com/wikimedia/mediawiki/blob/master/includes/Api/ApiQueryImageInfo.php
-ApiQueryImageInfo source blob observed: b95c00ba26314d281cd11072b27119bca918fbe8.
+ONE recovery outcome: finish the staged-timeout integration without changing the
+pre-diagnostics address-attempt policy. Expand the existing HTTPS mapping test to
+construct all three timeout stages. Restore IPv6 attempts after EVERY retryable
+IPv4 failure, not only Listener. Preserve maximum observed stage across both
+addresses. This repairs an introduced control-flow regression; it does not claim
+to explain the original Windows timeout. The socket exchange, destination, TLS,
+90-second caller budget, per-attempt values and outer retry loop are unchanged.
 
-ONE correction: recognize ONLY the complete, unique public triple
-utm_source=commons.wikimedia.org, utm_campaign=imageinfo, utm_content=original,
-in any order; strip it, then apply the UNCHANGED strict media URL validator.
-Original-input ASCII/control/2048-byte limits still apply. Arbitrary queries,
-fragments, duplicate/missing keys, alternate values or encoded aliases fail closed.
-Both duplicate checking and selected locators use the normalized URL. No new
-network request, canned result, fallback or response logging is introduced.
-MIME/size/digest/page checks, query plan and all earlier tests are unchanged.
-The private helper has no public type/export or new dependency.
+Four private Rust regression tests cover all 25 pairs of success/retry-stage/
+protocol outcomes against the prior coarse policy, all nine retry-stage pairs,
+IPv6 success after each IPv4 retry stage, and fixed timeout formatting. Tests use
+a private injected probe for action traces; they are not public Tor or real-socket
+stage-failure evidence. The prior successful Linux Commons normalization is untouched.
 
-Six new Rust tests cover the provider-derived minimal reproducer, all six query
-orders and idempotence, 24 unsupported suffix cases, 13 unsafe base addresses,
-full input cap, controls/non-ASCII, post-normalization duplicates and coordinator
-selection/reset without extra fetches. Fixtures are synthetic, not recorded live.
-No local Rust compiler is available: compilation/test execution remains PENDING.
-Local checks verify baseline bytes against Git blob07ffeb80dff4f561da1a497be4c136b13ea244a8,
-asserted replacements, unchanged original validator/test modules/query plan,
-UTF-8/JSON byte round-trip and independently computed new source blob hashes.
+Existing native Commons workflow now prints the exact checkout's TorReadiness
+source inventory and requires --workspace --all-targets check and no-run builds
+with --keep-going, then privacy library tests and the existing core/discovery
+contracts before Arti/live. Explicit Bash/set -euo pipefail prevents intermediate
+command failures being masked on Windows. These are the four root workspace
+members, not every separate workspace or every optional feature. Other workflows
+remain independently triggered: no global DAG/merge-gate change is claimed.
 
-ONE NEXT ACTION: inspect the new exact-head native preflight/contracts first,
-then the live result and per-OS receipts. Confirm provenance_tests actually ran.
-Only a successful live run can confirm whether this addresses the observed Linux
-failure; do not call the operational issue fixed from source inspection.
-Windows readiness remains a separate recovery; no blind rerun or timeout increase.
-Source head/run IDs and publication state belong to the latest PR73 checkpoint.
+Local verification: exact baseline Git hashes checked; only asserted edits;
+25 Python tests passed, including the strengthened workflow contract. The new
+contract rejects the old narrow workflow. YAML and Bash syntax checked; five
+actual Bash executions with stub Cargo verify early-failure propagation. None of
+that is Rust compilation. Local Rust is absent and public archive retrieval failed
+DNS. Full local repository inventory was NOT completed. Native all-target checking
+is PENDING and is the explicit completeness gate, not indexed GitHub code search.
 
-No Tor/TLS, workflow, permissions, kernel, Cargo graph or main changes.
-C1 actual validated choices; C2 same-coordinator selected file/bytes/digest;
-actual in-flight Tor loss and positive Windows/Linux E2E remain UNVERIFIED.
-T066 cleanup/races, confinement, SDK-content, YouTube/AI/UI/packaging remain open.
+ONE NEXT ACTION: inspect this recovery's exact-head native compilation, all four
+new arti_readiness tests and all three HTTPS timeout mappings. If code passes,
+inspect the same live run and stage reports; do not blindly rerun or interpret a
+skipped live stage as Windows failure. Record the observed stage, not an invented
+bootstrap cause. Do not start C2 in the same observation. Publication SHA/run IDs
+are in the PR checkpoint. No verified-anchor advancement or main merge.
+
+Windows C1, selected-file C2/real bytes/digest, actual in-flight Tor loss and
+positive Windows/Linux full E2E remain open. Existing deadline overshoot, T066
+cleanup/races, confinement, SDK-content, YouTube/AI/UI and packaging remain open.
+Source review 2026-09-27: Cargo check/test docs (--all-targets, --keep-going,
+--no-run) and GitHub workflow syntax (Bash early exits versus PowerShell status).
+https://doc.rust-lang.org/cargo/commands/cargo-check.html
+https://doc.rust-lang.org/cargo/commands/cargo-test.html
+https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax

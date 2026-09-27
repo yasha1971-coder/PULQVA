@@ -28,5 +28,21 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('          PULQVA_EVIDENCE_DIR: ${{ runner.temp }}', self.text)
 
 
+    def test_all_targets_and_privacy_tests_are_required_before_live_work(self):
+        block = self.text.split('        id: contracts\n', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('        shell: bash\n', block)
+        self.assertIn('          set -euo pipefail\n', block)
+        self.assertIn('test "$(git rev-parse HEAD)" = "$PULQVA_SOURCE_SHA"', block)
+        commands = [
+            'cargo +1.91.0 check --workspace --all-targets --locked --keep-going',
+            'cargo +1.91.0 test --workspace --all-targets --locked --no-run --keep-going',
+            'cargo +1.91.0 test --locked -p pulqva-privacy --lib -- --nocapture',
+            'cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture',
+        ]
+        positions = [block.index(command) for command in commands]
+        self.assertEqual(positions, sorted(positions))
+        self.assertNotIn('|| true', block)
+        self.assertNotIn('set +e', block)
+
 if __name__ == '__main__':
     unittest.main()

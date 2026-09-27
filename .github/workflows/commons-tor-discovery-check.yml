@@ -49,9 +49,17 @@ jobs:
       - name: Install pinned Rust
         id: rust
         run: rustup toolchain install 1.91.0 --profile minimal
-      - name: Require locked core and discovery contracts before live work
+      - name: Require complete workspace compilation and contracts before live work
         id: contracts
-        run: cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PULQVA_SOURCE_SHA"
+          git grep -n -E 'TorReadiness(Error|Stage|Timeout)' -- '*.rs'
+          cargo +1.91.0 check --workspace --all-targets --locked --keep-going
+          cargo +1.91.0 test --workspace --all-targets --locked --no-run --keep-going
+          cargo +1.91.0 test --locked -p pulqva-privacy --lib -- --nocapture
+          cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture
       - name: Compile the actual library and live acceptance harness
         id: compile
         run: cargo +1.91.0 build --locked -p pulqva-discovery --example real_commons_discovery
