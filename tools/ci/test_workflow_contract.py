@@ -35,7 +35,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('test "$(git rev-parse HEAD)" = "$PULQVA_SOURCE_SHA"', block)
         commands = [
             'cargo +1.91.0 check --workspace --all-targets --locked --keep-going',
-            'cargo +1.91.0 test --workspace --all-targets --locked --no-run --keep-going',
+            'cargo +1.91.0 test --workspace --all-targets --locked --no-run',
             'cargo +1.91.0 test --locked -p pulqva-privacy --lib -- --nocapture',
             'cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture',
         ]
