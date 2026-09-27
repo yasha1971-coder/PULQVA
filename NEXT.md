@@ -1,62 +1,53 @@
 # NEXT
 
-## CURRENT: T068-C1 candidate-rejection classification recovery
+## CURRENT: T068 engineering-loop recovery — preflight and safe step evidence
 
-PR73 / feat/T068-live-tor-e2e; main untouched; task T068 remains ACTIVE.
-Entry head 843bfead07632c72e9360024bf9c41e141dd32c6: all 12 associated workflows
-completed, 11 success, 1 failure. rust-check 36320828391 and native Windows/Linux
-discovery-contract-check 36320828421 passed. The export repair is VERIFIED.
-The global fully green anchor remains fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0.
-Live run 36320828608: Linux job108624201645 reached response validation and returned
-UntrustedCandidate; Windows job108624201776 returned Readiness(Timeout) before
-external_search. Logs already read; checkpoints 5856171820 and 5856225229 contain
-exact markers. Do not re-download them or conflate these failures with E0432/403.
+PR73 / feat/T068-live-tor-e2e; main untouched; T068 remains ACTIVE.
+Entry head 1680dc85f0b2afe4e8b0f34bbdd6ba45065514c6 has 11/12 successful
+workflows. rust-check36322839033 and native discovery-contract-check36322839013
+passed. Public run36322839116 failed on both OSes: Ubuntu job108629865617 returned
+CandidateRejected(UrlQueryOrFragment); Windows job108629865710 returned
+Readiness(Timeout) before external_search. Logs were already read and summarized
+in checkpoint5856546895; do not fetch them again without a new question.
+Global verified anchor stays fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0.
 
-ONE outcome in this source recovery: expose the exact first failed candidate
-predicate through the EXISTING search -> last_error -> fixed-public harness path.
-CandidateRejected(CandidateFailure) carries only fixed enum variants: page identity,
-namespace/title checks, duplicates, URL length/characters/authority/path/encoding,
-digest length/encoding and core construction. CandidateFailure is exported together
-with its implementation; no repeat of the missing-export defect.
+ONE implementation outcome: improve the existing discovery CI feedback loop.
+The existing native workflow now requires Python evidence-control tests and the
+same locked core/discovery contract command BEFORE Arti compilation/live search.
+A prior failing step stops those later stages; no continue-on-error or retry.
+The positive live criterion and its receipt upload remain unchanged.
 
-There is ONE underlying parser. Its standalone public parse_response wrapper keeps
-the prior UntrustedCandidate error contract, while CommonsSearch invokes the same
-classified implementation directly. No second parse, network request, fallback,
-response recording or logging path is added. All original test modules and request
-plan are byte-identical to the parent. Existing candidate acceptance predicates,
-case-sensitive extension, ASCII requirement, MIME/size/hash limits, ordering and
-fail-whole-response behavior are retained. No interpretation of the unknown live
-predicate is claimed; this is diagnostic refinement, not an operational fix.
+The finalizer consumes GitHub step OUTCOMES, checks actual git HEAD against the
+expected source SHA, and writes separate code/live verdicts plus allowlisted step
+statuses to stage-status.json. Upload runs on failure when that file was produced.
+Unknown/missing/stale/skipped/cancelled evidence cannot pass. No raw log/context
+outputs, URLs, requests, titles, bodies or provider identifiers are persisted.
+Existing safe protocol categories remain in the harness log. This artifact names
+the failing workflow stage; it is NOT protocol-level diagnostics, cross-job CI
+aggregation, attestation or file E2E evidence. Missing artifacts remain incomplete.
+Code PASS does not erase live FAIL; a successfully uploaded diagnostic does not
+turn the original failed job green. Sibling jobs still require direct inspection.
 
-Four new network-free Rust tests cover 21 reachable rejection categories through
-the real coordinator, stale-result clearing, safe formatting, reset after success,
-positive metadata/hash normalization and a 672-input differential URL corpus
-against the previous predicate copied only into cfg(test). CoreContract remains a
-defensive category; current earlier checks imply nonempty core fields. Native
-compilation/test execution is PENDING, not claimed by source inspection.
+24 standard-library Python tests passed LOCALLY, including a real CLI invocation
+in a temporary Git repository with spaces in its path. Workflow prerequisite/order
+and evidence guards have narrow regression tests. YAML parsing, Bash syntax and
+context placement were checked separately. An invalid runner context placement
+was caught and corrected before publication, not by another failed CI run.
+Native Windows/Linux execution of this NEW workflow is still PENDING. No local
+Rust compiler/test or public network request is claimed. Exact publication/run IDs
+belong in the PR checkpoint. tools/ci/README.md records scope and source review.
 
-Local evidence: 23503-byte baseline Git hash matched the actual repository blob;
-asserted edits, complete old-test and request-plan preservation, UTF-8/JSON byte
-round-trip, independent resulting source hashes. Uploaded commons.rs: 25849 bytes,
-07ffeb80dff4f561da1a497be4c136b13ea244a8; tests: 6825 bytes,
-8bdc5cceb04d02e15c77dc180cc43f732e3dea07; lib.rs: 490 bytes,
-537b2557c62e0a1bbc51f9259c9e4a1fad6cb950. No local Cargo/rustc is installed.
-Runtime public-raw retrieval was unavailable (DNS); connector reads plus verified
-byte reconstruction were used, not a claim that local network tests ran.
+ONE NEXT ACTION: inspect this change's exact-head guard/contracts results and
+per-OS stage-status artifacts, including FAILED jobs. Check source/checkout SHA,
+run/attempt and actual child outcomes. Do not expect this process-only change to
+fix Linux UrlQueryOrFragment or Windows readiness. Once this control is verified,
+resume the now-localized URL issue with a provider-contract-derived reproducer;
+Windows readiness stays an independent recovery. No blind rebuild or graph repair.
 
-ONE NEXT ACTION: observe the newly published exact head recorded in PR73, starting
-with rust-check/native discovery-contract-check. If those pass, inspect the existing
-live run's fixed category to identify the actual candidate predicate; do not skip
-unsafe candidates, relax validation, change dependencies/provider, lengthen Tor
-deadlines, or retry until lucky. Windows readiness remains a separate open blocker.
-At most one source-triggered attempt this phase; no busy polling or next task jump.
-
-Entry/exit review 2026-09-27: official MediaWiki API:Imageinfo and API:Errors_and_warnings
-https://www.mediawiki.org/wiki/API:Imageinfo
-https://www.mediawiki.org/wiki/API:Errors_and_warnings
-These describe untrusted metadata/API semantics, not the actual rejected live value.
-No kernel, Tor/TLS client, timeout, Cargo graph, workflow permissions or merge-gate
-change. Canary/tri-state/SLO/Chutney/Shadow remain separate, not implemented here.
-C1 positive external choices, C2 same-coordinator selected file/bytes/digest, actual
-in-flight Tor loss and positive Windows/Linux E2E remain UNVERIFIED. T066 race/
-retention, descendant confinement, SDK-content, YouTube/AI/UI/packaging gates remain.
+No product Rust, parser acceptance, provider, Tor/TLS policy, timeout amount,
+Cargo graph, kernel, permission or merge-gate changes. Public operational tests
+remain strict, not relabeled inconclusive or successful. No new canary schedule,
+Chutney/Shadow or automatic GitHub collector was introduced. C1 real validated
+choices, C2 same-coordinator selected file/bytes/digest, actual in-flight Tor loss
+and positive Windows/Linux E2E remain open. T066 ownership/races, confinement,
+SDK-content, YouTube/AI/UI and clean-machine packaging gates remain unresolved.

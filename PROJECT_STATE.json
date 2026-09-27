@@ -11,8 +11,9 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "C1 Linux at 843bfea received a response but rejected a candidate. Exact first-predicate classification is implemented; new native/live evidence pending.",
-    "C1 Windows at 843bfea returned Readiness(Timeout) before external search; underlying probe cause unresolved.",
+    "C1 Linux at 1680dc8 rejects UrlQueryOrFragment; actual provider URL semantics not yet established or corrected.",
+    "C1 Windows at 1680dc8 returned Readiness(Timeout) before external search; underlying probe cause unresolved.",
+    "New preflight/evidence workflow has passed local Python checks only; native workflow execution pending.",
     "Selected-file retrieval through the same coordinator and verified downloaded bytes/digest remain unproven.",
     "Actual Arti loss during in-flight network I/O remains unproven; prior supervision test uses a pending future.",
     "Positive Windows/Linux full E2E and same-flow Tor-unavailable evidence remain required.",
@@ -30,17 +31,24 @@
     "kind": "global verified anchor; live external discovery NOT verified"
   },
   "candidate_recovery": {
-    "parent": "843bfead07632c72e9360024bf9c41e141dd32c6",
-    "parent_rust_check": 36320828391,
-    "parent_native_contract_check": 36320828421,
-    "parent_code_checks": "success",
-    "failed_live_run": 36320828608,
-    "linux_job": 108624201645,
-    "windows_job": 108624201776,
-    "linux_observed": "UntrustedCandidate",
+    "observed_head": "1680dc85f0b2afe4e8b0f34bbdd6ba45065514c6",
+    "rust_check": 36322839033,
+    "native_contract_check": 36322839013,
+    "code_checks": "success",
+    "failed_live_run": 36322839116,
+    "linux_job": 108629865617,
+    "windows_job": 108629865710,
+    "linux_observed": "CandidateRejected(UrlQueryOrFragment)",
     "windows_observed": "Readiness(Timeout)",
-    "new_native_tests": "pending",
-    "acceptance_policy": "unchanged; fixed safe categories only",
+    "acceptance_policy": "unchanged; both operational faults remain open"
+  },
+  "engineering_recovery": {
+    "parent": "1680dc85f0b2afe4e8b0f34bbdd6ba45065514c6",
+    "scope": "existing discovery preflight and per-OS allowlisted step evidence",
+    "local_python_tests_passed": 24,
+    "native_ci": "pending",
+    "automatic_cross_job_collector": false,
+    "product_failures_fixed": false,
     "publication": "See PR73 checkpoint; no global verified-anchor advancement"
   },
   "updated": "2026-09-27"
