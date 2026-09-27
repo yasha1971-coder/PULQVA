@@ -1,18 +1,23 @@
 # NEXT
 
-## CURRENT: committed desktop lock / real Deno spawn diagnosis; CI pending
+## CURRENT: T067 verified; T068 is the next live vertical gate
 
-PR71 branch feat/T066-deno-environment. Overall verified anchor remainsb6c7130.
-5dbdad0 desktop36258520003 Windows108449766013 / Linux108449766100 compiled
-Tauri and passed native tests/archive materialization. Generated locks match
-byte-for-byte112174 bytes; SHA2566f84196e590bf00f9a62d887beef61c46782064e277120e3da5435f1f8c687d2.
-Committed actual lock, removed generation fallback/exporter. CI requires tracked
-lock; all cargo check/test commands --locked. TOML/YAML/hash/diff locally checked.
+T067 exact head 51a21c476d49738184678bb6e5c3d8ff29be68fd passed all 10 PR
+workflows. It proves deterministic typed request -> >=2 choices -> explicit
+selection -> bounded local file/receipt orchestration. It does NOT prove Internet,
+Tor search or live download.
 
-Real Deno runtime test now fails trial-spawn-failed on both OSes. Added test-only
-error kind/raw OS code, no path/environment dump. Writable extraction handles are
-only a hypothesis until diagnostics confirm. New head/run IDs in PR checkpoint.
+Current-world review 2026-09-27 preserves the architecture: keep frontend networkless,
+Tor fail-closed and remote DNS; do not make YouTube the generic first-live criterion.
+yt-dlp/Deno/EJS compatibility remains a subsequent adapter gate; remote executable
+components must not be silently fetched.
 
-ONE next action: inspect exact-head native spawn code, repair only evidenced
-cause while retaining executable identity/cleanup ownership. No blind rerun or
-runtime activation. Lock recovery not overall-green until native tests complete.
+T068 READY: use the SAME T067 coordinator for one bounded live Tor-backed vertical
+fixture: natural-language request -> real externally obtained candidate choices ->
+explicit selection -> real downloaded file -> receipt. Choose a stable small public
+fixture that does not require account/API key/JS challenge. All external operations
+must cross the existing ReadyTorTransport/privacy boundary. No clearnet fallback.
+
+ONE next action: PREPARE T068 by selecting and documenting the stable live fixture
+and exact existing adapters required. Do not implement or launch T068 in the T067
+closeout phase.

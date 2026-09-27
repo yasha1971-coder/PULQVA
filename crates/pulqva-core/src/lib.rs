@@ -5,19 +5,20 @@
 
 mod candidate;
 mod intent;
+mod journey;
 
 pub use candidate::{SearchCandidate, SearchCandidateError};
 pub use intent::{SearchIntent, SearchIntentError};
+pub use journey::{
+    CandidateRetrieval, CandidateSearch, ChoiceSet, FileReceipt, JourneyError,
+    SelectedCandidate, request_choices, retrieve_choice,
+};
 
-/// Marker proving the core crate is linked and available.
 pub const CORE_CRATE_READY: bool = true;
 
 #[cfg(test)]
 mod tests {
     use super::CORE_CRATE_READY;
-
     #[test]
-    fn core_crate_smoke_test() {
-        assert!(CORE_CRATE_READY);
-    }
+    fn core_crate_smoke_test() { assert!(CORE_CRATE_READY); }
 }
