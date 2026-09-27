@@ -1,0 +1,46 @@
+name: t068-production-graph-candidate
+on:
+  pull_request:
+    paths:
+      - 'tools/t068_production_graph.py'
+      - 'tools/t068_https_executor.rs'
+      - '.github/workflows/t068-production-graph-candidate.yml'
+permissions:
+  contents: read
+jobs:
+  candidate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Prepare isolated production candidate
+        run: python tools/t068_production_graph.py prepare
+      - name: Resolve exact graph with Cargo
+        shell: bash
+        run: cargo +1.91.0 update --workspace --manifest-path "$T068_PROD/Cargo.toml"
+      - name: Verify graph identity
+        run: python tools/t068_production_graph.py verify
+      - name: Compile production executor candidate
+        shell: bash
+        run: cargo +1.91.0 test --locked --manifest-path "$T068_PROD/Cargo.toml" -p pulqva-discovery --example t068_https_executor
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: t068-production-graph-${{ matrix.os }}
+          path: |
+            ${{ env.T068_PROD }}/Cargo.lock
+            ${{ env.T068_PROD }}/crates/pulqva-discovery/Cargo.toml
+            ${{ env.T068_PROD }}/production-receipt.json
+          retention-days: 7
