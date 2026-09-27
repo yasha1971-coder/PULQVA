@@ -82,7 +82,6 @@ jobs:
           echo "ARTI_BIN=$ARTI_BIN" >> "$GITHUB_ENV"
       - name: Require real Tor search and real choices on this OS
         id: live
-        continue-on-error: ${{ matrix.os == 'windows-latest' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -94,7 +93,6 @@ jobs:
           echo "$OUTPUT" | grep -F 'PULQVA_COMMONS_TOR_DISCOVERY_OK choices='
       - uses: actions/upload-artifact@v4
         id: receipt
-        if: ${{ steps.live.outcome == 'success' }}
         with:
           name: commons-live-discovery-${{ matrix.os }}
           path: ${{ env.DISCOVERY_EVIDENCE }}
