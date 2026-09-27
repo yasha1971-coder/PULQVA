@@ -286,7 +286,7 @@ fn rejected(kind: CandidateFailure) -> DiscoveryError {
 
 /// Fixed vocabulary only: never store error messages, URLs, bodies or identifiers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ReadinessFailure { Timeout, BootstrapActivation, ChildExited, Protocol, Io }
+pub enum ReadinessFailure { Timeout, ListenerTimeout, NegotiationTimeout, DestinationTimeout, BootstrapActivation, ChildExited, Protocol, Io }
 
 /// ConnectOrTls does NOT claim to distinguish a SOCKS circuit from a TLS failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

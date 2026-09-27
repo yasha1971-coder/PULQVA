@@ -1,7 +1,7 @@
 //! Endpoint-private HTTPS executor. All production requests use a freshly verified
 //! owned Arti child. Local controlled tests are not live Tor/E2E evidence.
 use crate::{CommonsSearch, CommonsSearchPlan, CommonsTransport, DiscoveryError, NetworkFailure, ReadinessFailure};
-use pulqva_privacy::{ReadyTorTransport, RunningArti, TorReadinessError, verify_tor_readiness};
+use pulqva_privacy::{ReadyTorTransport, RunningArti, TorReadinessError, TorReadinessStage, verify_tor_readiness};
 use std::{future::{Future, poll_fn}, net::IpAddr, sync::{Arc, atomic::{AtomicBool, Ordering}},
           task::Poll, time::Duration};
 
@@ -54,7 +54,11 @@ impl CommonsTransport for CommonsHttpsTransport<'_> {
 // Classify without formatting or retaining a possibly URL-bearing source chain.
 fn readiness_failure(error: TorReadinessError) -> DiscoveryError {
     DiscoveryError::Readiness(match error {
-        TorReadinessError::Timeout => ReadinessFailure::Timeout,
+        TorReadinessError::Timeout(timeout) => match timeout.stage {
+            TorReadinessStage::Listener => ReadinessFailure::ListenerTimeout,
+            TorReadinessStage::Negotiation => ReadinessFailure::NegotiationTimeout,
+            TorReadinessStage::Destination => ReadinessFailure::DestinationTimeout,
+        },
         TorReadinessError::BootstrapActivation(_) => ReadinessFailure::BootstrapActivation,
         TorReadinessError::ChildExited(_) => ReadinessFailure::ChildExited,
         TorReadinessError::Protocol(_) => ReadinessFailure::Protocol,
