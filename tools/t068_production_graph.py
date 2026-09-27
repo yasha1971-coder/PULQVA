@@ -8,7 +8,7 @@ def prepare():
  m=d/"crates/pulqva-discovery/Cargo.toml"
  with m.open("a",encoding="utf-8") as f:
   f.write('\nreqwest = { version = "=0.13.5", default-features = false, features = ["rustls-no-provider", "socks"] }\nrustls = { version = "=0.23.43", default-features = false, features = ["ring", "std", "tls12"] }\nwebpki-roots = "=1.0.9"\ntokio = { version = "=1.53.1", default-features = false, features = ["rt", "net", "time"] }\n')
- shutil.copy2(ROOT/"tools/t068_https_executor.rs",d/"crates/pulqva-discovery/examples/t068_https_executor.rs")
+ (d/"crates/pulqva-discovery/examples").mkdir(parents=True,exist_ok=True)\n shutil.copy2(ROOT/"tools/t068_https_executor.rs",d/"crates/pulqva-discovery/examples/t068_https_executor.rs")
  with (Path(os.environ["GITHUB_ENV"])).open("a") as f: f.write(f"T068_PROD={d.as_posix()}\n")
 def verify():
  d=Path(os.environ["T068_PROD"]); lock=d/"Cargo.lock"; manifest=d/"crates/pulqva-discovery/Cargo.toml"
