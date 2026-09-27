@@ -1,32 +1,29 @@
 # NEXT
 
-## CURRENT: T068-B0 Windows local SOCKS fixture repair; native CI pending
+## CURRENT: T068-B0 native HTTPS candidate VERIFIED; graph adoption prepared
 
-Branch feat/T068-live-tor-e2e; PR #73 remains draft. Main is unchanged.
-Last verified PR head b223f3a8825256c002b91bffd8508ecb9ba275be remains the anchor.
-Parent 3c84e61182e8c2b7a700f843e32ce9aac085c034: 11/12 associated workflows
-succeeded. Only discovery-https-candidate-check 36302674079 was red.
-Linux job 108573162130 passed. Windows job 108573162014 resolved and verified the
-candidate graph and compiled, then local read_exact failed with Winsock 10035 /
-WouldBlock. The same helper caused the poisoned-environment child failure.
+Branch feat/T068-live-tor-e2e; PR #73 remains draft; main unchanged.
+Exact head cd785a38eb66b11721a4d65788dd9ba332169719: all 12 associated workflows
+succeeded, including discovery-https-candidate-check 36303595381 on Windows/Linux.
+The Windows accepted-socket portability repair is therefore verified.
 
-Repair is confined to the test fixture: explicitly set accepted TcpStream to
-blocking mode before applying the existing finite read/write timeouts. Keep the
-listener nonblocking for bounded accept and no-retry observation. A new regression
-forces a nonblocking accepted stream on either OS and proves the reset honors an
-idle-read timeout while the listener still returns WouldBlock without a new peer.
-No production client, dependency pin, shipping manifest/lock or Tor policy changed.
-Root cause/source review and exact publication head are checkpointed in PR #73.
-Local rustc/Cargo remain absent; repaired Rust/native tests are NOT RUN locally.
+Both run artifacts were retrieved and inspected. Their generated Cargo.lock files are
+byte-identical: SHA-256 ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5,
+33037 bytes. Their candidate pulqva-discovery manifests are byte-identical:
+SHA-256 c5e3083ce803118a1e6166628309af07bea194a45ecac2606f0abd96cb1401f6.
+Both receipts pin reqwest 0.13.5, rustls 0.23.43, webpki-roots 1.0.9 and tokio 1.53.1,
+and report preservation of existing registry identities. features.txt differs across
+OS as expected from target-specific dependencies; do not require byte identity there.
 
-ONE next action: inspect the repair head's discovery-https-candidate-check. Diagnose
-red first. If green, retrieve BOTH platform candidate artifacts, verify receipt
-hashes and compare Cargo-generated locks/features before adopting the graph with
-the real endpoint-private CommonsTransport executor. Retire the one-off generator
-when the real lock is imported. No blind dependency upgrade or parser expansion.
+ONE next action: adopt the exact generated manifest and Cargo.lock into the shipping
+workspace together with the substantive endpoint-private CommonsTransport executor,
+then launch one native B implementation CI. The executor must retain no_proxy +
+explicit socks5h, HTTPS-only, HTTP/1, no redirects/retries/referer/decompression/
+keylog, bounded streaming body and total deadline. Add controlled transport tests
+for proxy refusal/remote hostname, TLS success+certificate/hostname rejection,
+redirect/status/oversize/truncation/deadline and poisoned ambient proxy settings.
+No generic caller URL/client override.
 
-B0 is local dependency/SOCKS evidence, not successful TLS, live Tor, Commons search
-or E2E. B still needs HTTPS positive/negative, streaming/deadline/liveness tests.
-C must obtain real choices and download the selected file through the SAME
-coordinator and existing retrieval boundary. Separate positive Windows/Linux and
-fail-closed evidence remain required. T066 limitations and packaging gates remain.
+B0 remains local dependency/SOCKS evidence, not live Commons/Tor E2E. C remains the
+same-coordinator real discovery -> explicit choice -> existing retrieval -> actual
+file/digest receipt on positive Windows/Linux, plus fail-closed evidence.

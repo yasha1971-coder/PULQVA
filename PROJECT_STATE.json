@@ -4,27 +4,27 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "b223f3a8825256c002b91bffd8508ecb9ba275be",
+  "last_verified_commit": "cd785a38eb66b11721a4d65788dd9ba332169719",
   "last_completed_task": "T067",
   "active_task": "T068",
   "next_task": "T068",
-  "ci": "pending",
+  "ci": "green_b0",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "T068-B0 parent 3c84e61 passed 11/12 workflows; Windows local SOCKS fixture failed with 10035/WouldBlock after successful compilation. Accepted-stream mode repair and regression await native CI.",
-    "B0 generated locks are not shipping adoption: retrieve and verify both platform artifacts before modifying the existing --locked workspace graph.",
-    "T068-B production Tor-only Commons HTTPS executor is not implemented; TLS positive/negative tests, streaming/deadline/liveness and cancellation remain.",
+    "T068-B production Tor-only Commons HTTPS executor is not implemented; controlled TLS/body/deadline/liveness tests remain.",
     "Real external request -> choices -> selected file through the same coordinator remains unproven.",
-    "Commons query availability and at least two usable small WebM candidates remain unverified.",
+    "Commons live query availability and at least two usable small WebM candidates remain unverified.",
     "Positive Windows live retrieval and same-flow Tor-unavailable negative evidence remain required.",
     "T066 cleanup ownership/race limitations, descendant egress confinement and Arti SDK-content pinning remain unresolved.",
     "YouTube compatibility and self-contained clean-machine Windows/Linux packages are separate unverified gates."
   ],
   "verification_context": {
     "pr": 73,
-    "pr_head": "b223f3a8825256c002b91bffd8508ecb9ba275be",
-    "native_discovery_run": 36300961027,
-    "kind": "11 associated PR workflow conclusions observed successful; not live network discovery"
+    "pr_head": "cd785a38eb66b11721a4d65788dd9ba332169719",
+    "candidate_run": 36303595381,
+    "candidate_lock_sha256": "ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5",
+    "candidate_lock_bytes": 33037,
+    "kind": "B0 native Windows/Linux dependency/API/SOCKS evidence; not live E2E"
   },
   "updated": "2026-09-27"
 }
