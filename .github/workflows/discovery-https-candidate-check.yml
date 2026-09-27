@@ -1,0 +1,52 @@
+name: discovery-https-candidate-check
+on:
+  pull_request:
+    paths:
+      - 'tools/t068_https_candidate.py'
+      - 'tools/t068_https_probe.rs'
+      - '.github/workflows/discovery-https-candidate-check.yml'
+permissions:
+  contents: read
+jobs:
+  candidate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Prepare isolated candidate workspace (shipping graph untouched)
+        run: python tools/t068_https_candidate.py prepare
+      - name: Resolve new candidate dependencies while retaining existing lock
+        shell: bash
+        run: cargo +1.91.0 update --workspace --manifest-path "$T068_CANDIDATE/Cargo.toml"
+      - name: Verify pins and preserve all existing registry identities
+        run: python tools/t068_https_candidate.py verify
+      - name: Compile exact API set and run local SOCKS refusal tests (not live Tor)
+        shell: bash
+        run: cargo +1.91.0 test --locked --manifest-path "$T068_CANDIDATE/Cargo.toml" -p pulqva-discovery --example t068_https_probe -- --nocapture
+      - name: Preserve resolved feature graph
+        shell: bash
+        run: cargo +1.91.0 tree --locked --manifest-path "$T068_CANDIDATE/Cargo.toml" -p pulqva-discovery -e features > "$T068_CANDIDATE/features.txt"
+      - name: Export authentic candidate lock and receipt even after failure
+        if: always() && env.T068_CANDIDATE != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: t068-https-candidate-${{ matrix.os }}
+          path: |
+            ${{ env.T068_CANDIDATE }}/Cargo.lock
+            ${{ env.T068_CANDIDATE }}/crates/pulqva-discovery/Cargo.toml
+            ${{ env.T068_CANDIDATE }}/candidate-receipt.json
+            ${{ env.T068_CANDIDATE }}/features.txt
+          if-no-files-found: error
+          retention-days: 7
