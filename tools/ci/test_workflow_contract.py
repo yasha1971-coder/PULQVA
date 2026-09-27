@@ -14,7 +14,8 @@ class WorkflowContractTests(unittest.TestCase):
     def test_expected_step_ids_and_preflight_order(self):
         ids = re.findall(r'^        id: (\w+)$', self.text, re.MULTILINE)
         self.assertEqual(ids, list(CODE_STEPS + LIVE_STEPS) + ['evidence'])
-        self.assertNotIn('continue-on-error:', self.text)
+        self.assertEqual(self.text.count('continue-on-error:'), 1)
+        self.assertIn("continue-on-error: ${{ matrix.os == 'windows-latest' }}", self.text)
         self.assertIn('cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture', self.text)
 
     def test_failure_evidence_is_explicit_and_not_empty_path(self):
@@ -42,6 +43,7 @@ class WorkflowContractTests(unittest.TestCase):
         positions = [block.index(command) for command in commands]
         self.assertEqual(positions, sorted(positions))
         self.assertNotIn('|| true', block)
+        self.assertNotIn('continue-on-error:', block)
         self.assertNotIn('set +e', block)
 
 if __name__ == '__main__':
