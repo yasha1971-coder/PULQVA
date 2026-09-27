@@ -37,8 +37,15 @@ impl CommonsSearchPlan {
         if query.trim().is_empty() || query.len() > 512 || query.chars().any(char::is_control) {
             return Err(DiscoveryError::InvalidRequest);
         }
-        let query = encode_query(&format!("{query} filetype:video"));
-        let url = format!("{ENDPOINT}?action=query&format=json&formatversion=2&generator=search&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url%7Csize%7Csha1%7Cmime&gsrsearch={query}");
+        // CirrusSearch filesize uses 1024-byte units. Restrict the discovery
+        // window before gsrlimit is applied, rather than filling it with files
+        // the parser must discard. These are availability hints, not security
+        // controls: responses and eventually downloaded bytes still need checks.
+        let max_kib = MAX_MEDIA_BYTES / 1024;
+        let query = encode_query(&format!(
+            "{query} filetype:video filemime:\"video/webm\" filesize:<{max_kib}"
+        ));
+        let url = format!("{ENDPOINT}?action=query&format=json&formatversion=2&generator=search&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iilimit=1&iiprop=url%7Csize%7Csha1%7Cmime&gsrsearch={query}");
         Ok(Self { url, proxy })
     }
     pub fn url(&self) -> &str { &self.url }
@@ -268,7 +275,7 @@ mod tests {
         assert_eq!(search.last_results()[1].declared_size(), 32);
         assert_eq!(search.last_results()[1].declared_sha1(), "a".repeat(40));
         assert_eq!(search.transport.calls, 1);
-        assert!(search.transport.urls[0].ends_with("gsrsearch=countdown%20filetype%3Avideo"));
+        assert!(search.transport.urls[0].ends_with("gsrsearch=countdown%20filetype%3Avideo%20filemime%3A%22video%2Fwebm%22%20filesize%3A%3C8192"));
         assert_eq!(choices.select(2), Err(JourneyError::InvalidSelection));
     }
     #[test]
@@ -277,7 +284,7 @@ mod tests {
         request_choices(&mut search, "snow &format=xml").unwrap();
         request_choices(&mut search, "кино").unwrap();
         assert_ne!(search.transport.urls[0], search.transport.urls[1]);
-        assert!(search.transport.urls[0].ends_with("snow%20%26format%3Dxml%20filetype%3Avideo"));
+        assert!(search.transport.urls[0].ends_with("snow%20%26format%3Dxml%20filetype%3Avideo%20filemime%3A%22video%2Fwebm%22%20filesize%3A%3C8192"));
         assert!(search.transport.urls[1].contains("%D0%BA%D0%B8%D0%BD%D0%BE"));
         assert_eq!(search.transport.urls[0].matches("format=").count(), 1);
     }
@@ -336,5 +343,27 @@ mod tests {
         assert_eq!(parse_response(&body(vec![page(1,"A.webm"),bad])), Err(DiscoveryError::TooFewChoices));
         let pages = (1..=11).map(|id| page(id,&format!("{id}.webm"))).collect();
         assert_eq!(parse_response(&body(pages)), Err(DiscoveryError::InvalidResponse));
+    }
+    #[test]
+    fn provider_query_matches_supported_media_and_one_revision_envelope() {
+        let plan = CommonsSearchPlan::from_verified_proxy(
+            &SearchIntent::new("countdown").unwrap(), "socks5h://127.0.0.1:19050".into()
+        ).unwrap();
+        assert_eq!(MAX_MEDIA_BYTES, 8192 * 1024);
+        assert_eq!(plan.url(), concat!(
+            "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2",
+            "&generator=search&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iilimit=1",
+            "&iiprop=url%7Csize%7Csha1%7Cmime&gsrsearch=countdown%20filetype%3Avideo",
+            "%20filemime%3A%22video%2Fwebm%22%20filesize%3A%3C8192"
+        ));
+    }
+    #[test]
+    fn local_byte_cap_is_enforced_even_when_provider_ignores_search_filters() {
+        let mut at_limit = page(2, "B.webm");
+        at_limit["imageinfo"][0]["size"] = json!(MAX_MEDIA_BYTES);
+        let accepted = parse_response(&body(vec![page(1, "A.webm"), at_limit.clone()])).unwrap();
+        assert_eq!(accepted[1].declared_size(), MAX_MEDIA_BYTES);
+        at_limit["imageinfo"][0]["size"] = json!(MAX_MEDIA_BYTES + 1);
+        assert_eq!(parse_response(&body(vec![page(1, "A.webm"), at_limit])), Err(DiscoveryError::TooFewChoices));
     }
 }

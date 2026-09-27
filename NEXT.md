@@ -1,27 +1,30 @@
 # NEXT
 
-## CURRENT: T068-A Commons discovery contract implemented; exact-head CI pending
+## CURRENT: T068-A externally reviewed; query-envelope correction awaiting native CI
 
-Branch: feat/T068-live-tor-e2e.
-Verified base: main@3f85e10c621380195a90ea4864df4acf88c7cad4 (T067 merged).
-The implementation SHA, draft PR and registered run IDs belong in the PR checkpoint.
+Branch: feat/T068-live-tor-e2e. PR #73 remains draft and must not be merged yet.
+Verified PR head c0b68dfbec23967c0f12009716f1a51286a2762c: all 11 associated
+workflows passed. Native discovery run 36299874386, Windows 108565433372 and
+Linux 108565433599 passed; Linux log contains 10 core + 7 discovery tests and one
+compile-fail doctest. Actual integration checkout was c6338de1dabe93897e5cf3860031953c98c8c534.
 
-Implemented: narrow CommonsSearchPlan requiring ReadyTorTransport, UTF-8 query
-encoding, bounded typed API parser, small WebM source validation/provenance, and
-CandidateSearch adapter feeding the existing request_choices coordinator. Native
-Windows/Linux local contract CI added. No new upstream dependency versions.
+Current correction aligns server-side discovery with the existing local envelope:
+quoted exact WebM MIME filter, <=8192 KiB filesize hint, one image revision.
+Local MIME/size/URL checks are unchanged. Two regression tests added. This avoids
+spending the first ten result slots on media the local parser cannot use; it does
+not establish live availability. Current-world findings and remaining gates are in
+decisions/T068-review-2026-09-27.md. No dependency, runtime, kernel or Tor change.
 
-Today's official-source review is in ADR-0007. Existing yt-dlp supplies retrieval,
-not Commons search; the former assertion that no discovery executor was needed
-is corrected. This phase does NOT perform HTTP, prove live Tor/DNS or download
-anything. Synthetic responses must not be presented as real external choices.
+ONE next action: observe the new exact PR head's native discovery CI. Diagnose red;
+if green, proceed directly to bounded T068-B implementation in the same branch:
+a production endpoint-specific HTTPS executor with verified Tor SOCKS routing,
+remote DNS, TLS validation, streaming byte limits, one total deadline, no redirects,
+no ambient proxy/config and no implicit retries. Use a maintained HTTP/TLS library,
+not hand-written TLS or an assumed host curl installation. Record exact compatible
+versions and Cargo-generated lock before accepting the dependency change.
 
-ONE next action: inspect exact implementation-head discovery-contract-check and
-other triggered CI. Diagnose red before further work. Then a later bounded T068-B
-phase implements endpoint-specific Tor HTTPS execution with streaming byte/time
-limits, TLS validation and no redirects/ambient proxy/direct DNS fallback. Reuse
-the existing verified media retrieval for C, not a second demo downloader.
-
-T068 is ACTIVE, not DONE. No automatic merge, no live-E2E percentage claim. Local
-Cargo absent and clone failed DNS: Rust compilation/tests were not run locally.
-Kernel/privacy/UX and existing media/Tor launch behavior are unchanged.
+Then C binds real discovery results to the SAME coordinator/selection/retrieval
+path and actual-file verification. No more optional discovery features before B.
+A static token, a request plan, synthetic JSON or Windows timeout is not live E2E.
+No next-task launch or partial merge during this review phase. Rust tests are not
+available locally (no Cargo; container DNS unavailable); new checks are pending CI.

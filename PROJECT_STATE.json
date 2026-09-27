@@ -4,19 +4,27 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "3f85e10c621380195a90ea4864df4acf88c7cad4",
+  "last_verified_commit": "c0b68dfbec23967c0f12009716f1a51286a2762c",
   "last_completed_task": "T067",
   "active_task": "T068",
   "next_task": "T068",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "T068-A Commons discovery request/parser adapter is pending native CI; no real HTTPS executor is implemented in this phase.",
-    "Real external request -> choices -> selected file through Tor has not yet been demonstrated through the T067 coordinator.",
-    "Current Commons query availability and at least two usable small WebM candidates remain unverified.",
-    "Windows positive live media retrieval remains unproven; fail-closed behavior is verified.",
-    "YouTube/EJS/POT/SABR compatibility is a separate adapter/reliability gate.",
-    "Self-contained clean-machine Windows/Linux release packages remain unverified."
+    "T068-A baseline passed 11 associated workflows; current query-envelope correction is pending native CI.",
+    "T068-B production Tor-only HTTPS discovery executor is not implemented.",
+    "Real external request -> choices -> selected file through the same coordinator remains unproven.",
+    "Commons live query availability and at least two usable small WebM candidates remain unverified.",
+    "Positive Windows live retrieval and same-flow Tor-unavailable negative evidence remain required.",
+    "T066 cleanup ownership/race limitations, descendant egress confinement and Arti SDK-content pinning remain unresolved; current green component tests do not erase them.",
+    "YouTube compatibility and self-contained clean-machine Windows/Linux packages are separate unverified gates."
   ],
+  "verification_context": {
+    "pr": 73,
+    "pr_head": "c0b68dfbec23967c0f12009716f1a51286a2762c",
+    "native_discovery_run": 36299874386,
+    "observed_test_checkout": "c6338de1dabe93897e5cf3860031953c98c8c534",
+    "kind": "PR integration merge, not live network discovery"
+  },
   "updated": "2026-09-27"
 }
