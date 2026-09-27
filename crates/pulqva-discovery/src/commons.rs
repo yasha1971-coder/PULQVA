@@ -5,10 +5,10 @@
 //! The future Tor-only executor must enforce the plan's limits while streaming,
 //! verify HTTPS certificates, reject redirects, and never use ambient proxies.
 
-use pulqva_core::{CandidateSearch, JourneyError, SearchCandidate, SearchIntent};
+use pulqva_core::{CandidateRetrieval, CandidateSearch, FileReceipt, JourneyError, SearchCandidate, SearchIntent, SelectedCandidate};
 use pulqva_privacy::ReadyTorTransport;
 use serde::Deserialize;
-use std::{collections::HashSet, fmt, time::Duration};
+use std::{collections::HashSet, fmt, path::Path, time::Duration};
 
 pub const MAX_RESPONSE_BYTES: usize = 256 * 1024;
 pub const MAX_RESULTS: usize = 10;
@@ -126,6 +126,24 @@ impl<T: CommonsTransport> CommonsSearch<T> {
         outcome
     }
 }
+
+impl<T: CommonsTransport> CandidateRetrieval for CommonsSearch<T> {
+    fn retrieve(&mut self, selection: &SelectedCandidate, _output_root: &Path)
+        -> Result<FileReceipt, JourneyError>
+    {
+        // C2 fail-closed binding: retrieval is permitted only for the exact
+        // candidate/metadata pair retained by the latest successful discovery.
+        // Network/file execution is deliberately not introduced by this commit.
+        let Some(media) = self.last_results.get(selection.index()) else {
+            return Err(JourneyError::RetrievalFailed);
+        };
+        if media.candidate() != selection.candidate() {
+            return Err(JourneyError::RetrievalFailed);
+        }
+        Err(JourneyError::RetrievalFailed)
+    }
+}
+
 impl<T: CommonsTransport> CandidateSearch for CommonsSearch<T> {
     fn search(&mut self, intent: &SearchIntent) -> Result<Vec<SearchCandidate>, JourneyError> {
         self.discover(intent).map_err(|error| match error {
@@ -524,6 +542,32 @@ mod diagnostic_tests {
         assert_eq!(search.discover(&intent), Err(DiscoveryError::InvalidRequest));
         assert_eq!(search.last_error(), Some(DiscoveryError::InvalidRequest));
     }
+    #[test]
+    fn retrieval_binding_rejects_stale_foreign_and_unimplemented_downloads_without_receipt() {
+        use pulqva_core::{CandidateRetrieval, SelectedCandidate};
+        let mut search = fixture();
+        let choices = request_choices(&mut search, "countdown").unwrap();
+        let selected = choices.select(1).unwrap();
+        let root = std::path::Path::new("unused-c2-root");
+        assert_eq!(CandidateRetrieval::retrieve(&mut search, &selected, root),
+                   Err(JourneyError::RetrievalFailed));
+
+        let foreign_choices = ChoiceSet::new(
+            SearchIntent::new("foreign").unwrap(),
+            vec![
+                SearchCandidate::new("Foreign A", "https://example.invalid/a").unwrap(),
+                SearchCandidate::new("Foreign B", "https://example.invalid/b").unwrap(),
+            ],
+        ).unwrap();
+        let foreign = foreign_choices.select(1).unwrap();
+        assert_eq!(CandidateRetrieval::retrieve(&mut search, &foreign, root),
+                   Err(JourneyError::RetrievalFailed));
+
+        search.last_results.clear();
+        assert_eq!(CandidateRetrieval::retrieve(&mut search, &selected, root),
+                   Err(JourneyError::RetrievalFailed));
+    }
+
 }
 
 #[cfg(test)]
