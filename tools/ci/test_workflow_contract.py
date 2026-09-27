@@ -15,6 +15,7 @@ class WorkflowContractTests(unittest.TestCase):
         ids = re.findall(r'^        id: (\w+)$', self.text, re.MULTILINE)
         self.assertEqual(ids, list(CODE_STEPS + LIVE_STEPS) + ['evidence'])
         self.assertEqual(self.text.count('continue-on-error:'), 1)
+        self.assertIn("if: ${{ steps.live.outcome == 'success' }}", self.text)
         self.assertIn("continue-on-error: ${{ matrix.os == 'windows-latest' }}", self.text)
         self.assertIn('cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture', self.text)
 

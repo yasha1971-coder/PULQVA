@@ -94,6 +94,7 @@ jobs:
           echo "$OUTPUT" | grep -F 'PULQVA_COMMONS_TOR_DISCOVERY_OK choices='
       - uses: actions/upload-artifact@v4
         id: receipt
+        if: ${{ steps.live.outcome == 'success' }}
         with:
           name: commons-live-discovery-${{ matrix.os }}
           path: ${{ env.DISCOVERY_EVIDENCE }}
