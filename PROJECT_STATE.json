@@ -11,7 +11,7 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "ec8c438 candidate PREPARE failed on both OSes before Cargo. Actual byte correction and four locally passing offline regressions now await native CI; earlier claimed read-back success was incorrect.",
+    "95664ce: 12/13 workflows passed. Linux candidate passed all stages; Windows preflight failed two LF-only byte-marker assertions. Tests corrected for LF/CRLF; new native CI pending.",
     "T068-B production Tor-only Commons HTTPS executor is not implemented; controlled TLS/body/deadline/liveness tests remain.",
     "Real external request -> choices -> selected file through the same coordinator remains unproven.",
     "Commons live query availability and at least two usable small WebM candidates remain unverified.",
@@ -28,12 +28,17 @@
     "kind": "B0 native Windows/Linux dependency/API/SOCKS evidence; not live E2E"
   },
   "recovery": {
-    "failed_head": "ec8c4380b74908c71aa4e2c6c7d79f643fe3f1c7",
-    "failed_run": 36310993392,
-    "corrected_script_blob": "3ed6ee12f5b686727eb3c06e51b4290f3d6fae75",
-    "corrected_script_sha256": "d242b73c12f3af14d58c51cb11655e73793fa78b7e32eb40000a93ed3cb00b71",
+    "failed_head": "95664cec8afac630db02337750bbcac843fdea3f",
+    "failed_run": 36311576973,
+    "failed_windows_job": 108598413887,
+    "successful_linux_job": 108598413781,
+    "cause": "LF-only source marker in a regression test; locally reproduced with CRLF checkout bytes",
+    "unchanged_script_blob": "3ed6ee12f5b686727eb3c06e51b4290f3d6fae75",
+    "corrected_test_blob": "9e7ca81dc348dfc0cc7891a4b162187bbeee86c5",
+    "corrected_test_sha256": "4d507634b679fcafee4d71f60cf6eee0fa4c359c8a35f8cd1a410bdbe900633d",
     "local_python": "3.13.5",
-    "offline_regressions_passed": 4,
+    "local_lf_tests_passed": 5,
+    "local_crlf_tests_passed": 5,
     "native_ci": "pending",
     "new_head_and_runs": "See PR73 publication checkpoint"
   },

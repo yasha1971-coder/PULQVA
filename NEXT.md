@@ -1,41 +1,42 @@
 # NEXT
 
-## CURRENT: T068-B recovery — real byte correction and executed offline preflight
+## CURRENT: T068-B recovery — Windows regression assumed LF-only checkout
 
-Branch feat/T068-live-tor-e2e, PR #73 draft; main untouched.
-Parent ec8c4380b74908c71aa4e2c6c7d79f643fe3f1c7 still failed PREPARE on
-Windows/Linux in candidate run 36310993392. Linux job 108596747790 and the
-actual source prove literal backslash+n remained at line 11. The preceding
-claim that read-back proved a newline was incorrect; do not repeat it.
+Branch feat/T068-live-tor-e2e; PR #73 remains draft. Main is untouched.
+At 95664cec8afac630db02337750bbcac843fdea3f all 13 workflows completed:
+12 success, only t068-production-graph-candidate 36311576973 failed.
+Linux candidate 108598413781 passed preflight, prepare, Cargo, compilation and
+artifact export. Windows 108598413887 passed Python syntax, JSON byte round-trip
+and the actual fresh-directory PREPARE smoke test. Two LF-only byte-marker
+assertions failed with count=0. This is NOT the earlier SyntaxError returning.
 
-Reproduced SyntaxError locally from bytes matching Git blob abdaee56210398aea3f3548d73eee9ce1de58b44.
-Corrected exactly one byte sequence with a required match/change assertion.
-Corrected script: 1779 bytes; Git blob 3ed6ee12f5b686727eb3c06e51b4290f3d6fae75;
-SHA256 d242b73c12f3af14d58c51cb11655e73793fa78b7e32eb40000a93ed3cb00b71.
-Local Python 3.13.5: py_compile passed and FOUR offline regressions passed:
-source syntax, historical corruption rejection, JSON round-trip byte identity,
-and actual prepare in a fresh directory with spaces/missing examples, checking
-copied probe bytes, valid manifest pins and no source/lock changes. No Cargo run.
-GitHub blob identity matched locally computed hashes before branch publication.
+Exact baseline source/test Git hashes reproduced locally. With Python 3.13.5,
+the baseline passes 4 tests with LF and fails the same two assertions with CRLF.
+Repair changes only tests: accept one real LF or CRLF statement separator;
+retain rejection of literal backslash+n, syntax validation and exact-byte JSON/
+hash checks. New regression exercises BOTH newline spellings on EVERY runner.
+Local repaired suite: 5/5 with LF, 5/5 with CRLF, including real PREPARE in paths
+with spaces. This is local checkout-format coverage, NOT native Windows proof.
+Test blob 9e7ca81dc348dfc0cc7891a4b162187bbeee86c5; 5581 bytes;
+SHA256 4d507634b679fcafee4d71f60cf6eee0fa4c359c8a35f8cd1a410bdbe900633d.
+GitHub create_blob hash matches the locally tested bytes before publication.
 
-CI now runs Python syntax/regressions before installing Rust. Upload is gated
-on a nonempty T068_PROD so a failed prepare never expands artifact paths to /.
-No shipping manifests/locks, Rust executor, kernel, Tor settings or permissions changed.
+ONE NEXT ACTION: inspect the repair head's existing native candidate workflow.
+On red, inspect the exact failing stage. On green, use already verified B0 lock
+and manifest bytes for the substantive endpoint-private CommonsTransport; do not
+create another generator or optional parser task. Publication SHA/run IDs are in
+PR #73's checkpoint. Do not merge this unfinished T068 parent or call it E2E.
 
-ONE NEXT ACTION: inspect the new recovery head's candidate native preflight/Cargo
-steps; diagnose any red using the exact failing stage. Do not count local Python
-success as Windows/Linux Cargo success, live discovery or E2E. No unchanged retries.
-New commit/run evidence is in PR #73's checkpoint; current native CI is PENDING.
+Existing mounted /mnt/data/t068-win2.zip and /mnt/data/t068-linux2.zip can be read
+with Python zipfile; no Files materialization is needed. The full B0 Cargo.lock is
+33037 bytes, SHA256 ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5.
+Do not normalize lock/artifact bytes for an integrity comparison. Library adoption,
+production executor, controlled TLS/body/deadline/liveness tests and same-coordinator
+real external request -> choices -> selected file remain uncompleted.
 
-Already downloaded B0 artifacts are ordinary mounted ZIP files: this recovery
-read /mnt/data/t068-win2.zip and /mnt/data/t068-linux2.zip directly, and both full
-Cargo.lock members hash to ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5
-(33037 bytes). Do not use Files materialization on these mounted artifacts or
-invent another graph generator to solve a byte-transfer problem. Adoption is NOT
-performed here; the verified existing graph must accompany the real endpoint-private
-CommonsTransport implementation after recovery. B/C and real E2E remain unfinished.
-
-Primary sources checked on 2026-09-27:
-https://docs.python.org/3.12/library/py_compile.html
-https://docs.python.org/3.12/library/pathlib.html
-https://docs.github.com/en/rest/git/blobs
+Entry/exit primary-source review, 2026-09-27:
+https://docs.python.org/3.12/reference/lexical_analysis.html#physical-lines
+https://git-scm.com/docs/gitattributes
+Python accepts LF and CRLF on every platform; Git may convert checkout line endings.
+No global Git/EOL setting, shipping code, manifest/lock, Tor/kernel or permissions
+changed to make the test pass. Last verified anchor remains cd785a3; new CI pending.

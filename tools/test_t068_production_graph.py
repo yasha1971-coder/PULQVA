@@ -17,19 +17,45 @@ def git_blob(data):
 
 
 class PrepareTests(unittest.TestCase):
+    def assert_statement_boundary(self, data):
+        # Python accepts LF and CRLF; Git may translate a checkout on Windows.
+        # Match the physical separator as stored, without altering source bytes.
+        markers = [b"exist_ok=True)" + ending + b" shutil.copy2"
+                   for ending in (b"\n", b"\r\n")]
+        found = [marker for marker in markers if marker in data]
+        self.assertEqual(sum(data.count(marker) for marker in markers), 1)
+        return found[0]
+
     def test_source_compiles_and_statements_are_separate(self):
         data = SCRIPT.read_bytes()
         compile(data, str(SCRIPT), "exec")
-        marker = b"exist_ok=True)" + bytes([10]) + b" shutil.copy2"
-        self.assertEqual(data.count(marker), 1)
+        self.assert_statement_boundary(data)
 
     def test_previous_literal_newline_bug_is_detected(self):
         data = SCRIPT.read_bytes()
-        correct = b"exist_ok=True)" + bytes([10]) + b" shutil.copy2"
+        correct = self.assert_statement_boundary(data)
         broken = b"exist_ok=True)" + bytes([92, 110]) + b" shutil.copy2"
         self.assertEqual(data.count(correct), 1)
         with self.assertRaises(SyntaxError):
             compile(data.replace(correct, broken), "historical-defect.py", "exec")
+
+    def test_lf_and_crlf_checkouts_keep_the_corruption_guard(self):
+        # Synthesized checkouts exercise both styles on EVERY native runner.
+        # Conversion is restricted to test copies, never byte-identity checks.
+        source = SCRIPT.read_bytes().replace(b"\r\n", b"\n")
+        for ending in (b"\n", b"\r\n"):
+            with self.subTest(ending=ending):
+                data = source.replace(b"\n", ending)
+                compile(data, "checkout.py", "exec")
+                correct = self.assert_statement_boundary(data)
+                broken = b"exist_ok=True)" + bytes([92, 110]) + b" shutil.copy2"
+                mutated = data.replace(correct, broken, 1)
+                self.assertNotEqual(mutated, data)
+                with self.assertRaises(SyntaxError):
+                    compile(mutated, "historical-defect.py", "exec")
+                restored = json.loads(json.dumps({"content": data.decode("utf-8")}))["content"].encode("utf-8")
+                self.assertEqual(restored, data)
+                self.assertEqual(git_blob(restored), git_blob(data))
 
     def test_json_round_trip_preserves_exact_source_bytes(self):
         data = SCRIPT.read_bytes()
