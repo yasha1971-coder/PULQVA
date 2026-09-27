@@ -4,5 +4,5 @@ mod commons;
 mod https;
 
 pub use commons::{CommonsSearch, CommonsSearchPlan, CommonsTransport, DiscoveredMedia,
-                  DiscoveryError, MAX_MEDIA_BYTES, MAX_RESPONSE_BYTES, MAX_RESULTS, parse_response};
+                  DiscoveryError, NetworkFailure, ReadinessFailure, MAX_MEDIA_BYTES, MAX_RESPONSE_BYTES, MAX_RESULTS, parse_response};
 pub use https::{CommonsHttpsTransport, DiscoveryCancellation};
