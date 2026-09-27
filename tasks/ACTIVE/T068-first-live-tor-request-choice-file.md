@@ -1,7 +1,7 @@
 # T068 — First live Tor-backed request -> choice -> file
 
-Status: ACTIVE. A and B0 verified; B library implementation LAUNCH, native CI pending.
-PR73 / feat/T068-live-tor-e2e. Verified parent c6ce549: 13 associated workflows green.
+Status: ACTIVE. A/B0 and controlled B library tests verified; C1 live discovery LAUNCH.
+PR73 / feat/T068-live-tor-e2e. Verified parent fe1fb03: 11 associated workflows green.
 
 ## Parent outcome — NOT complete
 Natural-language request -> at least two real externally obtained candidates ->
@@ -15,31 +15,37 @@ Use the same T067 coordinator, not a parallel demonstration or canned locator.
 - Positive native Windows/Linux results distinguished from negative fail-closed evidence.
 - Stable small public fixture first; YouTube/AI/UI/packaging remain separate gates.
 
-## Current B implementation
-Exact Cargo-generated B0 lock and manifest adopted with the library implementation.
-Former lib.rs is moved byte-for-byte to commons.rs; all existing exports preserved.
-CommonsHttpsTransport verifies the owned Arti child and feeds CommonsSearch via
-into_search; same existing typed coordinator. Endpoint/proxy/trust are not public
-caller overrides. Explicit socks5h remote DNS, validated TLS/root bundle, streaming
-256-KiB cap, zero redirect/retry, no ambient proxy/cookie/referer/keylog/decompression.
-Request deadline and sticky cancellation supervise liveness before/during completion.
-Synchronous backend-worker API; existing bootstrap remains a separate 90s gate.
+## Verified B scope
+Exact Cargo-generated graph adopted; existing parser preserved in commons.rs.
+CommonsHttpsTransport borrows/verifies an owned Arti child and feeds the same search
+coordinator. Native run 36314712742 passed controlled SOCKS/TLS/response tests on
+Windows/Linux. Its cancellation/liveness unit test uses a pending future, not actual
+Arti termination during network I/O. Bootstrap has a separate 90-second gate.
+Copy-generators and duplicate candidate workflows are retired and must stay retired.
 
-Controlled native suite covers domain-forwarding/refusal, TLS positive/untrusted/
-wrong-name, redirects/status/encoding/type, chunked/oversize/truncation/stall, local
-supervision and poisoned proxy/cert/keylog environment. Fixture certificates and
-public test key are cfg(test) ONLY. Source generation is not test execution.
-Copy-generators, duplicate candidate workflows and duplicate example clients retired.
+## C1 atomic external-discovery gate
+The new native real_commons_discovery harness calls the existing library and
+request_choices with fixed public full-text `countdown`. No canned response/URL.
+It requires >=2 real validated choices, selects index 1 from that response, persists
+bounded JSON evidence and verifies sticky cancellation clears stale search results.
+Both native OSes require positive live discovery; no timeout-as-success exception.
+Compile actual code, use existing pinned Arti, stop/reap on returned errors, clean
+owned state, then publish only public metadata evidence. First results are PENDING.
+
+## Remaining acceptance
+C2 must retrieve the actually selected discovered locator via the existing typed
+media boundary and same coordinator, verify file bytes/size/digest and ownership,
+and demonstrate same-flow Tor-unavailable failure. Actual in-flight Tor loss and
+cancellation evidence remain required, not replaced by C1 pre-cancellation testing.
 
 ## Evidence boundaries
-No local Rust/Cargo execution. First direct locked Windows/Linux compilation/tests
-PENDING. Local byte/hash checks are not TLS proof. TLS fixtures, when green, will
-prove the implementation against a controlled local service, not Commons/Tor E2E.
-Actual Arti loss during network I/O and C's real choices/selected file still require
-recorded platform evidence. Declared API SHA-1/size are not authenticated file receipts.
-T066 race/retention, descendant confinement and SDK-content limitations remain open.
+No local Rust/Cargo or live request execution. C1 is an executable acceptance harness,
+not a shipped UI, arbitrary natural-language interpretation or completed E2E.
+Declared API SHA-1/size are server metadata, not authenticated downloaded-file receipts.
+T066 race/retention, descendant confinement, SDK-content and packaging remain open.
 
 ## ONE next action
-Observe new exact-head native discovery-contract-check and existing checks; diagnose
-red. Then converge on actual same-coordinator live evidence, not more graph generation.
-Current entry review and scope: decisions/ADR-0008-commons-https-executor.md.
+Observe exact-head commons-tor-discovery-check and existing CI. Diagnose red first;
+otherwise inspect the externally obtained choice evidence and implement C2 directly.
+Primary sources checked on 2026-09-27: MediaWiki API:Etiquette, API:Search and
+API:Imageinfo (full URLs in NEXT.md). No dependency/provider/architecture change.

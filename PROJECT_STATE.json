@@ -4,29 +4,29 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "c6ce5494d6432604bbf30f8f486d01f358362d87",
+  "last_verified_commit": "fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0",
   "last_completed_task": "T067",
   "active_task": "T068",
   "next_task": "T068",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "T068-B actual library HTTPS executor and controlled SOCKS/TLS tests are implemented but await first native locked CI.",
-    "Actual Arti termination during a real in-flight request and full same-coordinator external E2E remain unproven.",
-    "Commons live query availability and at least two usable small WebM candidates remain unverified.",
-    "Positive Windows/Linux live retrieval and same-flow Tor-unavailable evidence remain required.",
+    "T068-C1 actual Commons-through-Tor discovery acceptance is implemented but native positive results are pending.",
+    "Selected-file retrieval through the same coordinator and verified downloaded bytes/digest remain unproven.",
+    "Actual Arti loss during an in-flight network request remains unproven; the earlier supervision test uses a pending future.",
+    "Positive Windows/Linux full E2E and same-flow Tor-unavailable evidence remain required.",
     "T066 cleanup ownership/race limitations, descendant egress confinement and Arti SDK-content pinning remain unresolved.",
     "YouTube compatibility and self-contained clean-machine Windows/Linux packages remain separate unverified gates."
   ],
   "verification_context": {
     "pr": 73,
-    "pr_head": "c6ce5494d6432604bbf30f8f486d01f358362d87",
-    "associated_workflows_successful": 13,
-    "candidate_run": 36312498963,
+    "pr_head": "fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0",
+    "associated_workflows_successful": 11,
+    "native_discovery_run": 36314712742,
     "adopted_lock_blob": "8279158c7f7fd5dbd243942669f8b4c929a8831b",
     "adopted_lock_sha256": "ea282fedb7128d918b428cb30e5563b44075c770cb6672bffa682fe10091f5e5",
     "adopted_lock_bytes": 33037,
-    "kind": "verified parent and existing B0 graph; new implementation CI pending"
+    "kind": "verified library and controlled native TLS tests; live external discovery still pending"
   },
   "updated": "2026-09-27"
 }

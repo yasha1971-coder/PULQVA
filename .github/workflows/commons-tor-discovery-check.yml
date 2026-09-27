@@ -1,0 +1,72 @@
+name: commons-tor-discovery-check
+on:
+  pull_request:
+    paths:
+      - 'crates/pulqva-discovery/**'
+      - 'crates/pulqva-core/**'
+      - 'crates/pulqva-privacy/**'
+      - 'sidecars/arti/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '.github/workflows/commons-tor-discovery-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/pulqva-discovery/**'
+      - 'crates/pulqva-core/**'
+      - 'crates/pulqva-privacy/**'
+      - 'sidecars/arti/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '.github/workflows/commons-tor-discovery-check.yml'
+permissions:
+  contents: read
+jobs:
+  live-discovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Compile the actual library and live acceptance harness
+        run: cargo +1.91.0 build --locked -p pulqva-discovery --example real_commons_discovery
+      - name: Build existing pinned Arti sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTI_VERSION="$(tr -d '\r\n' < sidecars/arti/VERSION)"
+          test "$ARTI_VERSION" = "2.6.0"
+          EXTRA_FEATURES=()
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            EXTRA_FEATURES=(--features static-sqlite)
+          fi
+          cargo +1.91.0 install arti --version "$ARTI_VERSION" --locked \
+            "${EXTRA_FEATURES[@]}" --root "$RUNNER_TEMP/arti-root"
+          ARTI_BIN="$RUNNER_TEMP/arti-root/bin/arti"
+          if [ "$RUNNER_OS" = "Windows" ]; then ARTI_BIN="${ARTI_BIN}.exe"; fi
+          test -f "$ARTI_BIN"
+          echo "ARTI_BIN=$ARTI_BIN" >> "$GITHUB_ENV"
+      - name: Require real Tor search and real choices on this OS
+        shell: bash
+        run: |
+          set -euo pipefail
+          EVIDENCE="$RUNNER_TEMP/pulqva-live-commons-discovery.json"
+          echo "DISCOVERY_EVIDENCE=$EVIDENCE" >> "$GITHUB_ENV"
+          OUTPUT="$(cargo +1.91.0 run --quiet --locked -p pulqva-discovery \
+            --example real_commons_discovery -- "$ARTI_BIN" "$EVIDENCE")"
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -F 'PULQVA_COMMONS_TOR_DISCOVERY_OK choices='
+      - uses: actions/upload-artifact@v4
+        with:
+          name: commons-live-discovery-${{ matrix.os }}
+          path: ${{ env.DISCOVERY_EVIDENCE }}
+          if-no-files-found: error
+          retention-days: 7
