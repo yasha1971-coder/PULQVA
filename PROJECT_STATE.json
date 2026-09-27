@@ -4,17 +4,17 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "46776b8c1f274113319edcdc8d7bedb15d0ebfb9",
-  "last_completed_task": "T066",
-  "active_task": "T067",
-  "next_task": "T067",
-  "ci": "green_base_t067_prepare",
+  "last_verified_commit": "51a21c476d49738184678bb6e5c3d8ff29be68fd",
+  "last_completed_task": "T067",
+  "active_task": null,
+  "next_task": "T068",
+  "ci": "green",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "First reproducible natural-language request -> real choices -> selected file journey is not yet demonstrated end to end.",
-    "Windows live media retrieval remains unproven by a positive live retrieval; fail-closed behavior is verified.",
-    "Descendant egress confinement and hostile concurrent path-race immunity are not established; do not claim audited anonymity or sandboxing.",
+    "Real external request -> choices -> selected file through Tor has not yet been demonstrated through the T067 coordinator.",
+    "Windows positive live media retrieval remains unproven; fail-closed behavior is verified.",
+    "YouTube/EJS/POT/SABR compatibility is a separate adapter/reliability gate and must not obscure the first generic live Tor E2E proof.",
     "Self-contained clean-machine Windows/Linux release packages remain unverified."
   ],
-  "updated": "2026-09-26"
+  "updated": "2026-09-27"
 }

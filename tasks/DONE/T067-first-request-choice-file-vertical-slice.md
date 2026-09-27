@@ -1,6 +1,6 @@
 # T067 — First request -> choice -> file vertical slice
 
-Status: ACTIVE (PREPARE).
+Status: DONE. Exact head 51a21c476d49738184678bb6e5c3d8ff29be68fd; 10/10 PR workflows green.
 
 ## Atomic outcome
 Given one natural-language request and deterministic backend fixtures, produce typed
