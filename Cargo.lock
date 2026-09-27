@@ -28,6 +28,16 @@ name = "pulqva-core"
 version = "0.0.0"
 
 [[package]]
+name = "pulqva-discovery"
+version = "0.0.0"
+dependencies = [
+ "pulqva-core",
+ "pulqva-privacy",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "pulqva-intent-json"
 version = "0.0.0"
 dependencies = [

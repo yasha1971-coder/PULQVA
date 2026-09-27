@@ -4,16 +4,18 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "51a21c476d49738184678bb6e5c3d8ff29be68fd",
+  "last_verified_commit": "3f85e10c621380195a90ea4864df4acf88c7cad4",
   "last_completed_task": "T067",
-  "active_task": null,
+  "active_task": "T068",
   "next_task": "T068",
-  "ci": "green",
+  "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
+    "T068-A Commons discovery request/parser adapter is pending native CI; no real HTTPS executor is implemented in this phase.",
     "Real external request -> choices -> selected file through Tor has not yet been demonstrated through the T067 coordinator.",
+    "Current Commons query availability and at least two usable small WebM candidates remain unverified.",
     "Windows positive live media retrieval remains unproven; fail-closed behavior is verified.",
-    "YouTube/EJS/POT/SABR compatibility is a separate adapter/reliability gate and must not obscure the first generic live Tor E2E proof.",
+    "YouTube/EJS/POT/SABR compatibility is a separate adapter/reliability gate.",
     "Self-contained clean-machine Windows/Linux release packages remain unverified."
   ],
   "updated": "2026-09-27"

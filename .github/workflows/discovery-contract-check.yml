@@ -1,0 +1,35 @@
+name: discovery-contract-check
+on:
+  pull_request:
+    paths:
+      - 'crates/pulqva-discovery/**'
+      - 'crates/pulqva-core/**'
+      - 'crates/pulqva-privacy/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/discovery-contract-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/pulqva-discovery/**'
+      - 'crates/pulqva-core/**'
+      - 'crates/pulqva-privacy/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/discovery-contract-check.yml'
+permissions:
+  contents: read
+jobs:
+  contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Local discovery contracts and readiness compile-fail boundary (not live E2E)
+        run: cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery
