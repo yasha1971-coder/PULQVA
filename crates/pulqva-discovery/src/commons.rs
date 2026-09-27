@@ -545,7 +545,11 @@ mod diagnostic_tests {
     #[test]
     fn retrieval_binding_rejects_stale_foreign_and_unimplemented_downloads_without_receipt() {
         use pulqva_core::{CandidateRetrieval, ChoiceSet};
-        let mut search = fixture();
+        let mut search = CommonsSearch {
+            transport: Scripted(VecDeque::from([Ok(good())])),
+            proxy: "socks5h://127.0.0.1:19050".into(),
+            last_results: Vec::new(), last_error: None,
+        };
         let choices = request_choices(&mut search, "countdown").unwrap();
         let selected = choices.select(1).unwrap();
         let root = std::path::Path::new("unused-c2-root");
