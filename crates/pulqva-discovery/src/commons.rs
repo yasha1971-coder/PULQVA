@@ -542,7 +542,6 @@ mod diagnostic_tests {
         assert_eq!(search.discover(&intent), Err(DiscoveryError::InvalidRequest));
         assert_eq!(search.last_error(), Some(DiscoveryError::InvalidRequest));
     }
-
     #[test]
     fn retrieval_binding_rejects_stale_foreign_and_unimplemented_downloads_without_receipt() {
         use pulqva_core::{CandidateRetrieval, ChoiceSet};
@@ -568,6 +567,8 @@ mod diagnostic_tests {
         assert_eq!(CandidateRetrieval::retrieve(&mut search, &selected, root),
                    Err(JourneyError::RetrievalFailed));
     }
+
+
 }
 
 #[cfg(test)]
