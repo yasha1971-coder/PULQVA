@@ -191,17 +191,48 @@ fn parse_response_classified(bytes: &[u8]) -> Result<Vec<DiscoveredMedia>, Disco
         if page.imageinfo.len() != 1 { return Err(DiscoveryError::InvalidResponse); }
         let info = page.imageinfo.into_iter().next().ok_or(DiscoveryError::InvalidResponse)?;
         if info.mime != "video/webm" || info.size == 0 || info.size > MAX_MEDIA_BYTES { continue; }
-        validate_media_url(&info.url).map_err(rejected)?;
+        let media_url = normalize_media_url(&info.url).map_err(rejected)?;
         if info.sha1.len() != 40 { return Err(rejected(CandidateFailure::DigestLength)); }
         if !info.sha1.bytes().all(|b| b.is_ascii_hexdigit()) { return Err(rejected(CandidateFailure::DigestEncoding)); }
-        if !urls.insert(info.url.clone()) { return Err(rejected(CandidateFailure::DuplicateMediaUrl)); }
-        let candidate = SearchCandidate::new(page.title, info.url)
+        if !urls.insert(media_url.to_owned()) { return Err(rejected(CandidateFailure::DuplicateMediaUrl)); }
+        let candidate = SearchCandidate::new(page.title, media_url)
             .map_err(|_| rejected(CandidateFailure::CoreContract))?;
         results.push(DiscoveredMedia { page_id: page.pageid, candidate,
             declared_size: info.size, declared_sha1: info.sha1.to_ascii_lowercase() });
     }
     if results.len() < 2 { return Err(DiscoveryError::TooFewChoices); }
     Ok(results)
+}
+
+// MediaWiki File::appendRequestProvenance and ApiQueryImageInfo add these
+// public provenance fields to original URLs. Strip ONLY this exact vocabulary;
+// never reinterpret arbitrary query data or fragments as a canonical file URL.
+// See commons/provenance_tests.rs for independent provider-contract fixtures.
+fn normalize_media_url(value: &str) -> Result<&str, CandidateFailure> {
+    use CandidateFailure::*;
+    // Apply the envelope to the original input, not just the stripped prefix.
+    if value.len() > 2048 { return Err(UrlLength); }
+    if !value.is_ascii() { return Err(UrlNonAscii); }
+    if value.bytes().any(|b| b <= 32 || b == 127) { return Err(UrlControlOrSpace); }
+    if value.contains('#') { return Err(UrlQueryOrFragment); }
+    let canonical = if let Some((base, query)) = value.split_once('?') {
+        let mut seen = 0u8;
+        for pair in query.split('&') {
+            let bit = match pair {
+                "utm_source=commons.wikimedia.org" => 1u8,
+                "utm_campaign=imageinfo" => 2u8,
+                "utm_content=original" => 4u8,
+                _ => return Err(UrlQueryOrFragment),
+            };
+            if seen & bit != 0 { return Err(UrlQueryOrFragment); }
+            seen |= bit;
+        }
+        if seen != 7 { return Err(UrlQueryOrFragment); }
+        base
+    } else { value };
+    // Origin, path, percent escapes, traversal and extension checks are unchanged.
+    validate_media_url(canonical)?;
+    Ok(canonical)
 }
 
 // Deliberately narrower than general URL parsing: one HTTPS authority, a fixed
@@ -497,3 +528,7 @@ mod diagnostic_tests {
 
 #[cfg(test)]
 mod candidate_tests;
+
+
+#[cfg(test)]
+mod provenance_tests;

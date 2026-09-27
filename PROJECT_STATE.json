@@ -11,9 +11,8 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "C1 Linux at 1680dc8 rejects UrlQueryOrFragment; actual provider URL semantics not yet established or corrected.",
-    "C1 Windows at 1680dc8 returned Readiness(Timeout) before external search; underlying probe cause unresolved.",
-    "New preflight/evidence workflow has passed local Python checks only; native workflow execution pending.",
+    "C1 Linux at 5dea95d rejects UrlQueryOrFragment. Source-derived original-file UTM compatibility is implemented; native/live verification pending. Exact previous URL was not retained.",
+    "C1 Windows at 5dea95d returned Readiness(Timeout) before search; underlying cause unresolved and unchanged.",
     "Selected-file retrieval through the same coordinator and verified downloaded bytes/digest remain unproven.",
     "Actual Arti loss during in-flight network I/O remains unproven; prior supervision test uses a pending future.",
     "Positive Windows/Linux full E2E and same-flow Tor-unavailable evidence remain required.",
@@ -31,25 +30,36 @@
     "kind": "global verified anchor; live external discovery NOT verified"
   },
   "candidate_recovery": {
-    "observed_head": "1680dc85f0b2afe4e8b0f34bbdd6ba45065514c6",
-    "rust_check": 36322839033,
-    "native_contract_check": 36322839013,
+    "observed_head": "5dea95d7c03f6a2c10b25b261f734e63ab45a924",
+    "rust_check": 36325638292,
+    "native_contract_check": 36325638342,
     "code_checks": "success",
-    "failed_live_run": 36322839116,
-    "linux_job": 108629865617,
-    "windows_job": 108629865710,
+    "failed_live_run": 36325638211,
+    "linux_job": 108637766074,
+    "windows_job": 108637766318,
     "linux_observed": "CandidateRejected(UrlQueryOrFragment)",
     "windows_observed": "Readiness(Timeout)",
-    "acceptance_policy": "unchanged; both operational faults remain open"
+    "acceptance_policy": "strict canonical URL preserved; only known provider provenance normalized before validation"
   },
   "engineering_recovery": {
     "parent": "1680dc85f0b2afe4e8b0f34bbdd6ba45065514c6",
     "scope": "existing discovery preflight and per-OS allowlisted step evidence",
     "local_python_tests_passed": 24,
-    "native_ci": "pending",
+    "native_ci": "verified on Windows and Linux at 5dea95d",
+    "native_run": 36325638211,
     "automatic_cross_job_collector": false,
     "product_failures_fixed": false,
-    "publication": "See PR73 checkpoint; no global verified-anchor advancement"
+    "publication": "PR73 OBSERVE/CLOSE checkpoint; no global verified-anchor advancement"
+  },
+  "url_recovery": {
+    "parent": "5dea95d7c03f6a2c10b25b261f734e63ab45a924",
+    "scope": "Commons original URL exact public provenance normalization",
+    "primary_source_api_blob": "b95c00ba26314d281cd11072b27119bca918fbe8",
+    "new_rust_test_functions": 6,
+    "native_tests": "pending",
+    "actual_live_suffix_known": false,
+    "operational_fix_verified": false,
+    "publication": "See latest PR73 checkpoint for exact source head and run IDs"
   },
   "updated": "2026-09-27"
 }
