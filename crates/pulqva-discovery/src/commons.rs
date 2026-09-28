@@ -102,15 +102,19 @@ impl DiscoveredMedia {
 pub struct CommonsSearch<T> {
     transport: T,
     proxy: String,
+    ready: Option<ReadyTorTransport>,
     last_results: Vec<DiscoveredMedia>,
     last_error: Option<DiscoveryError>,
 }
 impl<T: CommonsTransport> CommonsSearch<T> {
     pub fn new(transport: T, ready: ReadyTorTransport) -> Self {
-        Self { transport, proxy: ready.proxy_url(), last_results: Vec::new(), last_error: None }
+        Self { transport, proxy: ready.proxy_url(), ready: Some(ready), last_results: Vec::new(), last_error: None }
     }
     /// Only the latest successful response is retained; errors clear it.
     pub fn last_results(&self) -> &[DiscoveredMedia] { &self.last_results }
+    /// Same opaque readiness capability that authorized this production route.
+    /// Fixture-only searches have None and therefore cannot authorize retrieval.
+    pub fn ready_transport(&self) -> Option<ReadyTorTransport> { self.ready }
     /// Safe category of the latest invocation of discover/search, not raw network data.
     /// A request rejected by the outer coordinator before search does not update this.
     pub fn last_error(&self) -> Option<DiscoveryError> { self.last_error }
@@ -374,7 +378,7 @@ mod tests {
         // Private struct initialization simulates route data only. No public
         // readiness token constructor is introduced and no network is opened.
         CommonsSearch { transport: Fixture { body: good_body(), calls:0, fail:false, urls:Vec::new() },
-            proxy:"socks5h://127.0.0.1:19050".into(), last_results:Vec::new(), last_error:None }
+            proxy:"socks5h://127.0.0.1:19050".into(), ready: None, last_results:Vec::new(), last_error:None }
     }
     #[test]
     fn request_to_response_choices_uses_existing_coordinator() {
@@ -518,7 +522,7 @@ mod diagnostic_tests {
             };
             let mut search = CommonsSearch {
                 transport: Scripted(VecDeque::from([Ok(good()), response, Ok(good())])),
-                proxy: "socks5h://127.0.0.1:19050".into(),
+                proxy: "socks5h://127.0.0.1:19050".into(), ready: None,
                 last_results: Vec::new(), last_error: None,
             };
             request_choices(&mut search, "fixture").unwrap();
@@ -538,7 +542,7 @@ mod diagnostic_tests {
     #[test]
     fn local_validation_error_replaces_old_cause_without_fetch() {
         let mut search = CommonsSearch {
-            transport: Scripted(VecDeque::new()), proxy: "socks5h://127.0.0.1:19050".into(),
+            transport: Scripted(VecDeque::new()), proxy: "socks5h://127.0.0.1:19050".into(), ready: None,
             last_results: Vec::new(), last_error: Some(DiscoveryError::HttpStatus(403)),
         };
         let intent = SearchIntent::new("x".repeat(513)).unwrap();
@@ -550,7 +554,7 @@ mod diagnostic_tests {
         use pulqva_core::{CandidateRetrieval, ChoiceSet};
         let mut search = CommonsSearch {
             transport: Scripted(VecDeque::from([Ok(good())])),
-            proxy: "socks5h://127.0.0.1:19050".into(),
+            proxy: "socks5h://127.0.0.1:19050".into(), ready: None,
             last_results: Vec::new(), last_error: None,
         };
         let choices = request_choices(&mut search, "countdown").unwrap();
