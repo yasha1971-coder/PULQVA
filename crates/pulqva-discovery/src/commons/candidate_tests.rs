@@ -25,7 +25,7 @@ fn expect_rejection(body: Vec<u8>, kind: CandidateFailure) {
     assert_eq!(parse_response(&body), Err(DiscoveryError::UntrustedCandidate));
     let mut search = CommonsSearch {
         transport: Scripted(VecDeque::from([response(page(2)),body,response(page(2))])),
-        proxy:"socks5h://127.0.0.1:19050".into(),last_results:Vec::new(),last_error:None,
+        proxy:"socks5h://127.0.0.1:19050".into(),ready:None,last_results:Vec::new(),last_error:None,
     };
     request_choices(&mut search,"fixture").unwrap();
     assert_eq!(request_choices(&mut search,"fixture"),Err(JourneyError::SearchFailed));
