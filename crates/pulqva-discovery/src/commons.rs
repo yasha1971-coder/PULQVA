@@ -528,7 +528,7 @@ mod diagnostic_tests {
             };
             let mut search = CommonsSearch {
                 transport: Scripted(VecDeque::from([Ok(good()), response, Ok(good())])),
-                proxy: "socks5h://127.0.0.1:19050".into(), ready: None,
+                proxy: "socks5h://127.0.0.1:19050".into(), ready: None, ytdlp_executable: None,
                 last_results: Vec::new(), last_error: None,
             };
             request_choices(&mut search, "fixture").unwrap();
@@ -548,7 +548,7 @@ mod diagnostic_tests {
     #[test]
     fn local_validation_error_replaces_old_cause_without_fetch() {
         let mut search = CommonsSearch {
-            transport: Scripted(VecDeque::new()), proxy: "socks5h://127.0.0.1:19050".into(), ready: None,
+            transport: Scripted(VecDeque::new()), proxy: "socks5h://127.0.0.1:19050".into(), ready: None, ytdlp_executable: None,
             last_results: Vec::new(), last_error: Some(DiscoveryError::HttpStatus(403)),
         };
         let intent = SearchIntent::new("x".repeat(513)).unwrap();
@@ -560,7 +560,7 @@ mod diagnostic_tests {
         use pulqva_core::{CandidateRetrieval, ChoiceSet};
         let mut search = CommonsSearch {
             transport: Scripted(VecDeque::from([Ok(good())])),
-            proxy: "socks5h://127.0.0.1:19050".into(), ready: None,
+            proxy: "socks5h://127.0.0.1:19050".into(), ready: None, ytdlp_executable: None,
             last_results: Vec::new(), last_error: None,
         };
         let choices = request_choices(&mut search, "countdown").unwrap();
