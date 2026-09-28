@@ -91,6 +91,9 @@ impl DiscoveredMedia {
     pub fn candidate(&self) -> &SearchCandidate { &self.candidate }
     pub fn declared_size(&self) -> u64 { self.declared_size }
     pub fn declared_sha1(&self) -> &str { &self.declared_sha1 }
+    pub(crate) fn matches_selection(&self, selection: &SelectedCandidate) -> bool {
+        self.candidate == *selection.candidate()
+    }
     pub fn description_url(&self) -> String {
         format!("https://commons.wikimedia.org/?curid={}", self.page_id)
     }
@@ -137,7 +140,7 @@ impl<T: CommonsTransport> CandidateRetrieval for CommonsSearch<T> {
         let Some(media) = self.last_results.get(selection.index()) else {
             return Err(JourneyError::RetrievalFailed);
         };
-        if media.candidate() != selection.candidate() {
+        if !media.matches_selection(selection) {
             return Err(JourneyError::RetrievalFailed);
         }
         Err(JourneyError::RetrievalFailed)
