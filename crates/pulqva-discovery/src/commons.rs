@@ -137,7 +137,7 @@ impl<T: CommonsTransport> CommonsSearch<T> {
 }
 
 impl<T: CommonsTransport> CandidateRetrieval for CommonsSearch<T> {
-    fn retrieve(&mut self, selection: &SelectedCandidate, _output_root: &Path)
+    fn retrieve(&mut self, selection: &SelectedCandidate, output_root: &Path)
         -> Result<FileReceipt, JourneyError>
     {
         // C2 fail-closed binding: retrieval is permitted only for the exact
