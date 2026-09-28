@@ -11,27 +11,27 @@
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "Windows strict live C1 remains unverified; prior safe category DestinationTimeout is not a root cause.",
-    "New artifact verifier and its Rust tests await exact-head native execution.",
-    "CandidateRetrieval still returns RetrievalFailed; same-coordinator live selected download is not implemented.",
+    "New Linux selected-file acceptance harness is implemented but native compile and execution are pending.",
+    "Windows strict live C1 remains unverified; previous DestinationTimeout is not a root-cause diagnosis.",
+    "Production yt-dlp completion blocks in Child::wait; the Linux test watchdog is not product-level cancellation or Arti-loss supervision.",
+    "Positive-path native fixtures do not establish controlled in-flight Tor loss, descendant egress confinement or download disk-growth limits.",
     "Index/candidate value equality is not search-session provenance; same-valued foreign selections are indistinguishable.",
-    "File hashing is a content snapshot, not publisher authentication or race-proof path ownership.",
-    "Actual in-flight Arti loss, same-flow Tor-unavailable behavior and positive Windows/Linux file E2E remain unproven.",
-    "T066 cleanup/races, readiness deadline overshoot, descendant egress confinement and Arti SDK-content pinning remain unresolved.",
-    "YouTube/AI/UI and self-contained clean-machine Windows/Linux release packages remain unverified."
+    "File verification/copy is a snapshot assuming exclusive output ownership, not publisher authentication or race-proof paths.",
+    "T066 cleanup/races, readiness deadline overshoot and Arti SDK-content pinning remain open.",
+    "Repeated fresh-state E2E, Windows file E2E, YouTube/AI/UI and self-contained release packages remain unverified."
   ],
   "verification_context": {
-    "kind": "Scoped parent evidence; not global E2E",
+    "kind": "Parent scoped evidence, not full E2E",
     "pr": 73,
-    "source_head": "93d84cc1d547908ccc80f34ee79c30a3be7a619a",
+    "source_head": "2000e8581a403a31d9001f9bbd9f950012e28ee3",
     "associated_workflows_completed": 13,
     "associated_workflows_successful": 12,
-    "rust_check": 36386301755,
-    "native_contract_check": 36386301680,
-    "live_run": 36386301857,
-    "linux_job": 108812291888,
-    "linux": "live discovery and positive receipt passed",
-    "windows_job": 108812292103,
+    "rust_check": 36413808729,
+    "native_contract_check": 36413808727,
+    "live_run": 36413808736,
+    "linux_job": 108900033599,
+    "linux": "discovery plus receipt passed; no selected file yet",
+    "windows_job": 108900033893,
     "windows": "preflight/build passed; strict live failed"
   },
   "hash_adoption": {
@@ -46,18 +46,26 @@
     "locked_native_preflight": "passed on both OSes"
   },
   "c2_artifact_verifier": {
-    "parent": "93d84cc1d547908ccc80f34ee79c30a3be7a619a",
-    "status": "implemented; native verification pending",
+    "implementation_commit": "33855bf3856c17342ccf4bda089d212ff55f810a",
+    "status": "native contracts passed; standalone content verification is not live E2E",
+    "contract_run": 36388757311,
     "shared_tests_prepared": 8,
     "unix_tests_prepared": 1,
     "compile_fail_doctests_prepared": 1,
-    "independent_python_hash_vectors_checked": 4,
-    "local_rust_execution": false,
-    "network_or_file_download_added": false,
-    "manifest_lock_workflow_changes": false,
-    "publication": "See latest PR73 checkpoint for immutable commit and native runs"
+    "local_rust_execution": false
   },
-  "owner_assistance_rule": "PR73 comment5864661936; check tools first, request minimal safe external step for a confirmed barrier, verify result independently",
-  "prior_detailed_history": "Preserved in Git at 93d84cc1d547908ccc80f34ee79c30a3be7a619a and PR73 checkpoints; obsolete pending readiness observations are superseded above",
+  "c2_live_acceptance": {
+    "parent": "2000e8581a403a31d9001f9bbd9f950012e28ee3",
+    "status": "implemented; native verification pending",
+    "target": "Linux first technical request-choice-file trace",
+    "new_local_python_tests_passed": 11,
+    "library_or_dependency_changes": false,
+    "existing_windows_strict_gate_changed": false,
+    "positive_e2e_verified": false,
+    "reproducible_e2e_verified": false,
+    "publication": "See latest PR73 checkpoint for exact head and run IDs"
+  },
+  "owner_assistance_rule": "PR73 comment5864661936; check tools, request minimal safe external step for a confirmed barrier, independently verify the result",
+  "prior_detailed_history": "Preserved at 2000e8581a403a31d9001f9bbd9f950012e28ee3 and PR73 checkpoints",
   "updated": "2026-09-28"
 }

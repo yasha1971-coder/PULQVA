@@ -1,65 +1,63 @@
 # NEXT
 
-## CURRENT: T068-C2 bounded artifact verification
+## CURRENT: T068-C2 first Linux live request -> choice -> file acceptance
 
-PR73 / feat/T068-live-tor-e2e. Entry head
-93d84cc1d547908ccc80f34ee79c30a3be7a619a. Main unchanged.
-Global verified anchor remains fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0;
-Linux C1 and hash dependency adoption have separate scoped evidence below.
+PR73 / feat/T068-live-tor-e2e. Parent 2000e8581a403a31d9001f9bbd9f950012e28ee3.
+Main and frozen kernel unchanged. Global verified anchor remains
+fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0. No full E2E result is claimed yet.
 
-The owner imported the native Cargo.lock in 0ce30e4; 93d84cc activated exactly
-sha1=0.11.0 and sha2=0.11.0. Recomputed the whole native artifact Git blob locally:
-d76600cb071e21703d616b7a6958c849d4e25f72, matching the repository file, 35109 bytes.
-SHA-256 c707e6c96369aa3e07a5667cbd1a8c85f68480af042b9fabd409204735cf377d.
-No new dependency/lockfile change or temporary generator is needed.
+Parent observation: rust-check36413808729 and discovery-contract-check36413808727
+passed. Of 13 associated workflows, 12 passed. In commons36413808736, Linux
+job108900033599 passed discovery and positive receipt; Windows108900033893 passed
+preflight/build and failed strict live. No new Windows root cause was inferred.
+The existing CandidateRetrieval now calls the typed yt-dlp launcher/completion
+and artifact verifier; its positive live path has NOT been exercised together.
 
-Entry CI completed: 12/13 associated workflows successful. rust-check36386301755
-and discovery-contract-check36386301680 passed. commons36386301857 has successful
-all-target preflight and builds on both OSes; Linux108812291888 passed live and
-positive receipt, Windows108812292103 failed strict live. Do not infer Windows
-success from other green checks or restart the continue-on-error policy loop.
+ONE change: activate that exact core path in a fixed public Linux acceptance
+harness real_commons_file. Request 'countdown' -> actual Commons ChoiceSet ->
+explicit returned index1 -> retrieve_choice on the same CommonsSearch -> existing
+size/SHA-1 verifier -> FileReceipt. No direct URL shortcut or second downloader.
+The harness copies the verified bytes to selected.webm outside the Tor runtime,
+computes hashes while copying, stops/reaps Arti and removes the owned runtime,
+then writes receipt.json. Cancellation/stale-search regression runs AFTER retrieval.
+Only the public fixed request and result metadata are retained for this CI fixture.
 
-ONE implementation outcome: verify an already completed typed download against
-CommonsSearch.last_results(). The new artifact module adds
-verify_completed_download(selection, CompletedDownloadResult) and an opaque
-VerifiedCommonsFile. It checks same-index candidate value, exact source locator,
-completion/actual/declared size, regular-file status, bounded streaming SHA-1
-against provider metadata and computed local SHA-256. Only then does this module
-construct its core FileReceipt. Errors and default Debug omit paths/identifiers.
-Existing CandidateRetrieval remains fail-closed; live download wiring is NOT done.
+Existing commons workflow: both harnesses compile in the unchanged full-target
+preflight. Linux reuses pinned yt-dlp 2026.08.19 plus repository SHA256SUMS before
+execution. Linux live invokes the compiled C2 harness under GNU timeout (300s,
+TERM then KILL after10s, process group; no --foreground). A separate Python
+hashlib oracle checks exact source SHA, selected metadata, size, SHA-1 and SHA-256
+against the SAVED FILE before artifact upload. Bundle must contain exactly two
+regular files: receipt.json and selected.webm. Missing file, corrupt content or
+invalid receipt cannot pass. Windows continues its existing strict C1 harness.
+No continue-on-error, dependency, lockfile, core/library or permission change.
 
-Tests are in a dedicated artifact/tests.rs, not inserted into a sibling module.
-Nine tests prepared (8 shared, 1 Unix symlink), plus private-construction doctest.
-Cover positive real local file, mismatched selection/source, corrupt same-size
-bytes, empty/truncated/oversized files, missing/directory paths, bounded overread,
-short/interrupted reads, safe I/O errors, million-byte known answers and symlink.
-They call the same private verifier as the public typed wrapper. Synthetic local
-fixtures are not real yt-dlp downloads. Four hash vectors were independently
-checked with Python; module paths, original lib blob and new blobs checked locally.
-No local Rust compiler exists here; these Rust tests are PENDING native execution.
+Local checks: 11 new Python tests passed (including actual verifier CLI success
+and failure). These use synthetic local fixtures, not downloaded WebM evidence.
+YAML, Bash syntax and step-ID compatibility checked; native Rust remains PENDING.
+No cargo/rustc exists locally; an official Rust download check failed DNS. Do not
+claim Rust compilation from textual checks or that unit tests prove Tor routing.
 
-Boundaries: SHA-1 is legacy metadata compatibility, not publisher authentication.
-SHA-256 records local content identity, not an externally trusted expected hash.
-Index/candidate equality does not encode a search-session nonce. Same-valued
-selections from another search cannot be distinguished. Filesystem validation is
-a snapshot assuming exclusive output ownership, not atomic no-follow/race safety.
-No proof of same-flow Tor routing, cancellation, actual Arti loss or file download
-is added by a content verifier. These limitations must not be marketed away.
+Important limits: the current production completion uses blocking Child::wait;
+the test watchdog is NOT a product supervisor. Mid-flight Arti loss/cancellation,
+descendant confinement, bounded download growth and T066 filesystem race/cleanup
+limits remain open. SHA-1 is provider compatibility, not publisher authentication;
+SHA-256 identifies saved bytes. Selection value binding is not a session nonce.
+First positive Linux trace does not prove Windows, UI/AI, packaging or repetition.
 
-ONE NEXT ACTION: inspect this change's exact-head compile/tests, including the new
-artifact module and doctest, on Windows/Linux. No dependency refresh or blind rerun.
-After successful verification, a later atomic step wires the existing typed
-Tor/yt-dlp downloader into the coordinator and invokes this verifier before a
-success receipt; it must retain downloaded bytes and supervise the owned process.
-Strict Windows C1 remains an independent open release gate. Full E2E is NOT done.
+ONE NEXT ACTION: inspect the new exact-head all-target compile and live stage.
+If Linux succeeds, download its commons-live-result-ubuntu-24.04 ZIP, independently
+check the ZIP digest and both file hashes, and read its receipt/source SHA. Do not
+announce E2E from a workflow color or stdout marker alone. Then record whether the
+first positive trace is verified; a second fresh-state run is a later task.
+If code fails, read complete errors once; repair only the established cause.
+Publication commit and native run IDs are in the latest PR73 checkpoint.
 
-Owner assistance is available for confirmed tool barriers: PR73 comment5864661936.
-Prepare a minimal safe external action promptly when needed, then read back and
-verify its result. Do not assume a barrier without trying the available tools.
-
-Primary-source entry/exit review, 2026-09-28:
-https://docs.rs/sha1/latest/sha1/
-https://docs.rs/sha2/0.11.0/sha2/
-https://www.mediawiki.org/wiki/API:Imageinfo
-https://doc.rust-lang.org/std/fs/
-https://doc.rust-lang.org/std/io/trait.Read.html
+Owner assistance rule: PR73 comment5864661936. Use a minimal safe owner action
+promptly for a confirmed tool barrier, then independently verify the result.
+Entry checkpoint5869245117. Prior detailed history remains in Git/PR comments.
+Primary-source review 2026-09-28: GNU timeout invocation/process-group semantics;
+GitHub artifact upload missing-file failure and retention. Existing project pins
+were retained; no latest dependency or new infrastructure was adopted.
+https://www.gnu.org/software/coreutils/manual/html_node/timeout-invocation.html
+https://docs.github.com/en/actions/tutorials/store-and-share-data
