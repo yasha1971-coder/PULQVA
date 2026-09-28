@@ -6,7 +6,7 @@
 //! verify HTTPS certificates, reject redirects, and never use ambient proxies.
 
 use pulqva_core::{CandidateRetrieval, CandidateSearch, FileReceipt, JourneyError, SearchCandidate, SearchIntent, SelectedCandidate};
-use pulqva_privacy::ReadyTorTransport;
+use pulqva_privacy::{ReadyTorTransport, YtDlpMediaRequestPlan, YtDlpMediaSourceUrl, launch_ytdlp_request};
 use serde::Deserialize;
 use std::{collections::HashSet, fmt, path::Path, time::Duration};
 
@@ -103,18 +103,20 @@ pub struct CommonsSearch<T> {
     transport: T,
     proxy: String,
     ready: Option<ReadyTorTransport>,
+    ytdlp_executable: Option<std::path::PathBuf>,
     last_results: Vec<DiscoveredMedia>,
     last_error: Option<DiscoveryError>,
 }
 impl<T: CommonsTransport> CommonsSearch<T> {
     pub fn new(transport: T, ready: ReadyTorTransport) -> Self {
-        Self { transport, proxy: ready.proxy_url(), ready: Some(ready), last_results: Vec::new(), last_error: None }
+        Self { transport, proxy: ready.proxy_url(), ready: Some(ready), ytdlp_executable: None, last_results: Vec::new(), last_error: None }
     }
     /// Only the latest successful response is retained; errors clear it.
     pub fn last_results(&self) -> &[DiscoveredMedia] { &self.last_results }
     /// Same opaque readiness capability that authorized this production route.
     /// Fixture-only searches have None and therefore cannot authorize retrieval.
     pub fn ready_transport(&self) -> Option<ReadyTorTransport> { self.ready }
+    pub fn with_ytdlp_executable(mut self, executable: impl Into<std::path::PathBuf>) -> Self { self.ytdlp_executable = Some(executable.into()); self }
     /// Safe category of the latest invocation of discover/search, not raw network data.
     /// A request rejected by the outer coordinator before search does not update this.
     pub fn last_error(&self) -> Option<DiscoveryError> { self.last_error }
@@ -144,10 +146,14 @@ impl<T: CommonsTransport> CandidateRetrieval for CommonsSearch<T> {
         let Some(media) = self.last_results.get(selection.index()) else {
             return Err(JourneyError::RetrievalFailed);
         };
-        if !media.matches_selection(selection) {
-            return Err(JourneyError::RetrievalFailed);
-        }
-        Err(JourneyError::RetrievalFailed)
+        if !media.matches_selection(selection) { return Err(JourneyError::RetrievalFailed); }
+        let ready = self.ready.ok_or(JourneyError::RetrievalFailed)?;
+        let executable = self.ytdlp_executable.clone().ok_or(JourneyError::RetrievalFailed)?;
+        let source = YtDlpMediaSourceUrl::parse(media.candidate().locator().to_owned()).map_err(|_| JourneyError::RetrievalFailed)?;
+        let plan = YtDlpMediaRequestPlan::new_tor_gated(executable, ready, source, output_root).map_err(|_| JourneyError::RetrievalFailed)?;
+        let running = launch_ytdlp_request(plan).map_err(|_| JourneyError::RetrievalFailed)?;
+        let completed = running.complete_download().map_err(|_| JourneyError::RetrievalFailed)?;
+        self.verify_completed_download(selection, &completed).map(|verified| verified.into_receipt()).map_err(|_| JourneyError::RetrievalFailed)
     }
 }
 
@@ -378,7 +384,7 @@ mod tests {
         // Private struct initialization simulates route data only. No public
         // readiness token constructor is introduced and no network is opened.
         CommonsSearch { transport: Fixture { body: good_body(), calls:0, fail:false, urls:Vec::new() },
-            proxy:"socks5h://127.0.0.1:19050".into(), ready: None, last_results:Vec::new(), last_error:None }
+            proxy:"socks5h://127.0.0.1:19050".into(), ready: None, ytdlp_executable: None, last_results:Vec::new(), last_error:None }
     }
     #[test]
     fn request_to_response_choices_uses_existing_coordinator() {

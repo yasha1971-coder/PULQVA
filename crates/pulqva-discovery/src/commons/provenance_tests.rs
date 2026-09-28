@@ -134,7 +134,7 @@ fn coordinator_exposes_only_canonical_locators_and_clears_results_on_rejection()
     let bad = body(&url("A"), &format!("{}?{PROVENANCE}&private=SECRET",url("B")));
     let mut search = CommonsSearch {
         transport: Scripted { replies: VecDeque::from([good.clone(),bad,good]), calls:0 },
-        proxy:"socks5h://127.0.0.1:19050".into(),ready:None,last_results:Vec::new(),last_error:None,
+        proxy:"socks5h://127.0.0.1:19050".into(),ready:None,ytdlp_executable:None,last_results:Vec::new(),last_error:None,
     };
     let choices = request_choices(&mut search,"fixture").unwrap();
     assert_eq!(choices.select(0).unwrap().candidate().locator(),url("A"));
