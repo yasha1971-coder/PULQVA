@@ -55,8 +55,8 @@ fn retain_file(receipt: &FileReceipt, media: &DiscoveredMedia, bundle: &Path) ->
         sha1.update(&buffer[..n]);
         sha256.update(&buffer[..n]);
     }
-    let sha1 = format!("{:x}", sha1.finalize());
-    let sha256 = format!("{:x}", sha256.finalize());
+    let sha1 = lower_hex(sha1.finalize().as_ref());
+    let sha256 = lower_hex(sha256.finalize().as_ref());
     if size != expected || !sha1.eq_ignore_ascii_case(media.declared_sha1()) {
         return Err("retained artifact size or digest mismatch".into());
     }
@@ -156,5 +156,44 @@ fn main() {
         // No raw paths, child stderr or request data in failure logs.
         eprintln!("PULQVA_COMMONS_FILE_E2E_FAILED");
         std::process::exit(1);
+    }
+}
+
+// Encode the digest bytes, not the RustCrypto 0.11 Array wrapper.
+// Same byte-to-text convention as the already tested artifact verifier;
+// this is hexadecimal formatting, not a new hashing implementation.
+fn lower_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut result = String::with_capacity(bytes.len() * 2);
+    for &byte in bytes {
+        result.push(HEX[(byte >> 4) as usize] as char);
+        result.push(HEX[(byte & 15) as usize] as char);
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{lower_hex, Digest, Sha1, Sha256};
+
+    #[test]
+    fn hex_is_fixed_width_lowercase_for_every_byte() {
+        assert_eq!(lower_hex(&[]), "");
+        for value in 0..=255u8 {
+            assert_eq!(lower_hex(&[value]), format!("{value:02x}"));
+        }
+        assert_eq!(lower_hex(&[0, 1, 15, 16, 128, 255]), "00010f1080ff");
+    }
+
+    #[test]
+    fn pinned_digest_outputs_encode_known_answers() {
+        let mut sha1 = Sha1::new();
+        sha1.update(b"abc");
+        assert_eq!(lower_hex(sha1.finalize().as_ref()),
+                   "a9993e364706816aba3e25717850c26c9cd0d89d");
+        let mut sha256 = Sha256::new();
+        sha256.update(b"abc");
+        assert_eq!(lower_hex(sha256.finalize().as_ref()),
+                   "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }
 }

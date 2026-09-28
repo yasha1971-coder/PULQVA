@@ -62,6 +62,7 @@ jobs:
           cargo +1.91.0 test --workspace --all-targets --locked --no-run
           cargo +1.91.0 test --locked -p pulqva-privacy --lib -- --nocapture
           cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture
+          cargo +1.91.0 test --locked -p pulqva-discovery --example real_commons_file -- --nocapture
       - name: Compile the actual library and live acceptance harnesses
         id: compile
         run: cargo +1.91.0 build --locked -p pulqva-discovery --example real_commons_discovery --example real_commons_file
