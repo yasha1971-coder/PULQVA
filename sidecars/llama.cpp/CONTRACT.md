@@ -5,10 +5,11 @@ Status: contract only; no binary or model is vendored by this commit.
 ## Upstream selection
 
 - Project: ggml-org/llama.cpp
-- Stable release selected for evaluation: v0.4.1
+- Stable source tag selected for evaluation: v0.4.1
 - Release commit: b29c606
-- Rationale: stable tagged release; upstream release notes explicitly include JSON-schema handling improvements and publish CPU assets for Windows x64 and Ubuntu x64.
-- Nightly builds are not the default production pin.
+- Rationale: stable tagged source release; upstream notes include JSON-schema handling improvements.
+- Important provenance correction: upstream's documented release process says stable releases are tags, while GitHub Release binaries are nightly/development builds. Therefore PULQVA MUST NOT treat a GitHub Release asset merely labeled around v0.4.1 as a stable production binary.
+- Production options to evaluate: (A) reproducibly build Windows/Linux CPU sidecars from exact tag v0.4.1 with LLAMA_BUILD_IS_DEV=OFF, then publish PULQVA-owned hashes/provenance; or (B) pin a specific upstream nightly binary by exact build tag + SHA-256 and explicitly classify it as nightly. Option A is preferred for the consumer baseline.
 
 ## Required capabilities
 
