@@ -4,17 +4,68 @@
   "kernel_version": "1.0.0",
   "phase": "implementation",
   "source_of_truth": "repository",
-  "last_verified_commit": "51a21c476d49738184678bb6e5c3d8ff29be68fd",
+  "last_verified_commit": "fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0",
   "last_completed_task": "T067",
-  "active_task": null,
+  "active_task": "T068",
   "next_task": "T068",
-  "ci": "green",
+  "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
-    "Real external request -> choices -> selected file through Tor has not yet been demonstrated through the T067 coordinator.",
-    "Windows positive live media retrieval remains unproven; fail-closed behavior is verified.",
-    "YouTube/EJS/POT/SABR compatibility is a separate adapter/reliability gate and must not obscure the first generic live Tor E2E proof.",
-    "Self-contained clean-machine Windows/Linux release packages remain unverified."
+    "New Linux selected-file acceptance harness is implemented but native compile and execution are pending.",
+    "Windows strict live C1 remains unverified; previous DestinationTimeout is not a root-cause diagnosis.",
+    "Production yt-dlp completion blocks in Child::wait; the Linux test watchdog is not product-level cancellation or Arti-loss supervision.",
+    "Positive-path native fixtures do not establish controlled in-flight Tor loss, descendant egress confinement or download disk-growth limits.",
+    "Index/candidate value equality is not search-session provenance; same-valued foreign selections are indistinguishable.",
+    "File verification/copy is a snapshot assuming exclusive output ownership, not publisher authentication or race-proof paths.",
+    "T066 cleanup/races, readiness deadline overshoot and Arti SDK-content pinning remain open.",
+    "Repeated fresh-state E2E, Windows file E2E, YouTube/AI/UI and self-contained release packages remain unverified."
   ],
-  "updated": "2026-09-27"
+  "verification_context": {
+    "kind": "Parent scoped evidence, not full E2E",
+    "pr": 73,
+    "source_head": "2000e8581a403a31d9001f9bbd9f950012e28ee3",
+    "associated_workflows_completed": 13,
+    "associated_workflows_successful": 12,
+    "rust_check": 36413808729,
+    "native_contract_check": 36413808727,
+    "live_run": 36413808736,
+    "linux_job": 108900033599,
+    "linux": "discovery plus receipt passed; no selected file yet",
+    "windows_job": 108900033893,
+    "windows": "preflight/build passed; strict live failed"
+  },
+  "hash_adoption": {
+    "owner_import_commit": "0ce30e420101230393192a12d9ecc48cfb7f06ea",
+    "activation_commit": "93d84cc1d547908ccc80f34ee79c30a3be7a619a",
+    "sha1": "0.11.0",
+    "sha2": "0.11.0",
+    "lock_blob": "d76600cb071e21703d616b7a6958c849d4e25f72",
+    "lock_sha256": "c707e6c96369aa3e07a5667cbd1a8c85f68480af042b9fabd409204735cf377d",
+    "lock_bytes": 35109,
+    "whole_native_lock_blob_matches_repository": true,
+    "locked_native_preflight": "passed on both OSes"
+  },
+  "c2_artifact_verifier": {
+    "implementation_commit": "33855bf3856c17342ccf4bda089d212ff55f810a",
+    "status": "native contracts passed; standalone content verification is not live E2E",
+    "contract_run": 36388757311,
+    "shared_tests_prepared": 8,
+    "unix_tests_prepared": 1,
+    "compile_fail_doctests_prepared": 1,
+    "local_rust_execution": false
+  },
+  "c2_live_acceptance": {
+    "parent": "2000e8581a403a31d9001f9bbd9f950012e28ee3",
+    "status": "implemented; native verification pending",
+    "target": "Linux first technical request-choice-file trace",
+    "new_local_python_tests_passed": 11,
+    "library_or_dependency_changes": false,
+    "existing_windows_strict_gate_changed": false,
+    "positive_e2e_verified": false,
+    "reproducible_e2e_verified": false,
+    "publication": "See latest PR73 checkpoint for exact head and run IDs"
+  },
+  "owner_assistance_rule": "PR73 comment5864661936; check tools, request minimal safe external step for a confirmed barrier, independently verify the result",
+  "prior_detailed_history": "Preserved at 2000e8581a403a31d9001f9bbd9f950012e28ee3 and PR73 checkpoints",
+  "updated": "2026-09-28"
 }

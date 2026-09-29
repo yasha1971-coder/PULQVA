@@ -1,0 +1,144 @@
+name: commons-tor-discovery-check
+on:
+  pull_request:
+    paths:
+      - 'crates/pulqva-discovery/**'
+      - 'crates/pulqva-core/**'
+      - 'crates/pulqva-privacy/**'
+      - 'sidecars/arti/**'
+      - 'sidecars/yt-dlp/**'
+      - 'tools/ci/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '.github/workflows/commons-tor-discovery-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/pulqva-discovery/**'
+      - 'crates/pulqva-core/**'
+      - 'crates/pulqva-privacy/**'
+      - 'sidecars/arti/**'
+      - 'sidecars/yt-dlp/**'
+      - 'tools/ci/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '.github/workflows/commons-tor-discovery-check.yml'
+permissions:
+  contents: read
+jobs:
+  live-discovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        id: checkout
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        id: python
+        with:
+          python-version: '3.12'
+      - name: Test evidence controls before Rust or external work
+        id: guard
+        run: python -m unittest discover -s tools/ci -p "test_*.py" -v
+      - name: Install pinned Rust
+        id: rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Require complete workspace compilation and contracts before live work
+        id: contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PULQVA_SOURCE_SHA"
+          git grep -n -E 'TorReadiness(Error|Stage|Timeout)' -- '*.rs'
+          cargo +1.91.0 check --workspace --all-targets --locked --keep-going
+          cargo +1.91.0 test --workspace --all-targets --locked --no-run
+          cargo +1.91.0 test --locked -p pulqva-privacy --lib -- --nocapture
+          cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture
+          cargo +1.91.0 test --locked -p pulqva-discovery --example real_commons_file -- --nocapture
+      - name: Compile the actual library and live acceptance harnesses
+        id: compile
+        run: cargo +1.91.0 build --locked -p pulqva-discovery --example real_commons_discovery --example real_commons_file
+      - name: Prepare existing pinned sidecars
+        id: arti
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTI_VERSION="$(tr -d '\r\n' < sidecars/arti/VERSION)"
+          test "$ARTI_VERSION" = "2.6.0"
+          EXTRA_FEATURES=()
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            EXTRA_FEATURES=(--features static-sqlite)
+          fi
+          cargo +1.91.0 install arti --version "$ARTI_VERSION" --locked \
+            "${EXTRA_FEATURES[@]}" --root "$RUNNER_TEMP/arti-root"
+          ARTI_BIN="$RUNNER_TEMP/arti-root/bin/arti"
+          if [ "$RUNNER_OS" = "Windows" ]; then ARTI_BIN="${ARTI_BIN}.exe"; fi
+          test -f "$ARTI_BIN"
+          echo "ARTI_BIN=$ARTI_BIN" >> "$GITHUB_ENV"
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            VERSION="$(tr -d '\r\n' < sidecars/yt-dlp/VERSION)"
+            test "$VERSION" = "2026.08.19"
+            ASSET="yt-dlp_linux"
+            EXPECTED="$(awk -v asset="$ASSET" '$2 == asset {print $1}' sidecars/yt-dlp/SHA256SUMS)"
+            [[ "$EXPECTED" =~ ^[0-9a-f]{64}$ ]]
+            BIN="$RUNNER_TEMP/$ASSET"
+            curl --fail --location --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 120 \
+              --output "$BIN" "https://github.com/yt-dlp/yt-dlp/releases/download/$VERSION/$ASSET"
+            test "$(sha256sum "$BIN" | awk '{print $1}')" = "$EXPECTED"
+            chmod +x "$BIN"
+            test "$(timeout --signal=TERM --kill-after=2s 15s "$BIN" --version)" = "$VERSION"
+            echo "YTDLP_BIN=$BIN" >> "$GITHUB_ENV"
+          fi
+      - name: Require Linux selected file or strict Windows discovery
+        id: live
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            EVIDENCE="$RUNNER_TEMP/pulqva-file-e2e"
+            echo "DISCOVERY_EVIDENCE=$EVIDENCE" >> "$GITHUB_ENV"
+            # Bound the complete fixture process group, not just an HTTP operation.
+            # This does not claim product-level cancellation or Arti-loss supervision.
+            OUTPUT="$(timeout --signal=TERM --kill-after=10s 300s \
+              target/debug/examples/real_commons_file "$ARTI_BIN" "$YTDLP_BIN" "$EVIDENCE")"
+            echo "$OUTPUT"
+            echo "$OUTPUT" | grep -Fx 'PULQVA_COMMONS_FILE_E2E_OK'
+            python tools/ci/verify_file_e2e.py "$EVIDENCE" "$PULQVA_SOURCE_SHA"
+          else
+            EVIDENCE="$RUNNER_TEMP/pulqva-live-commons-discovery.json"
+            echo "DISCOVERY_EVIDENCE=$EVIDENCE" >> "$GITHUB_ENV"
+            OUTPUT="$(cargo +1.91.0 run --quiet --locked -p pulqva-discovery \
+              --example real_commons_discovery -- "$ARTI_BIN" "$EVIDENCE")"
+            echo "$OUTPUT"
+          fi
+          echo "$OUTPUT" | grep -F 'PULQVA_COMMONS_TOR_DISCOVERY_OK choices='
+      - uses: actions/upload-artifact@v4
+        id: receipt
+        with:
+          name: commons-live-result-${{ matrix.os }}
+          path: ${{ env.DISCOVERY_EVIDENCE }}
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve safe stage outcomes on success or failure
+        id: evidence
+        if: ${{ always() && steps.checkout.outcome == 'success' && steps.python.outcome == 'success' }}
+        env:
+          PULQVA_STEP_CONTEXT: ${{ toJSON(steps) }}
+          PULQVA_EVIDENCE_DIR: ${{ runner.temp }}/pulqva-discovery-evidence
+        run: python tools/ci/discovery_receipt.py
+      - name: Upload per-OS stage evidence (not an E2E receipt)
+        if: ${{ always() && steps.evidence.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: commons-stage-evidence-${{ matrix.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulqva-discovery-evidence/stage-status.json
+          if-no-files-found: error
+          retention-days: 7

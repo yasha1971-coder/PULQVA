@@ -18,6 +18,12 @@ const READINESS_PORT: u16 = 443;
 const ATTEMPT_SLICE: Duration = Duration::from_secs(12);
 const RETRY_DELAY: Duration = Duration::from_millis(100);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TorReadinessStage { Listener, Negotiation, Destination }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TorReadinessTimeout { pub stage: TorReadinessStage }
+
 /// Explicitly activates bootstrap for a previously deferred Arti child, then
 /// verifies that the Tor transport can establish an outbound TCP connection
 /// through its local SOCKS endpoint within an explicit deadline.
@@ -30,8 +36,9 @@ pub fn verify_tor_readiness(
     running: &mut RunningArti,
     timeout: Duration,
 ) -> Result<ReadyTorTransport, TorReadinessError> {
+    let mut furthest = TorReadinessStage::Listener;
     if timeout.is_zero() {
-        return Err(TorReadinessError::Timeout);
+        return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
     }
 
     running
@@ -40,7 +47,7 @@ pub fn verify_tor_readiness(
 
     let deadline = Instant::now()
         .checked_add(timeout)
-        .ok_or(TorReadinessError::Timeout)?;
+        .ok_or(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }))?;
 
     loop {
         if let Some(status) = running
@@ -55,7 +62,7 @@ pub fn verify_tor_readiness(
 
         let now = Instant::now();
         if now >= deadline {
-            return Err(TorReadinessError::Timeout);
+            return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
         }
 
         let remaining = deadline.saturating_duration_since(now);
@@ -68,12 +75,13 @@ pub fn verify_tor_readiness(
                     verified_loopback,
                 ));
             }
-            Err(SocksProbeError::Retryable) => {
+            Err(SocksProbeError::Retryable(stage)) => {
+                furthest = furthest.max(stage);
                 let sleep_for = deadline
                     .saturating_duration_since(Instant::now())
                     .min(RETRY_DELAY);
                 if sleep_for.is_zero() {
-                    return Err(TorReadinessError::Timeout);
+                    return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
                 }
                 thread::sleep(sleep_for);
             }
@@ -101,15 +109,26 @@ fn socks_connect_probe(
         )),
     ];
 
+    probe_loopbacks(addresses, |local| socks_connect_probe_at(local, timeout))
+}
+
+// Keep the pre-diagnostics IPv4/IPv6 attempt order for EVERY retryable failure.
+// "Furthest" is only observed protocol progress, not a bootstrap/root-cause claim.
+// The private seam lets tests verify action traces without public-network I/O.
+fn probe_loopbacks(
+    addresses: [SocketAddr; 2],
+    mut probe: impl FnMut(SocketAddr) -> Result<(), SocksProbeError>,
+) -> Result<IpAddr, SocksProbeError> {
+    let mut furthest = TorReadinessStage::Listener;
     for local in addresses {
-        match socks_connect_probe_at(local, timeout) {
+        match probe(local) {
             Ok(()) => return Ok(local.ip()),
-            Err(SocksProbeError::Retryable) => continue,
+            Err(SocksProbeError::Retryable(stage)) => furthest = furthest.max(stage),
             Err(error) => return Err(error),
         }
     }
 
-    Err(SocksProbeError::Retryable)
+    Err(SocksProbeError::Retryable(furthest))
 }
 
 fn socks_connect_probe_at(
@@ -120,25 +139,25 @@ fn socks_connect_probe_at(
 
     let mut stream = match TcpStream::connect_timeout(&local, connect_timeout) {
         Ok(stream) => stream,
-        Err(source) if is_retryable_io(&source) => return Err(SocksProbeError::Retryable),
-        Err(_) => return Err(SocksProbeError::Retryable),
+        Err(source) if is_retryable_io(&source) => return Err(SocksProbeError::Retryable(TorReadinessStage::Listener)),
+        Err(_) => return Err(SocksProbeError::Retryable(TorReadinessStage::Listener)),
     };
 
     stream
         .set_read_timeout(Some(timeout))
-        .map_err(|_| SocksProbeError::Retryable)?;
+        .map_err(|_| SocksProbeError::Retryable(TorReadinessStage::Negotiation))?;
     stream
         .set_write_timeout(Some(timeout))
-        .map_err(|_| SocksProbeError::Retryable)?;
+        .map_err(|_| SocksProbeError::Retryable(TorReadinessStage::Negotiation))?;
 
     stream
         .write_all(&[0x05, 0x01, 0x00])
-        .map_err(|_| SocksProbeError::Retryable)?;
+        .map_err(|_| SocksProbeError::Retryable(TorReadinessStage::Negotiation))?;
 
     let mut method = [0_u8; 2];
     stream
         .read_exact(&mut method)
-        .map_err(|_| SocksProbeError::Retryable)?;
+        .map_err(|_| SocksProbeError::Retryable(TorReadinessStage::Negotiation))?;
 
     if method != [0x05, 0x00] {
         return Err(SocksProbeError::Protocol(
@@ -158,12 +177,12 @@ fn socks_connect_probe_at(
 
     stream
         .write_all(&request)
-        .map_err(|_| SocksProbeError::Retryable)?;
+        .map_err(|_| SocksProbeError::Retryable(TorReadinessStage::Destination))?;
 
     let mut response = [0_u8; 4];
     stream
         .read_exact(&mut response)
-        .map_err(|_| SocksProbeError::Retryable)?;
+        .map_err(|_| SocksProbeError::Retryable(TorReadinessStage::Destination))?;
 
     if response[0] != 0x05 {
         return Err(SocksProbeError::Protocol(
@@ -175,7 +194,7 @@ fn socks_connect_probe_at(
         return Ok(());
     }
 
-    Err(SocksProbeError::Retryable)
+    Err(SocksProbeError::Retryable(TorReadinessStage::Destination))
 }
 
 fn is_retryable_io(source: &io::Error) -> bool {
@@ -190,14 +209,15 @@ fn is_retryable_io(source: &io::Error) -> bool {
     )
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum SocksProbeError {
-    Retryable,
+    Retryable(TorReadinessStage),
     Protocol(&'static str),
 }
 
 #[derive(Debug)]
 pub enum TorReadinessError {
-    Timeout,
+    Timeout(TorReadinessTimeout),
     BootstrapActivation(ArtiProcessError),
     ChildExited(ExitStatus),
     Protocol(&'static str),
@@ -210,7 +230,7 @@ pub enum TorReadinessError {
 impl fmt::Display for TorReadinessError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Timeout => f.write_str("Tor readiness verification timed out"),
+            Self::Timeout(timeout) => write!(f, "Tor readiness verification timed out at {:?}", timeout.stage),
             Self::BootstrapActivation(source) => {
                 write!(f, "failed to activate Tor bootstrap: {source}")
             }
@@ -228,7 +248,10 @@ impl Error for TorReadinessError {
         match self {
             Self::BootstrapActivation(source) => Some(source),
             Self::Io { source, .. } => Some(source),
-            Self::Timeout | Self::ChildExited(_) | Self::Protocol(_) => None,
+            Self::Timeout(_) | Self::ChildExited(_) | Self::Protocol(_) => None,
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

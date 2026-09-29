@@ -50,10 +50,12 @@ impl FileReceipt {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum JourneyError { TooFewChoices, InvalidSelection, MissingFilePath, RetrievalFailed }
+pub enum JourneyError { InvalidRequest, SearchFailed, TooFewChoices, InvalidSelection, MissingFilePath, RetrievalFailed }
 impl fmt::Display for JourneyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
+            Self::InvalidRequest => "search request is invalid",
+            Self::SearchFailed => "search failed",
             Self::TooFewChoices => "journey requires at least two choices",
             Self::InvalidSelection => "selection is not in the presented choice set",
             Self::MissingFilePath => "retrieval receipt requires a file path",
@@ -74,7 +76,7 @@ pub trait CandidateRetrieval {
 pub fn request_choices(search: &mut impl CandidateSearch, request: impl Into<String>)
     -> Result<ChoiceSet, JourneyError>
 {
-    let intent = SearchIntent::new(request).map_err(|_| JourneyError::TooFewChoices)?;
+    let intent = SearchIntent::new(request).map_err(|_| JourneyError::InvalidRequest)?;
     ChoiceSet::new(intent.clone(), search.search(&intent)?)
 }
 
@@ -138,5 +140,10 @@ mod tests {
         assert!(!root.exists());
         assert_eq!(retrieve_choice(&mut RetrievalFixture { fail: true }, &choices, 0, &root), Err(JourneyError::RetrievalFailed));
         assert!(!root.exists());
+    }
+
+    #[test]
+    fn empty_request_is_not_misreported_as_too_few_search_results() {
+        assert_eq!(request_choices(&mut SearchFixture, " "), Err(JourneyError::InvalidRequest));
     }
 }
