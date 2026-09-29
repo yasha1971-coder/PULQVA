@@ -1,0 +1,161 @@
+name: commons-tor-discovery-check
+on:
+  pull_request:
+    paths:
+      - 'crates/pulqva-discovery/**'
+      - 'crates/pulqva-core/**'
+      - 'crates/pulqva-privacy/**'
+      - 'sidecars/arti/**'
+      - 'sidecars/tor/**'
+      - 'sidecars/yt-dlp/**'
+      - 'tools/ci/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '.github/workflows/commons-tor-discovery-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/pulqva-discovery/**'
+      - 'crates/pulqva-core/**'
+      - 'crates/pulqva-privacy/**'
+      - 'sidecars/arti/**'
+      - 'sidecars/tor/**'
+      - 'sidecars/yt-dlp/**'
+      - 'tools/ci/**'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - '.github/workflows/commons-tor-discovery-check.yml'
+permissions:
+  contents: read
+jobs:
+  live-discovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        id: checkout
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        id: python
+        with:
+          python-version: '3.12'
+      - name: Test evidence controls before Rust or external work
+        id: guard
+        run: python -m unittest discover -s tools/ci -p "test_*.py" -v
+      - name: Install pinned Rust
+        id: rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Require complete workspace compilation and contracts before live work
+        id: contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PULQVA_SOURCE_SHA"
+          git grep -n -E 'TorReadiness(Error|Stage|Timeout)|LittleTorReadinessError' -- '*.rs'
+          cargo +1.91.0 check --workspace --all-targets --locked --keep-going
+          cargo +1.91.0 test --workspace --all-targets --locked --no-run
+          cargo +1.91.0 test --locked -p pulqva-privacy --lib -- --nocapture
+          cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture
+          cargo +1.91.0 test --locked -p pulqva-discovery --example real_commons_file -- --nocapture
+      - name: Compile the actual live file acceptance harness
+        id: compile
+        run: cargo +1.91.0 build --locked -p pulqva-discovery --example real_commons_file
+      - name: Prepare exact pinned Tor and yt-dlp sidecars
+        id: sidecars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            TOR_RELEASE="$(tr -d '\r\n' < sidecars/tor/VERSION)"
+            test "$TOR_RELEASE" = "15.0.23"
+            ARCHIVE="tor-expert-bundle-windows-x86_64-$TOR_RELEASE.tar.gz"
+            EXPECTED_ARCHIVE="$(awk -v asset="$ARCHIVE" '$2 == asset {print $1}' sidecars/tor/SHA256SUMS)"
+            EXPECTED_TOR="$(awk '$2 == "windows-x86_64/tor/tor.exe" {print $1}' sidecars/tor/SHA256SUMS)"
+            [[ "$EXPECTED_ARCHIVE" =~ ^[0-9a-f]{64}$ ]]
+            [[ "$EXPECTED_TOR" =~ ^[0-9a-f]{64}$ ]]
+
+            TOR_ARCHIVE="$RUNNER_TEMP/$ARCHIVE"
+            TOR_ROOT="$RUNNER_TEMP/tor-expert-$TOR_RELEASE"
+            mkdir -p "$TOR_ROOT"
+            curl --fail --location --retry 5 --retry-all-errors --retry-delay 2               --connect-timeout 20 --max-time 180 --output "$TOR_ARCHIVE"               "https://dist.torproject.org/torbrowser/$TOR_RELEASE/$ARCHIVE"
+            test "$(sha256sum "$TOR_ARCHIVE" | awk '{print $1}')" = "$EXPECTED_ARCHIVE"
+            tar -xzf "$TOR_ARCHIVE" -C "$TOR_ROOT"
+            TOR_BIN="$TOR_ROOT/tor/tor.exe"
+            test -f "$TOR_BIN"
+            test "$(sha256sum "$TOR_BIN" | awk '{print $1}')" = "$EXPECTED_TOR"
+            "$TOR_BIN" --version | grep -F 'Tor version 0.4.9.12'
+            PLATFORM="windows"
+            YTDLP_ASSET="yt-dlp.exe"
+          else
+            ARTI_VERSION="$(tr -d '\r\n' < sidecars/arti/VERSION)"
+            test "$ARTI_VERSION" = "2.6.0"
+            cargo +1.91.0 install arti --version "$ARTI_VERSION" --locked               --root "$RUNNER_TEMP/arti-root"
+            TOR_BIN="$RUNNER_TEMP/arti-root/bin/arti"
+            test -f "$TOR_BIN"
+            PLATFORM="linux"
+            YTDLP_ASSET="yt-dlp_linux"
+          fi
+
+          YTDLP_VERSION="$(tr -d '\r\n' < sidecars/yt-dlp/VERSION)"
+          test "$YTDLP_VERSION" = "2026.08.19"
+          EXPECTED_YTDLP="$(awk -v asset="$YTDLP_ASSET" '$2 == asset {print $1}' sidecars/yt-dlp/SHA256SUMS)"
+          [[ "$EXPECTED_YTDLP" =~ ^[0-9a-f]{64}$ ]]
+          YTDLP_BIN="$RUNNER_TEMP/$YTDLP_ASSET"
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 2             --connect-timeout 10 --max-time 120 --output "$YTDLP_BIN"             "https://github.com/yt-dlp/yt-dlp/releases/download/$YTDLP_VERSION/$YTDLP_ASSET"
+          test "$(sha256sum "$YTDLP_BIN" | awk '{print $1}')" = "$EXPECTED_YTDLP"
+          if [ "$RUNNER_OS" = "Linux" ]; then chmod +x "$YTDLP_BIN"; fi
+          "$YTDLP_BIN" --version | grep -Fx "$YTDLP_VERSION"
+
+          echo "TOR_BIN=$TOR_BIN" >> "$GITHUB_ENV"
+          echo "YTDLP_BIN=$YTDLP_BIN" >> "$GITHUB_ENV"
+          echo "PLATFORM=$PLATFORM" >> "$GITHUB_ENV"
+      - name: Require selected file through the platform Tor sidecar
+        id: live
+        timeout-minutes: 6
+        shell: bash
+        run: |
+          set -euo pipefail
+          EVIDENCE="$RUNNER_TEMP/pulqva-file-e2e"
+          echo "DISCOVERY_EVIDENCE=$EVIDENCE" >> "$GITHUB_ENV"
+
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            OUTPUT="$(timeout --signal=TERM --kill-after=10s 300s               target/debug/examples/real_commons_file "$TOR_BIN" "$YTDLP_BIN" "$EVIDENCE")"
+          else
+            OUTPUT="$(target/debug/examples/real_commons_file.exe "$TOR_BIN" "$YTDLP_BIN" "$EVIDENCE")"
+          fi
+
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -F 'PULQVA_COMMONS_TOR_DISCOVERY_OK choices='
+          echo "$OUTPUT" | grep -Fx 'PULQVA_COMMONS_FILE_E2E_OK'
+          python tools/ci/verify_file_e2e.py "$EVIDENCE" "$PULQVA_SOURCE_SHA" "$PLATFORM"
+      - uses: actions/upload-artifact@v4
+        id: receipt
+        with:
+          name: commons-live-result-${{ matrix.os }}
+          path: ${{ env.DISCOVERY_EVIDENCE }}
+          if-no-files-found: error
+          retention-days: 7
+      - name: Preserve safe stage outcomes on success or failure
+        id: evidence
+        if: ${{ always() && steps.checkout.outcome == 'success' && steps.python.outcome == 'success' }}
+        env:
+          PULQVA_STEP_CONTEXT: ${{ toJSON(steps) }}
+          PULQVA_EVIDENCE_DIR: ${{ runner.temp }}/pulqva-discovery-evidence
+        run: python tools/ci/discovery_receipt.py
+      - name: Upload per-OS stage evidence (not an E2E receipt)
+        if: ${{ always() && steps.evidence.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: commons-stage-evidence-${{ matrix.os }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulqva-discovery-evidence/stage-status.json
+          if-no-files-found: error
+          retention-days: 7

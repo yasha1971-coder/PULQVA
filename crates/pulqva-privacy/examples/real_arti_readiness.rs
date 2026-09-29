@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("PULQVA_TOR_READY_OK");
             Ok(())
         }
-        Err(TorReadinessError::Timeout) if cfg!(windows) => {
+        Err(TorReadinessError::Timeout(_)) if cfg!(windows) => {
             if running.try_wait()?.is_some() {
                 let _ = fs::remove_dir_all(&root);
                 return Err("Arti child exited during Windows fail-closed proof".into());

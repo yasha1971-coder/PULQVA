@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let ready = match verify_tor_readiness(&mut running_arti, TOR_READY_TIMEOUT) {
         Ok(ready) => ready,
-        Err(TorReadinessError::Timeout) if cfg!(windows) => {
+        Err(TorReadinessError::Timeout(_)) if cfg!(windows) => {
             let _ = running_arti.stop_and_wait();
             let _ = fs::remove_dir_all(&root);
             println!("PULQVA_YTDLP_TOR_MEDIA_WINDOWS_FAIL_CLOSED_OK");

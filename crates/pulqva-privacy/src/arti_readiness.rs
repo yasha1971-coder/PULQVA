@@ -10,8 +10,16 @@ use std::{
 use crate::{
     ArtiProcessError, ReadyTorTransport, RunningArti,
     arti_ready::certify_tor_ready,
-    tor_socks_probe::{ATTEMPT_SLICE, RETRY_DELAY, SocksProbeError, socks_connect_probe},
+    tor_socks_probe::{
+        ATTEMPT_SLICE, RETRY_DELAY, SocksProbeError, TorReadinessStage,
+        TorReadinessTimeout, socks_connect_probe,
+    },
 };
+
+#[cfg(test)]
+use crate::tor_socks_probe::probe_loopbacks;
+#[cfg(test)]
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 const READINESS_HOST: &str = "example.com";
 const READINESS_PORT: u16 = 443;
@@ -28,8 +36,9 @@ pub fn verify_tor_readiness(
     running: &mut RunningArti,
     timeout: Duration,
 ) -> Result<ReadyTorTransport, TorReadinessError> {
+    let mut furthest = TorReadinessStage::Listener;
     if timeout.is_zero() {
-        return Err(TorReadinessError::Timeout);
+        return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
     }
 
     running
@@ -38,7 +47,7 @@ pub fn verify_tor_readiness(
 
     let deadline = Instant::now()
         .checked_add(timeout)
-        .ok_or(TorReadinessError::Timeout)?;
+        .ok_or(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }))?;
 
     loop {
         if let Some(status) = running
@@ -53,7 +62,7 @@ pub fn verify_tor_readiness(
 
         let now = Instant::now();
         if now >= deadline {
-            return Err(TorReadinessError::Timeout);
+            return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
         }
 
         let remaining = deadline.saturating_duration_since(now);
@@ -66,17 +75,15 @@ pub fn verify_tor_readiness(
             attempt_timeout,
         ) {
             Ok(verified_loopback) => {
-                return Ok(certify_tor_ready(
-                    running.endpoint(),
-                    verified_loopback,
-                ));
+                return Ok(certify_tor_ready(running.endpoint(), verified_loopback));
             }
-            Err(SocksProbeError::Retryable) => {
+            Err(SocksProbeError::Retryable(stage)) => {
+                furthest = furthest.max(stage);
                 let sleep_for = deadline
                     .saturating_duration_since(Instant::now())
                     .min(RETRY_DELAY);
                 if sleep_for.is_zero() {
-                    return Err(TorReadinessError::Timeout);
+                    return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
                 }
                 thread::sleep(sleep_for);
             }
@@ -89,7 +96,7 @@ pub fn verify_tor_readiness(
 
 #[derive(Debug)]
 pub enum TorReadinessError {
-    Timeout,
+    Timeout(TorReadinessTimeout),
     BootstrapActivation(ArtiProcessError),
     ChildExited(ExitStatus),
     Protocol(&'static str),
@@ -102,7 +109,9 @@ pub enum TorReadinessError {
 impl fmt::Display for TorReadinessError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Timeout => f.write_str("Tor readiness verification timed out"),
+            Self::Timeout(timeout) => {
+                write!(f, "Tor readiness verification timed out at {:?}", timeout.stage)
+            }
             Self::BootstrapActivation(source) => {
                 write!(f, "failed to activate Tor bootstrap: {source}")
             }
@@ -120,7 +129,10 @@ impl Error for TorReadinessError {
         match self {
             Self::BootstrapActivation(source) => Some(source),
             Self::Io { source, .. } => Some(source),
-            Self::Timeout | Self::ChildExited(_) | Self::Protocol(_) => None,
+            Self::Timeout(_) | Self::ChildExited(_) | Self::Protocol(_) => None,
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

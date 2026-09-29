@@ -13,7 +13,10 @@ use std::{
 use crate::{
     ReadyTorTransport, TorSocksEndpoint,
     arti_ready::certify_tor_ready,
-    tor_socks_probe::{ATTEMPT_SLICE, RETRY_DELAY, SocksProbeError, socks_connect_probe},
+    tor_socks_probe::{
+        ATTEMPT_SLICE, RETRY_DELAY, SocksProbeError, TorReadinessStage,
+        TorReadinessTimeout, socks_connect_probe,
+    },
 };
 
 const READINESS_HOST: &str = "example.com";
@@ -413,13 +416,14 @@ pub fn verify_little_tor_readiness(
     running: &mut RunningLittleTor,
     timeout: Duration,
 ) -> Result<ReadyTorTransport, LittleTorReadinessError> {
+    let mut furthest = TorReadinessStage::Listener;
     if timeout.is_zero() {
-        return Err(LittleTorReadinessError::Timeout);
+        return Err(LittleTorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
     }
 
     let deadline = Instant::now()
         .checked_add(timeout)
-        .ok_or(LittleTorReadinessError::Timeout)?;
+        .ok_or(LittleTorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }))?;
 
     loop {
         if let Some(status) = running
@@ -434,7 +438,7 @@ pub fn verify_little_tor_readiness(
 
         let now = Instant::now();
         if now >= deadline {
-            return Err(LittleTorReadinessError::Timeout);
+            return Err(LittleTorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
         }
 
         let remaining = deadline.saturating_duration_since(now);
@@ -452,12 +456,13 @@ pub fn verify_little_tor_readiness(
                     verified_loopback,
                 ));
             }
-            Err(SocksProbeError::Retryable) => {
+            Err(SocksProbeError::Retryable(stage)) => {
+                furthest = furthest.max(stage);
                 let sleep_for = deadline
                     .saturating_duration_since(Instant::now())
                     .min(RETRY_DELAY);
                 if sleep_for.is_zero() {
-                    return Err(LittleTorReadinessError::Timeout);
+                    return Err(LittleTorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
                 }
                 thread::sleep(sleep_for);
             }
@@ -470,7 +475,7 @@ pub fn verify_little_tor_readiness(
 
 #[derive(Debug)]
 pub enum LittleTorReadinessError {
-    Timeout,
+    Timeout(TorReadinessTimeout),
     ChildExited(ExitStatus),
     Protocol(&'static str),
     Io {
@@ -482,7 +487,9 @@ pub enum LittleTorReadinessError {
 impl fmt::Display for LittleTorReadinessError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Timeout => f.write_str("little-t Tor readiness verification timed out"),
+            Self::Timeout(timeout) => {
+                write!(f, "little-t Tor readiness verification timed out at {:?}", timeout.stage)
+            },
             Self::ChildExited(status) => {
                 write!(f, "little-t Tor child exited before Tor became ready: {status}")
             }
@@ -498,7 +505,7 @@ impl Error for LittleTorReadinessError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Io { source, .. } => Some(source),
-            Self::Timeout | Self::ChildExited(_) | Self::Protocol(_) => None,
+            Self::Timeout(_) | Self::ChildExited(_) | Self::Protocol(_) => None,
         }
     }
 }
