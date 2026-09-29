@@ -74,34 +74,26 @@ pub fn establish_ready_running_tor(
     mut running: RunningTorTransport,
     timeout: Duration,
 ) -> Result<ReadyRunningTorTransport, TorTransportReadinessError> {
-    let ready = match &mut running {
-        RunningTorTransport::Arti(arti) => match verify_tor_readiness(arti, timeout) {
-            Ok(ready) => ready,
-            Err(readiness) => {
-                return match running.stop_and_wait() {
-                    Ok(_) => Err(TorTransportReadinessError::Arti(readiness)),
-                    Err(cleanup) => Err(TorTransportReadinessError::Cleanup {
-                        readiness: format!("Arti readiness failed: {readiness}"),
-                        cleanup,
-                    }),
-                };
-            }
-        },
-        RunningTorTransport::LittleT(tor) => match verify_little_tor_readiness(tor, timeout) {
-            Ok(ready) => ready,
-            Err(readiness) => {
-                return match running.stop_and_wait() {
-                    Ok(_) => Err(TorTransportReadinessError::LittleT(readiness)),
-                    Err(cleanup) => Err(TorTransportReadinessError::Cleanup {
-                        readiness: format!("little-t Tor readiness failed: {readiness}"),
-                        cleanup,
-                    }),
-                };
-            }
-        },
+    let readiness = match &mut running {
+        RunningTorTransport::Arti(arti) => verify_tor_readiness(arti, timeout)
+            .map_err(TorTransportReadinessError::Arti),
+        RunningTorTransport::LittleT(tor) => verify_little_tor_readiness(tor, timeout)
+            .map_err(TorTransportReadinessError::LittleT),
     };
 
-    Ok(ReadyRunningTorTransport { running, ready })
+    match readiness {
+        Ok(ready) => Ok(ReadyRunningTorTransport { running, ready }),
+        Err(readiness) => {
+            let description = readiness.to_string();
+            match running.stop_and_wait() {
+                Ok(_) => Err(readiness),
+                Err(cleanup) => Err(TorTransportReadinessError::Cleanup {
+                    readiness: description,
+                    cleanup,
+                }),
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
