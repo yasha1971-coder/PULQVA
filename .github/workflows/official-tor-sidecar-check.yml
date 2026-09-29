@@ -1,0 +1,75 @@
+name: official-tor-sidecar-check
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  windows-official-tor:
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify pinned Tor Expert Bundle
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $Version = (Get-Content "sidecars/tor/VERSION" -Raw).Trim()
+          if ($Version -ne "15.0.23") { throw "Unexpected Expert Bundle version: $Version" }
+
+          $ArchiveName = "tor-expert-bundle-windows-x86_64-$Version.tar.gz"
+          $Url = "https://dist.torproject.org/torbrowser/$Version/$ArchiveName"
+          $Archive = Join-Path $env:RUNNER_TEMP $ArchiveName
+          $Extract = Join-Path $env:RUNNER_TEMP "pulqva-tor-$Version"
+
+          $Sums = Get-Content "sidecars/tor/SHA256SUMS"
+          $ArchiveLine = $Sums | Where-Object { $_ -match [regex]::Escape($ArchiveName) + '$' }
+          if (-not $ArchiveLine) { throw "Pinned archive digest missing" }
+          $ExpectedArchive = ($ArchiveLine -split '\s+')[0].ToLower()
+
+          $TorDigestPath = "windows-x86_64/tor/tor.exe"
+          $TorLine = $Sums | Where-Object { $_ -match [regex]::Escape($TorDigestPath) + '$' }
+          if (-not $TorLine) { throw "Pinned tor.exe digest missing" }
+          $ExpectedTor = ($TorLine -split '\s+')[0].ToLower()
+
+          & "$env:SystemRoot\System32\curl.exe" --fail --location --retry 5 --retry-all-errors --retry-delay 2 --connect-timeout 20 --output $Archive $Url
+          if ($LASTEXITCODE -ne 0) { throw "Tor Expert Bundle download failed" }
+
+          $ActualArchive = (Get-FileHash $Archive -Algorithm SHA256).Hash.ToLower()
+          if ($ActualArchive -ne $ExpectedArchive) { throw "Tor Expert Bundle SHA-256 mismatch" }
+
+          New-Item -ItemType Directory -Force -Path $Extract | Out-Null
+          & "$env:SystemRoot\System32\tar.exe" -xzf $Archive -C $Extract
+          if ($LASTEXITCODE -ne 0) { throw "Tor Expert Bundle extraction failed" }
+
+          $TorExe = Join-Path $Extract "tor\tor.exe"
+          if (!(Test-Path $TorExe)) { throw "tor.exe missing from Expert Bundle" }
+
+          $ActualTor = (Get-FileHash $TorExe -Algorithm SHA256).Hash.ToLower()
+          if ($ActualTor -ne $ExpectedTor) { throw "tor.exe SHA-256 mismatch" }
+
+          $VersionOutput = (& $TorExe --version 2>&1 | Out-String).Trim()
+          Write-Host $VersionOutput
+          if ($LASTEXITCODE -ne 0) { throw "tor.exe --version failed" }
+          if ($VersionOutput -notmatch 'Tor version 0\.4\.9\.12') { throw "Unexpected Tor core version" }
+
+          Write-Host "PULQVA_OFFICIAL_TOR_WINDOWS_IDENTITY_OK"
+
+      - name: Validate native evidence receipt
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $Evidence = Get-Content "sidecars/tor/WINDOWS_NATIVE_VERIFICATION.json" -Raw | ConvertFrom-Json
+          if ($Evidence.expert_bundle.release -ne "15.0.23") { throw "receipt bundle version mismatch" }
+          if ($Evidence.tor_executable.version -ne "0.4.9.12") { throw "receipt Tor version mismatch" }
+          if ($Evidence.live_transport.bootstrap_100 -ne $true) { throw "receipt lacks bootstrap proof" }
+          if ($Evidence.live_transport.tor_project_check_is_tor -ne $true) { throw "receipt lacks IsTor proof" }
+          if ($Evidence.live_transport.exit_ip_retained -ne $false) { throw "receipt must not retain exit IP" }
+          Write-Host "PULQVA_T068_WINDOWS_TRANSPORT_EVIDENCE_OK"
