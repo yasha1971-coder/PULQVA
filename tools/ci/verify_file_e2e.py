@@ -32,7 +32,7 @@ def integer(value: object, low: int, high: int) -> bool:
     return type(value) is int and low <= value <= high
 
 
-def verify(bundle: Path, source_sha: str) -> dict:
+def verify(bundle: Path, source_sha: str, platform: str = 'linux') -> dict:
     require(re.fullmatch(r'[0-9a-f]{40}', source_sha) is not None)
     require(stat.S_ISDIR(bundle.lstat().st_mode))
     require({item.name for item in bundle.iterdir()} == {'receipt.json', 'selected.webm'})
@@ -47,12 +47,13 @@ def verify(bundle: Path, source_sha: str) -> dict:
     data = json.loads(raw, object_pairs_hook=unique_object)
     require(isinstance(data, dict))
     require(data.get('schema') == 2 and data.get('source_sha') == source_sha)
-    require(data.get('scope') == 'linux-live-request-choice-file')
+    require(platform in {'linux', 'windows'})
+    require(data.get('scope') == f'{platform}-live-request-choice-file')
     require(data.get('request') == 'countdown')
     for name in ('core_retrieval_used', 'file_downloaded', 'cancelled_search_rejected', 'stale_results_cleared'):
         require(data.get(name) is True)
     require(data.get('publisher_authenticated') is False)
-    require(data.get('windows_e2e_verified') is False)
+    require(data.get('windows_e2e_verified') is (platform == 'windows'))
     choices = data.get('choices')
     require(isinstance(choices, list) and 2 <= len(choices) <= 10)
     require(integer(data.get('choice_count'), 2, 10) and data['choice_count'] == len(choices))
@@ -91,8 +92,8 @@ def verify(bundle: Path, source_sha: str) -> dict:
 
 def main() -> int:
     try:
-        require(len(sys.argv) == 3)
-        verify(Path(sys.argv[1]), sys.argv[2])
+        require(len(sys.argv) == 4)
+        verify(Path(sys.argv[1]), sys.argv[2], sys.argv[3])
     except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError):
         print('PULQVA_FILE_EVIDENCE_REJECTED')
         return 1
