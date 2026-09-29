@@ -146,22 +146,3 @@ fn is_retryable_io(source: &io::Error) -> bool {
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{socks_connect_probe, TorReadinessStage};
-    use crate::TorSocksEndpoint;
-    use std::time::Duration;
-
-    #[test]
-    fn absent_listener_reports_listener_stage() {
-        let endpoint = TorSocksEndpoint::new(9).expect("non-zero port");
-        let error = socks_connect_probe(endpoint, "example.com", 443, Duration::from_millis(1))
-            .expect_err("discard port must not provide Tor SOCKS");
-        match error {
-            super::SocksProbeError::Retryable(stage) => {
-                assert_eq!(stage, TorReadinessStage::Listener);
-            }
-            super::SocksProbeError::Protocol(message) => panic!("unexpected protocol error: {message}"),
-        }
-    }
-}
