@@ -121,6 +121,9 @@ class FileEvidenceTests(unittest.TestCase):
         self.assertIn('--example real_commons_file', text)
         self.assertNotIn('continue-on-error:', text)
         self.assertIn('sidecars/yt-dlp/SHA256SUMS', text)
+        self.assertIn('sidecars/tor/SHA256SUMS', text)
+        self.assertIn('tor-expert-bundle-windows-x86_64', text)
+        self.assertIn('real_commons_file.exe', live)
         source = (root / 'crates/pulqva-discovery/examples/real_commons_file.rs').read_text()
         self.assertLess(source.index('let receipt = retrieve_choice('), source.index('cancellation.cancel();'))
         self.assertNotIn('Command::new', source)  # No second downloader in this harness.
