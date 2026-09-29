@@ -155,9 +155,5 @@ mod tests {
                    LocalIntentProcessError::Spawn);
     }
 
-    fn fixture_plan(_mode: &str, _timeout: Duration) -> LocalIntentProcessPlan {
-        unreachable!("process integration fixtures live in tests/process_matrix.rs")
-    }
-
 
 }
