@@ -6,15 +6,16 @@
   "source_of_truth": "repository",
   "last_verified_commit": "51a21c476d49738184678bb6e5c3d8ff29be68fd",
   "last_completed_task": "T067",
-  "active_task": null,
+  "active_task": "T068",
   "next_task": "T068",
-  "ci": "green",
+  "ci": "pending_t068_windows_tor_checkpoint",
   "architecture_status": "kernel_frozen_implementation_open",
   "known_blockers": [
+    "The Windows official Tor runtime is proven manually but is not yet materialized/launched by the PULQVA backend beneath ReadyTorTransport.",
     "Real external request -> choices -> selected file through Tor has not yet been demonstrated through the T067 coordinator.",
     "Windows positive live media retrieval remains unproven; fail-closed behavior is verified.",
     "YouTube/EJS/POT/SABR compatibility is a separate adapter/reliability gate and must not obscure the first generic live Tor E2E proof.",
     "Self-contained clean-machine Windows/Linux release packages remain unverified."
   ],
-  "updated": "2026-09-27"
+  "updated": "2026-09-29"
 }
