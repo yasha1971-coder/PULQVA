@@ -3,7 +3,7 @@
 //! This crate is a narrow adapter. It decodes JSON into validated core types
 //! and intentionally contains no provider, network, transport, or execution logic.
 
-use pulqva_core::{SearchIntent, SearchIntentError};
+use pulqva_core::{ChoiceMode, InterpretedIntent, InterpretedIntentError, SearchIntent, SearchIntentError};
 use serde::Deserialize;
 use std::{error::Error, fmt};
 
@@ -11,6 +11,65 @@ use std::{error::Error, fmt};
 #[serde(deny_unknown_fields)]
 struct WireSearchIntent {
     query: String,
+}
+
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WireInterpretedIntent {
+    query: String,
+    choice_mode: WireChoiceMode,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WireChoiceMode {
+    Ask,
+    Autopilot,
+}
+
+/// Parses the only structured output shape future local inference may emit.
+///
+/// Accepted shape:
+/// {"query":"semantic search terms","choice_mode":"ask|autopilot"}
+///
+/// Unknown fields are rejected before core validation. The decoder has no
+/// network, filesystem, process or provider authority.
+pub fn parse_interpreted_intent_json(input: &str)
+    -> Result<InterpretedIntent, InterpretedIntentJsonError>
+{
+    let wire: WireInterpretedIntent =
+        serde_json::from_str(input).map_err(InterpretedIntentJsonError::Decode)?;
+    let mode = match wire.choice_mode {
+        WireChoiceMode::Ask => ChoiceMode::Ask,
+        WireChoiceMode::Autopilot => ChoiceMode::Autopilot,
+    };
+    InterpretedIntent::new(wire.query, mode)
+        .map_err(InterpretedIntentJsonError::Validation)
+}
+
+#[derive(Debug)]
+pub enum InterpretedIntentJsonError {
+    Decode(serde_json::Error),
+    Validation(InterpretedIntentError),
+}
+
+impl fmt::Display for InterpretedIntentJsonError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Decode(_) => f.write_str("invalid interpreted-intent JSON"),
+            Self::Validation(error) => write!(f, "invalid interpreted intent: {error}"),
+        }
+    }
+}
+
+impl Error for InterpretedIntentJsonError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Decode(error) => Some(error),
+            Self::Validation(error) => Some(error),
+        }
+    }
 }
 
 /// Parses a strict JSON object into a validated SearchIntent.
@@ -98,4 +157,82 @@ mod tests {
 
         assert!(matches!(error, IntentJsonError::Validation(_)));
     }
+
+    #[test]
+    fn parses_strict_interpreted_intent() {
+        let intent = super::parse_interpreted_intent_json(
+            r#"{"query":"countdown video","choice_mode":"ask"}"#
+        ).unwrap();
+        assert_eq!(intent.query(), "countdown video");
+        assert_eq!(intent.choice_mode(), pulqva_core::ChoiceMode::Ask);
+    }
+
+    #[test]
+    fn parses_typed_autopilot_policy() {
+        let intent = super::parse_interpreted_intent_json(
+            r#"{"query":"rain ambience","choice_mode":"autopilot"}"#
+        ).unwrap();
+        assert_eq!(intent.choice_mode(), pulqva_core::ChoiceMode::Autopilot);
+    }
+
+    #[test]
+    fn rejects_unknown_model_authority_fields() {
+        for input in [
+            r#"{"query":"countdown","choice_mode":"ask","url":"https://example.com"}"#,
+            r#"{"query":"countdown","choice_mode":"ask","proxy":"socks5h://127.0.0.1:1"}"#,
+            r#"{"query":"countdown","choice_mode":"ask","command":"curl"}"#,
+            r#"{"query":"countdown","choice_mode":"ask","path":"C:\\temp"}"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpreted_intent_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn rejects_missing_invalid_or_free_text_choice_policy() {
+        for input in [
+            r#"{"query":"countdown"}"#,
+            r#"{"query":"countdown","choice_mode":"yes"}"#,
+            r#"{"query":"countdown","choice_mode":1}"#,
+            r#"{"query":"countdown","choice_mode":{"mode":"ask"}}"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpreted_intent_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn core_rejects_locator_path_control_and_oversize_after_decode() {
+        let cases = [
+            r#"{"query":"https://example.com/a.webm","choice_mode":"ask"}"#.to_owned(),
+            r#"{"query":"C:\\Users\\person\\file","choice_mode":"ask"}"#.to_owned(),
+            r#"{"query":"line\nbreak","choice_mode":"ask"}"#.to_owned(),
+            format!(r#"{{"query":"{}","choice_mode":"ask"}}"#, "x".repeat(pulqva_core::MAX_INTERPRETED_QUERY_BYTES + 1)),
+        ];
+        for input in cases {
+            assert!(matches!(
+                super::parse_interpreted_intent_json(&input),
+                Err(super::InterpretedIntentJsonError::Validation(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn trailing_or_multiple_json_values_are_rejected() {
+        for input in [
+            r#"{"query":"countdown","choice_mode":"ask"} garbage"#,
+            r#"{"query":"countdown","choice_mode":"ask"} {"query":"other","choice_mode":"ask"}"#,
+            r#"[{"query":"countdown","choice_mode":"ask"}]"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpreted_intent_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ));
+        }
+    }
+
 }
