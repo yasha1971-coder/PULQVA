@@ -46,6 +46,14 @@ class FileEvidenceTests(unittest.TestCase):
         self.assertEqual((self.root / 'receipt.json').read_bytes(), before)
         self.assertEqual((self.root / 'selected.webm').read_bytes(), b'abc')
 
+    def test_windows_receipt_is_platform_bound(self):
+        self.data['scope'] = 'windows-live-request-choice-file'
+        self.data['windows_e2e_verified'] = True
+        self.write()
+        self.assertEqual(verify(self.root, SHA, 'windows'), {'bytes': 3, 'sha256': self.h256})
+        with self.assertRaises(ValueError):
+            verify(self.root, SHA, 'linux')
+
     def test_same_size_corruption_does_not_pass(self):
         (self.root / 'selected.webm').write_bytes(b'abd')
         with self.assertRaises(ValueError): verify(self.root, SHA)
@@ -94,7 +102,7 @@ class FileEvidenceTests(unittest.TestCase):
 
     def test_cli_is_fail_closed_without_raw_error_details(self):
         script = Path(__file__).with_name('verify_file_e2e.py')
-        result = subprocess.run([sys.executable, str(script), str(self.root), SHA],
+        result = subprocess.run([sys.executable, str(script), str(self.root), SHA, 'linux'],
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual((result.returncode, result.stdout.strip()), (0, 'PULQVA_FILE_EVIDENCE_OK'))
         (self.root / 'selected.webm').unlink()
@@ -109,10 +117,13 @@ class FileEvidenceTests(unittest.TestCase):
         live = text.split('        id: live\n', 1)[1].split('      - uses:', 1)[0]
         self.assertIn('timeout --signal=TERM --kill-after=10s 300s', live)
         self.assertNotIn('--foreground', live)
-        self.assertIn('verify_file_e2e.py "$EVIDENCE" "$PULQVA_SOURCE_SHA"', live)
+        self.assertIn('verify_file_e2e.py "$EVIDENCE" "$PULQVA_SOURCE_SHA" "$PLATFORM"', live)
         self.assertIn('--example real_commons_file', text)
         self.assertNotIn('continue-on-error:', text)
         self.assertIn('sidecars/yt-dlp/SHA256SUMS', text)
+        self.assertIn('sidecars/tor/SHA256SUMS', text)
+        self.assertIn('tor-expert-bundle-windows-x86_64', text)
+        self.assertIn('real_commons_file.exe', live)
         source = (root / 'crates/pulqva-discovery/examples/real_commons_file.rs').read_text()
         self.assertLess(source.index('let receipt = retrieve_choice('), source.index('cancellation.cancel();'))
         self.assertNotIn('Command::new', source)  # No second downloader in this harness.
