@@ -28,7 +28,7 @@ pub use arti_launch::ArtiLaunchSpec;
 pub use arti_launcher::{ArtiProcessError, RunningArti, launch_prepared_arti};
 pub use arti_materialize::{ArtiConfigMaterializeError, materialize_arti_config};
 pub use arti_prepared::{PreparedArtiRuntime, prepare_arti_runtime};
-pub use arti_readiness::{TorReadinessError, TorReadinessStage, TorReadinessTimeout, verify_tor_readiness};
+pub use arti_readiness::{TorReadinessError, TorReadinessStage, TorReadinessTimeout, verify_existing_tor_readiness, verify_tor_readiness};
 pub use arti_ready::ReadyTorTransport;
 pub use arti_runtime::ArtiRuntimePlan;
 pub use ffmpeg_completed::{CompletedFfmpegRemuxResult, FfmpegRemuxArtifactError};

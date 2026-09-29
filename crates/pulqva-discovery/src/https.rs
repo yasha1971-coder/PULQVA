@@ -51,6 +51,41 @@ impl CommonsTransport for CommonsHttpsTransport<'_> {
     }
 }
 
+/// HTTPS transport authorized by a readiness capability from an already-running
+/// Tor implementation. Every request is still forced through the verified
+/// socks5h loopback route; there is no direct-network variant or fallback.
+///
+/// Unlike CommonsHttpsTransport this adapter does not own/supervise the Tor
+/// process. It is intended for a caller that owns the external Tor lifecycle.
+pub struct CommonsVerifiedTorTransport {
+    ready: ReadyTorTransport,
+    cancellation: DiscoveryCancellation,
+}
+
+impl CommonsVerifiedTorTransport {
+    pub fn new(ready: ReadyTorTransport) -> Result<Self, DiscoveryError> {
+        if tokio::runtime::Handle::try_current().is_ok() { return Err(DiscoveryError::Transport); }
+        Ok(Self { ready, cancellation: DiscoveryCancellation::default() })
+    }
+    pub fn cancellation(&self) -> DiscoveryCancellation { self.cancellation.clone() }
+    pub fn into_search(self) -> CommonsSearch<Self> {
+        let ready = self.ready;
+        CommonsSearch::new(self, ready)
+    }
+}
+
+impl CommonsTransport for CommonsVerifiedTorTransport {
+    fn fetch(&mut self, plan: &CommonsSearchPlan) -> Result<Vec<u8>, DiscoveryError> {
+        if plan.proxy_url() != self.ready.proxy_url() || plan.max_redirects() != 0 {
+            return Err(DiscoveryError::InvalidRequest);
+        }
+        let cancel = self.cancellation.clone();
+        execute(plan.url(), plan.proxy_url(), plan.user_agent(), plan.timeout(),
+                plan.max_response_bytes(), trusted_roots(), &cancel, || true)
+    }
+}
+
+
 // Classify without formatting or retaining a possibly URL-bearing source chain.
 fn readiness_failure(error: TorReadinessError) -> DiscoveryError {
     DiscoveryError::Readiness(match error {

@@ -92,6 +92,47 @@ pub fn verify_tor_readiness(
     }
 }
 
+
+/// Verifies an already-running Tor SOCKS endpoint without manufacturing a
+/// readiness capability from a raw port.
+///
+/// This path is for an externally packaged/owned Tor implementation (for
+/// example the official Tor Expert Bundle on native Windows). It performs the
+/// same SOCKS5 remote-domain destination probe as the Arti path. No direct
+/// network route is introduced: the verifier itself connects only to loopback.
+pub fn verify_existing_tor_readiness(
+    endpoint: crate::TorSocksEndpoint,
+    timeout: Duration,
+) -> Result<ReadyTorTransport, TorReadinessError> {
+    let mut furthest = TorReadinessStage::Listener;
+    if timeout.is_zero() {
+        return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
+    }
+    let deadline = Instant::now()
+        .checked_add(timeout)
+        .ok_or(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }))?;
+    loop {
+        let now = Instant::now();
+        if now >= deadline {
+            return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
+        }
+        let remaining = deadline.saturating_duration_since(now);
+        let attempt_timeout = remaining.min(ATTEMPT_SLICE);
+        match socks_connect_probe(endpoint, attempt_timeout) {
+            Ok(verified_loopback) => return Ok(certify_tor_ready(endpoint, verified_loopback)),
+            Err(SocksProbeError::Retryable(stage)) => {
+                furthest = furthest.max(stage);
+                let sleep_for = deadline.saturating_duration_since(Instant::now()).min(RETRY_DELAY);
+                if sleep_for.is_zero() {
+                    return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
+                }
+                thread::sleep(sleep_for);
+            }
+            Err(SocksProbeError::Protocol(message)) => return Err(TorReadinessError::Protocol(message)),
+        }
+    }
+}
+
 fn socks_connect_probe(
     endpoint: crate::TorSocksEndpoint,
     timeout: Duration,
