@@ -138,16 +138,6 @@ interaction, visible choices, a Tor-routed fail-closed backend, no default accou
 key, and one self-contained package. The complete combination is still a goal here;
 this review neither proves it is unique nor proves another project meets every requirement.
 
-## По-русски
-
-**PULQVA исследует более прямой интерфейс к интернету: скажи, что тебе нужно → получи реальные варианты → выбери → получи сам файл.** Цель — чтобы приватность обеспечивалась архитектурой и проверяемыми ограничениями, а не словом «анонимно».
-
-Уже воспроизведён фиксированный Linux backend-сценарий: `countdown` → 10 результатов Commons → второй результат → скачанный и проверенный файл. Два запуска прошли на свежих GitHub Linux runner-ах; затем владелец повторил тот же сценарий в Ubuntu/WSL2 на своём ноутбуке и открыл полученный WebM.
-
-**Главная открытая граница сейчас — native Windows.** Hosted-Windows доходит до SOCKS5, но не получает подтверждение Tor destination connection до истечения readiness deadline. Полный AI/UI-сценарий, Autopilot и автономные пользовательские пакеты также ещё не готовы.
-
-Это pre-alpha и открытая инженерная работа, а не обещание абсолютной анонимности или готовый consumer release.
-
 ## Support and development
 
 [Support the maintainer](https://github.com/sponsors/yasha1971-coder) ·
