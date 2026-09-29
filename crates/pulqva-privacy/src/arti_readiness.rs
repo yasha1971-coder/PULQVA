@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    ArtiProcessError, ReadyTorTransport, RunningArti,
+    ArtiProcessError, ReadyTorTransport, RunningArti, RunningLittleTor,
     arti_ready::certify_tor_ready,
 };
 
@@ -45,18 +45,47 @@ pub fn verify_tor_readiness(
         .activate_bootstrap()
         .map_err(TorReadinessError::BootstrapActivation)?;
 
+    let endpoint = running.endpoint();
+    verify_endpoint_readiness(endpoint, timeout, || {
+        running.try_wait().map_err(|source| TorReadinessError::Io {
+            operation: "query Arti child status",
+            source,
+        })
+    })
+}
+
+/// Verify an already-started little-t Tor child using the same loopback SOCKS5
+/// destination probe used for Arti. little-t Tor bootstraps immediately, so
+/// there is no deferred-bootstrap transition here.
+pub fn verify_little_tor_readiness(
+    running: &mut RunningLittleTor,
+    timeout: Duration,
+) -> Result<ReadyTorTransport, TorReadinessError> {
+    let endpoint = running.endpoint();
+    verify_endpoint_readiness(endpoint, timeout, || {
+        running.try_wait().map_err(|source| TorReadinessError::Io {
+            operation: "query Tor child status",
+            source,
+        })
+    })
+}
+
+fn verify_endpoint_readiness(
+    endpoint: crate::TorSocksEndpoint,
+    timeout: Duration,
+    mut try_wait: impl FnMut() -> Result<Option<ExitStatus>, TorReadinessError>,
+) -> Result<ReadyTorTransport, TorReadinessError> {
+    let mut furthest = TorReadinessStage::Listener;
+    if timeout.is_zero() {
+        return Err(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }));
+    }
+
     let deadline = Instant::now()
         .checked_add(timeout)
         .ok_or(TorReadinessError::Timeout(TorReadinessTimeout { stage: furthest }))?;
 
     loop {
-        if let Some(status) = running
-            .try_wait()
-            .map_err(|source| TorReadinessError::Io {
-                operation: "query Arti child status",
-                source,
-            })?
-        {
+        if let Some(status) = try_wait()? {
             return Err(TorReadinessError::ChildExited(status));
         }
 
@@ -68,12 +97,9 @@ pub fn verify_tor_readiness(
         let remaining = deadline.saturating_duration_since(now);
         let attempt_timeout = remaining.min(ATTEMPT_SLICE);
 
-        match socks_connect_probe(running.endpoint(), attempt_timeout) {
+        match socks_connect_probe(endpoint, attempt_timeout) {
             Ok(verified_loopback) => {
-                return Ok(certify_tor_ready(
-                    running.endpoint(),
-                    verified_loopback,
-                ));
+                return Ok(certify_tor_ready(endpoint, verified_loopback));
             }
             Err(SocksProbeError::Retryable(stage)) => {
                 furthest = furthest.max(stage);
@@ -235,7 +261,7 @@ impl fmt::Display for TorReadinessError {
                 write!(f, "failed to activate Tor bootstrap: {source}")
             }
             Self::ChildExited(status) => {
-                write!(f, "Arti child exited before Tor became ready: {status}")
+                write!(f, "Tor sidecar child exited before Tor became ready: {status}")
             }
             Self::Protocol(message) => write!(f, "Tor SOCKS readiness protocol error: {message}"),
             Self::Io { operation, source } => write!(f, "{operation}: {source}"),
