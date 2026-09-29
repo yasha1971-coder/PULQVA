@@ -1,5 +1,11 @@
 # PULQVA Arti sidecar
 
+> **Windows production status (2026-09-29): superseded by ADR-0007.**
+> This directory is retained as reproducibility/history evidence and as the current
+> verified Linux Arti path. Do not require an end user to compile Arti on Windows.
+> The Windows production baseline is the pinned official Tor Project Expert Bundle
+> recorded under `sidecars/tor/`.
+
 ## Native compiler recovery, 2026-09-25
 
 Windows native builds explicitly select MSVC 14.51.36231 and authenticate 64
@@ -14,11 +20,11 @@ hermetic build or a guarantee that future hosted runners retain these files.
 Pinned upstream binary package: `arti 2.6.0`.
 
 This directory records both the pinned Arti package version and the exact content identity of the
-platform executables intended for PULQVA packaging.
+platform executables used by the historical Arti packaging path.
 
 ## Executable identity contract
 
-`SHA256SUMS` contains exactly one supported identity per packaged platform path:
+`SHA256SUMS` contains exactly one supported identity per historical packaged platform path:
 
 - `linux-x86_64/arti`
 - `windows-x86_64/arti.exe`
@@ -33,7 +39,7 @@ The initial identities were captured from PR #59 head
   metadata carried build-time values. It is retained only as historical capture evidence, not as
   the final Windows identity.
 
-The current Windows identity recipe is pinned by `.github/workflows/arti-sidecar-check.yml`:
+The historical Windows identity recipe is pinned by `.github/workflows/arti-sidecar-check.yml`:
 Arti 2.6.0, Rust 1.91.0 and its bundled rust-lld, Cargo `--locked`, `static-sqlite`,
 `/Brepro`, and `/DEBUG:NONE`. CI verifies the actual Windows PE has no CodeView/PDB
 identity and retains its reproducible-build marker. Linux's recipe and identity are unchanged.
@@ -54,12 +60,14 @@ The linker SHA-256 in both receipts is
 Both builds passed compilation, CLI and actual PE metadata checks; they failed only against
 the previous allowlist value. This update promotes the independently reproduced value to
 `SHA256SUMS`; the promotion commit must pass its own CI before T059 can close.
-This is evidence for these builds, not a guarantee across arbitrary future runner images.
-CI continues to hash the complete executable and fails closed on any mismatch.
+This is evidence for those builds, not a guarantee across arbitrary future runner images.
 
-A version string alone is not executable authentication. Changing Arti, toolchain, features, build
+A version string alone is executable authentication. Changing Arti, toolchain, features, build
 recipe, or expected executable bytes requires a dedicated atomic identity update with Windows/Linux
 CI evidence.
 
-The sidecar check may execute `arti --version` and `arti help proxy` only as local CLI proof. It
-does not bootstrap Tor or make a Tor network connection.
+The historical sidecar check may execute `arti --version` and `arti help proxy` only as local
+CLI proof. It does not bootstrap Tor or make a Tor network connection.
+
+For current Windows production-sidecar identity and live transport evidence, use
+`sidecars/tor/` and ADR-0007.
