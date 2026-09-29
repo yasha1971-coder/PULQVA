@@ -1,7 +1,10 @@
 //! Endpoint-private HTTPS executor. All production requests use a freshly verified
-//! owned Arti child. Local controlled tests are not live Tor/E2E evidence.
+//! owned Tor sidecar. Local controlled tests are not live Tor/E2E evidence.
 use crate::{CommonsSearch, CommonsSearchPlan, CommonsTransport, DiscoveryError, NetworkFailure, ReadinessFailure};
-use pulqva_privacy::{ReadyTorTransport, RunningArti, TorReadinessError, TorReadinessStage, verify_tor_readiness};
+use pulqva_privacy::{
+    ReadyTorTransport, RunningArti, RunningLittleTor, TorReadinessError, TorReadinessStage,
+    verify_little_tor_readiness, verify_tor_readiness,
+};
 use std::{future::{Future, poll_fn}, net::IpAddr, sync::{Arc, atomic::{AtomicBool, Ordering}},
           task::Poll, time::Duration};
 
@@ -18,20 +21,52 @@ impl DiscoveryCancellation {
 
 /// Synchronous coordinator adapter: run on a backend blocking worker, not an
 /// async runtime thread. There is no public client/URL/proxy/trust-store override.
+enum OwnedTorChild<'a> {
+    Arti(&'a mut RunningArti),
+    LittleTor(&'a mut RunningLittleTor),
+}
+
+impl OwnedTorChild<'_> {
+    fn is_alive(&mut self) -> bool {
+        match self {
+            Self::Arti(child) => matches!(child.try_wait(), Ok(None)),
+            Self::LittleTor(child) => matches!(child.try_wait(), Ok(None)),
+        }
+    }
+}
+
 pub struct CommonsHttpsTransport<'a> {
-    arti: &'a mut RunningArti,
+    child: OwnedTorChild<'a>,
     ready: ReadyTorTransport,
     cancellation: DiscoveryCancellation,
 }
 impl<'a> CommonsHttpsTransport<'a> {
-    /// Verify the route on THIS child, rather than combining an unrelated process
-    /// with an old readiness token. Bootstrap has its own existing 90-second gate.
+    /// Verify the route on THIS Arti child, rather than combining an unrelated
+    /// process with an old readiness token.
     pub fn new(arti: &'a mut RunningArti) -> Result<Self, DiscoveryError> {
         if tokio::runtime::Handle::try_current().is_ok() { return Err(DiscoveryError::Transport); }
         let ready = verify_tor_readiness(arti, Duration::from_secs(90))
             .map_err(readiness_failure)?;
-        Ok(Self { arti, ready, cancellation: DiscoveryCancellation::default() })
+        Ok(Self {
+            child: OwnedTorChild::Arti(arti),
+            ready,
+            cancellation: DiscoveryCancellation::default(),
+        })
     }
+
+    /// Windows little-t Tor path. The same readiness verifier and capability are
+    /// required before the HTTPS adapter can exist.
+    pub fn new_little_tor(tor: &'a mut RunningLittleTor) -> Result<Self, DiscoveryError> {
+        if tokio::runtime::Handle::try_current().is_ok() { return Err(DiscoveryError::Transport); }
+        let ready = verify_little_tor_readiness(tor, Duration::from_secs(90))
+            .map_err(readiness_failure)?;
+        Ok(Self {
+            child: OwnedTorChild::LittleTor(tor),
+            ready,
+            cancellation: DiscoveryCancellation::default(),
+        })
+    }
+
     pub fn cancellation(&self) -> DiscoveryCancellation { self.cancellation.clone() }
     pub fn into_search(self) -> CommonsSearch<Self> {
         let ready = self.ready;
@@ -44,10 +79,10 @@ impl CommonsTransport for CommonsHttpsTransport<'_> {
             return Err(DiscoveryError::InvalidRequest);
         }
         let cancel = self.cancellation.clone();
-        let arti = &mut self.arti;
+        let child = &mut self.child;
         execute(plan.url(), plan.proxy_url(), plan.user_agent(), plan.timeout(),
                 plan.max_response_bytes(), trusted_roots(), &cancel,
-                || matches!(arti.try_wait(), Ok(None)))
+                || child.is_alive())
     }
 }
 
