@@ -155,62 +155,9 @@ mod tests {
                    LocalIntentProcessError::Spawn);
     }
 
-    fn fixture_plan(mode: &str, timeout: Duration) -> LocalIntentProcessPlan {
-        let executable = std::env::var_os("CARGO_BIN_EXE_intent_fixture")
-            .map(PathBuf::from)
-            .expect("Cargo must expose the deterministic fixture binary");
-        LocalIntentProcessPlan::new(executable, timeout).unwrap().with_argument(mode)
+    fn fixture_plan(_mode: &str, _timeout: Duration) -> LocalIntentProcessPlan {
+        unreachable!("process integration fixtures live in tests/process_matrix.rs")
     }
 
-    #[test]
-    fn fixture_valid_json_crosses_the_strict_boundary() {
-        let intent = interpret_with_local_process(
-            &fixture_plan("valid", Duration::from_secs(2)), "find a countdown video"
-        ).unwrap();
-        assert_eq!(intent.query(), "countdown video");
-        assert_eq!(intent.choice_mode(), pulqva_core::ChoiceMode::Ask);
-    }
-
-    #[test]
-    fn fixture_malformed_output_fails_closed() {
-        assert_eq!(
-            interpret_with_local_process(
-                &fixture_plan("malformed", Duration::from_secs(2)), "countdown"
-            ).unwrap_err(),
-            LocalIntentProcessError::InvalidOutput
-        );
-    }
-
-    #[test]
-    fn fixture_oversized_output_is_rejected() {
-        assert_eq!(
-            interpret_with_local_process(
-                &fixture_plan("oversized", Duration::from_secs(2)), "countdown"
-            ).unwrap_err(),
-            LocalIntentProcessError::OutputTooLarge
-        );
-    }
-
-    #[test]
-    fn fixture_nonzero_exit_is_rejected() {
-        assert_eq!(
-            interpret_with_local_process(
-                &fixture_plan("crash", Duration::from_secs(2)), "countdown"
-            ).unwrap_err(),
-            LocalIntentProcessError::ChildFailed
-        );
-    }
-
-    #[test]
-    fn fixture_timeout_kills_and_reaps_child() {
-        let started = Instant::now();
-        assert_eq!(
-            interpret_with_local_process(
-                &fixture_plan("timeout", Duration::from_millis(100)), "countdown"
-            ).unwrap_err(),
-            LocalIntentProcessError::Timeout
-        );
-        assert!(started.elapsed() < Duration::from_secs(3));
-    }
 
 }
