@@ -12,10 +12,15 @@ PULQVA is an open-source experiment in a different interface to the Internet: st
 
 Скажи ИИ, что тебе нужно → получи реальные варианты → выбери → получи сам файл. Приватность должна обеспечиваться архитектурой, а не обещанием. [Подробнее](#по-русски).
 
-> **Pre-alpha. The Linux backend request → choice → file path has now been reproduced on two fresh GitHub runners and on the owner's WSL2 laptop.**
-> The complete AI-powered, one-click Windows/Linux product is **not ready yet**.
-> Native Windows live Tor readiness is still open, and the successful trace uses a fixed test query rather than the finished AI/UI journey.
+> **Pre-alpha. Real backend evidence exists; the consumer product does not yet.**
+>
+> **Verified Linux fixture:** the same fixed `countdown → 10 real choices → selected file` path succeeded twice on fresh GitHub runners. The owner then reproduced the same saved-file identity on an Ubuntu 24.04 WSL2 laptop and opened the resulting WebM.
+>
+> **Open gate:** native Windows live Tor reaches the local SOCKS endpoint and completes SOCKS5 negotiation, but the hosted-Windows run times out at Tor destination readiness before Commons HTTPS or file retrieval.
+>
+> **Not shipped:** finished AI intent parsing, desktop UI/Autopilot, native Windows file E2E, self-contained Windows/Linux packages, or a claim of absolute anonymity.
 
+**[See the evidence →](#verified-result)** · **[See what remains →](#current-status)**
 ## Build PULQVA with us
 
 **Solve native Windows/Tor · Break our privacy assumptions · Build Intent → Object**
@@ -24,9 +29,9 @@ PULQVA is being built in public. The most useful contribution today is not hype 
 
 **[→ Start contributing](CONTRIBUTING.md)**
 
-[Verified result](#verified-result) · [Planned experience](#planned-experience) · [Current status](#current-status) · [Related projects](#related-projects) · [Privacy](#privacy)
+[Product vision](#product-vision) · [Verified result](#verified-result) · [Privacy](#privacy) · [Related projects](#related-projects)
 
-## Planned experience
+## Product vision
 
 For someone who wants to find and save media without hunting for links or learning download commands:
 
@@ -52,61 +57,68 @@ The model/provider choice and full no-setup intent path are still open work.
 
 ## Verified result
 
-**On 2026-09-28, one Linux backend run completed the real combined journey:**
+The strongest evidence today is deliberately narrower than the product vision.
 
 ```text
-"countdown" → Commons search over Tor → 10 real choices
-            → choose the second result (index 1)
-            → download that selected file through the existing Tor/yt-dlp path
-            → verify size and SHA-1 → save selected.webm + receipt.json
+fixed request "countdown"
+    → Commons search through the PULQVA Tor transport
+    → 10 real choices
+    → explicit choice of result #2
+    → core retrieve_choice()
+    → yt-dlp through the existing Tor path
+    → size + SHA-1 verification
+    → selected.webm + receipt.json
 ```
 
-The query and selection were fixed test inputs. They were not an AI interpretation,
-a user-interface interaction, or a hardcoded media URL. The downloaded file was
-2,131,934 bytes. Its size and SHA-1 matched the selected Commons metadata;
-SHA-256 identified the saved bytes. The artifact was downloaded from Actions and
-checked independently, including the ZIP digest, receipt source commit and file hashes.
+**Reproduction record**
 
-**Evidence is in the experimental branch, not a merged feature in `main`:**
-[implementation commit `0ed2af1`](https://github.com/yasha1971-coder/PULQVA/tree/0ed2af16d8a83194d8a4e967a3989fa2c2649452),
-[Linux job and verification log](https://github.com/yasha1971-coder/PULQVA/actions/runs/36420551778/job/108921941999),
-[artifact: video + receipt](https://github.com/yasha1971-coder/PULQVA/actions/runs/36420551778/artifacts/10969217080),
-and [active work / evidence record in PR #73](https://github.com/yasha1971-coder/PULQVA/pull/73).
-The Actions artifact may require GitHub sign-in and is scheduled to expire on
-2026-10-05. **It is a test result, not the PULQVA application download.**
+| Environment | Result |
+| --- | --- |
+| Fresh GitHub Linux runner #1 | PASS — retained artifact independently checked |
+| Fresh GitHub Linux runner #2 | PASS — same source, different runner, byte-identical saved media |
+| Owner laptop, Ubuntu 24.04 / WSL2 | PASS — owner-reported replay; same file size/SHA-1/SHA-256 and the resulting WebM opened successfully |
+| Native Windows | **OPEN** — hosted run reaches SOCKS5 negotiation, then `DestinationTimeout` before Commons HTTPS |
 
-<details>
-<summary>Exact saved-file identity</summary>
+All three positive observations used exact experimental source `0ed2af1` and the fixed test query/selection. They are **backend evidence**, not AI/UI interaction and not a released application.
+
+Saved media identity from the fixture:
 
 ```text
-Source commit: 0ed2af16d8a83194d8a4e967a3989fa2c2649452
 File bytes:    2131934
 File SHA-1:    a785d429082eab4ff173d3d9ec2577f8efe84eb6
 File SHA-256:  0d77b81c7670ff7766240766a83a7fab4a3ad3aeb81d72f039113285b0acf423
-ZIP SHA-256:   a7a913fc3f6d50912b29f89b6942bd8e1d4a60f5c35acb09423b4a0a7911faad
 ```
 
-SHA-1 is compatibility with provider metadata, not publisher authentication.
-SHA-256 is local content identity, not proof that a file is safe.
+**Evidence:** [implementation `0ed2af1`](https://github.com/yasha1971-coder/PULQVA/tree/0ed2af16d8a83194d8a4e967a3989fa2c2649452) · [GitHub run](https://github.com/yasha1971-coder/PULQVA/actions/runs/36420551778) · [PR #73 evidence record](https://github.com/yasha1971-coder/PULQVA/pull/73) · [owner-laptop record](https://github.com/yasha1971-coder/PULQVA/pull/73#issuecomment-5874201467) · [Windows diagnosis](https://github.com/yasha1971-coder/PULQVA/pull/73#issuecomment-5874285950)
 
-</details>
+The GitHub Actions artifacts are temporary test evidence, **not an application download**. SHA-1 is compatibility with provider metadata; SHA-256 identifies the local bytes. Neither proves that media is safe.
 
 ## Current status
 
-Status of the scoped development evidence above, as of **2026-09-28**:
-
-| Capability | What is established |
+| Product gate | Status |
 | --- | --- |
-| Real Linux request → choices → selected file | One positive backend run, with the saved artifact independently checked. |
-| Reproducibility on a second fresh environment | Not yet verified. A single success is not a reliability guarantee. |
-| Windows live path | Compilation/contracts passed, but the strict live discovery check failed. Windows file E2E remains open. |
-| Natural-language AI interpretation, UI and Autopilot | Full user journey not yet verified. |
-| Self-contained, zero-configuration Windows/Linux package | Release goal; not yet validated on clean machines. |
-| YouTube compatibility and security hardening | Separate open gates; a Commons download does not establish them. |
+| Linux backend: request → real choices → selected file | **Reproduced** for the fixed Commons fixture |
+| Native Windows backend file E2E | **Open** — Tor destination readiness is the current blocker |
+| Natural-language AI interpretation | **Open** — product goal, not part of the verified fixture |
+| Desktop UI / explicit choice / Autopilot | **Open** |
+| Tor fail-closed behavior across the complete product journey | **Partially evidenced; broader failure paths remain open** |
+| Self-contained Windows/Linux package | **Open** |
+| Clean-machine consumer release | **Not shipped** |
 
-**Can I use it now?** Developers can inspect the source and evidence. Nontechnical
-users should wait for a documented, clean-machine-tested release. GitHub's
-**Code → Download ZIP** gives source code, not a ready-to-run application.
+**Can I use it now?** Developers can inspect the source and reproduce the experimental path. Nontechnical users should wait for a documented clean-machine release. GitHub's **Code → Download ZIP** is source code, not the PULQVA application.
+
+## Privacy
+
+Tor routing is not absolute anonymity. Remote services can see the requests sent to
+them; a remote AI provider can read submitted text. Downloaded files may contain
+tracking or malicious content. A cryptographic hash does not make media safe.
+
+The first positive test does **not** establish product-level cancellation during a
+download, handling of mid-flight Tor loss, confinement of all child-process traffic,
+bounded download disk usage, or race-proof file ownership. These remain engineering
+and review work, not hidden guarantees. Read [THREAT_MODEL.md](THREAT_MODEL.md) and
+[the privacy invariants](kernel/PRIVACY_INVARIANTS.md). This is not an audited product
+for high-risk use. Use only content you are authorized to download.
 
 ## Related projects
 
@@ -126,34 +138,15 @@ interaction, visible choices, a Tor-routed fail-closed backend, no default accou
 key, and one self-contained package. The complete combination is still a goal here;
 this review neither proves it is unique nor proves another project meets every requirement.
 
-## Privacy
-
-Tor routing is not absolute anonymity. Remote services can see the requests sent to
-them; a remote AI provider can read submitted text. Downloaded files may contain
-tracking or malicious content. A cryptographic hash does not make media safe.
-
-The first positive test does **not** establish product-level cancellation during a
-download, handling of mid-flight Tor loss, confinement of all child-process traffic,
-bounded download disk usage, or race-proof file ownership. These remain engineering
-and review work, not hidden guarantees. Read [THREAT_MODEL.md](THREAT_MODEL.md) and
-[the privacy invariants](kernel/PRIVACY_INVARIANTS.md). This is not an audited product
-for high-risk use. Use only content you are authorized to download.
-
 ## По-русски
 
-**PULQVA — разрабатываемое приложение: описал нужный медиаконтент, увидел реальные
-варианты, выбрал и получил файл через Tor.** Пользователю не должно требоваться
-самостоятельно искать ссылку, устанавливать зависимости или настраивать прокси.
+**PULQVA исследует более прямой интерфейс к интернету: скажи, что тебе нужно → получи реальные варианты → выбери → получи сам файл.** Цель — чтобы приватность обеспечивалась архитектурой и проверяемыми ограничениями, а не словом «анонимно».
 
-Уже подтверждён один настоящий технический проход в Linux: запрос `countdown` →
-10 результатов Commons → выбор второго → скачанный файл → проверка размера и
-хешей. Сам файл сохранён и проверен отдельно от CI. Это результат из экспериментальной
-ветки PR #73, а не готовая версия приложения в `main`.
+Уже воспроизведён фиксированный Linux backend-сценарий: `countdown` → 10 результатов Commons → второй результат → скачанный и проверенный файл. Два запуска прошли на свежих GitHub Linux runner-ах; затем владелец повторил тот же сценарий в Ubuntu/WSL2 на своём ноутбуке и открыл полученный WebM.
 
-**Пока не подтверждены:** повторный чистый прогон, полный Windows-сценарий,
-ИИ-интерпретация вместе с интерфейсом и автономный пользовательский пакет.
-«Один архив, открыл и пользуешься» — цель выпуска, а не доступная сейчас функция.
-Аналоги отдельных частей и комбинаций существуют; заявления «аналогов нет» здесь нет.
+**Главная открытая граница сейчас — native Windows.** Hosted-Windows доходит до SOCKS5, но не получает подтверждение Tor destination connection до истечения readiness deadline. Полный AI/UI-сценарий, Autopilot и автономные пользовательские пакеты также ещё не готовы.
+
+Это pre-alpha и открытая инженерная работа, а не обещание абсолютной анонимности или готовый consumer release.
 
 ## Support and development
 
