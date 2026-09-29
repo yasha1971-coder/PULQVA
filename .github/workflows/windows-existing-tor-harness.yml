@@ -59,19 +59,20 @@ jobs:
             sha256 = $sha
             live_network_tested = $false
           }
-          New-Item -ItemType Directory -Force "windows-harness-artifact" | Out-Null
-          Copy-Item $exe "windows-harness-artifact\real_commons_file_existing_tor.exe"
-          $receipt | ConvertTo-Json | Set-Content -Encoding utf8 "windows-harness-artifact\receipt.json"
+          $out = Join-Path $env:RUNNER_TEMP "pulqva-windows-harness-artifact"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          Copy-Item $exe (Join-Path $out "real_commons_file_existing_tor.exe")
+          $receipt | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $out "receipt.json")
           Write-Host "PULQVA_WINDOWS_HARNESS_BUILD_OK size=$size sha256=$sha"
       - name: Verify source remained clean
         shell: pwsh
         run: |
-          if ((git status --porcelain).Length -ne 0) { throw "source tree changed" }
+          if ((git status --porcelain).Length -ne 0) { git status --porcelain; throw "source tree changed" }
       - name: Upload native Windows harness
         uses: actions/upload-artifact@v4
         with:
           name: pulqva-windows-existing-tor-harness-${{ github.event.pull_request.head.sha }}
-          path: windows-harness-artifact/
+          path: ${{ runner.temp }}/pulqva-windows-harness-artifact/
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
