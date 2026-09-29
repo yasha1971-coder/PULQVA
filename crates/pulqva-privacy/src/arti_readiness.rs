@@ -16,6 +16,11 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+use crate::tor_socks_probe::probe_loopbacks;
+#[cfg(test)]
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+
 const READINESS_HOST: &str = "example.com";
 const READINESS_PORT: u16 = 443;
 
