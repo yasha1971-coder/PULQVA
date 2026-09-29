@@ -11,6 +11,7 @@ mod arti_prepared;
 mod arti_readiness;
 mod arti_ready;
 mod arti_runtime;
+mod little_tor;
 #[cfg(test)]
 mod ffmpeg_real_proof;
 mod ffmpeg_completed;
@@ -31,6 +32,7 @@ pub use arti_prepared::{PreparedArtiRuntime, prepare_arti_runtime};
 pub use arti_readiness::{TorReadinessError, TorReadinessStage, TorReadinessTimeout, verify_tor_readiness};
 pub use arti_ready::ReadyTorTransport;
 pub use arti_runtime::ArtiRuntimePlan;
+pub use little_tor::{LittleTorProcessError, RunningLittleTor, launch_little_tor};
 pub use ffmpeg_completed::{CompletedFfmpegRemuxResult, FfmpegRemuxArtifactError};
 pub use ffmpeg_process::{FfmpegCompletionError, FfmpegProcessError, RunningFfmpeg, launch_ffmpeg_remux};
 pub use ffmpeg_remux::{FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError};
