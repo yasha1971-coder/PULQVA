@@ -1,14 +1,20 @@
 # PULQVA
 
-## Describe what you want. Choose a result. Get the file.
+## Tell AI what you want. Get the file.
 
-**An open-source desktop media downloader in development, designed to turn a natural-language request into a saved file through Tor.** Start with what you need, not a URL you already found.
+**Intent → Object. Privacy by design. Not by promise.**
 
-**По-русски:** опиши, что найти → выбери результат → получи файл. Цель — одно приложение без ручной настройки Tor, загрузчика и ИИ. [Подробнее](#по-русски).
+> **What if AI could search the Internet for you without turning you into the product?**
 
-> **Pre-alpha — first real Linux request → choice → file run verified on 2026-09-28.**
-> The complete one-click Windows/Linux application is **not ready for ordinary use**.
-> The successful run is an experimental backend test, not a released AI-powered desktop app.
+PULQVA is an open-source experiment in a different interface to the Internet: start with human intent, not a URL. The product goal is simple — describe what you want, see real choices, choose, and receive the actual file — while the architecture makes privacy constraints explicit and fail-closed instead of asking you to trust a slogan.
+
+**AI without surveillance. Internet without browsing. Intent without URLs.**
+
+**По-русски:** скажи ИИ, что тебе нужно → получи реальные варианты → выбери → получи сам файл. Приватность должна обеспечиваться архитектурой, а не обещанием. [Подробнее](#по-русски).
+
+> **Pre-alpha. The Linux backend request → choice → file path has now been reproduced on two fresh GitHub runners and on the owner's WSL2 laptop.**
+> The complete AI-powered, one-click Windows/Linux product is **not ready yet**.
+> Native Windows live Tor readiness is still open, and the successful trace uses a fixed test query rather than the finished AI/UI journey.
 
 [Verified result](#verified-result) · [Planned experience](#planned-experience) · [Current status](#current-status) · [Related projects](#related-projects) · [Privacy](#privacy)
 
