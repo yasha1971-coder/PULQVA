@@ -16,7 +16,7 @@ PULQVA is an open-source experiment in a different interface to the Internet: st
 > The complete AI-powered, one-click Windows/Linux product is **not ready yet**.
 > Native Windows live Tor readiness is still open, and the successful trace uses a fixed test query rather than the finished AI/UI journey.
 
-[Verified result](#verified-result) · [Planned experience](#planned-experience) · [Current status](#current-status) · [Related projects](#related-projects) · [Privacy](#privacy)
+**[→ Help build PULQVA](CONTRIBUTING.md)** — solve native Windows/Tor · attack the privacy assumptions · build the Intent → Object future\n\n[Verified result](#verified-result) · [Planned experience](#planned-experience) · [Current status](#current-status) · [Related projects](#related-projects) · [Privacy](#privacy)
 
 ## Planned experience
 
