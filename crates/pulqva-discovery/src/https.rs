@@ -1,7 +1,10 @@
 //! Endpoint-private HTTPS executor. All production requests use a freshly verified
-//! owned Arti child. Local controlled tests are not live Tor/E2E evidence.
+//! owned Tor sidecar. Local controlled tests are not live Tor/E2E evidence.
 use crate::{CommonsSearch, CommonsSearchPlan, CommonsTransport, DiscoveryError, NetworkFailure, ReadinessFailure};
-use pulqva_privacy::{ReadyTorTransport, RunningArti, TorReadinessError, TorReadinessStage, verify_tor_readiness};
+use pulqva_privacy::{
+    LittleTorReadinessError, ReadyTorTransport, RunningArti, RunningLittleTor,
+    TorReadinessError, TorReadinessStage, verify_little_tor_readiness, verify_tor_readiness,
+};
 use std::{future::{Future, poll_fn}, net::IpAddr, sync::{Arc, atomic::{AtomicBool, Ordering}},
           task::Poll, time::Duration};
 
@@ -18,51 +21,111 @@ impl DiscoveryCancellation {
 
 /// Synchronous coordinator adapter: run on a backend blocking worker, not an
 /// async runtime thread. There is no public client/URL/proxy/trust-store override.
+enum OwnedTorChild<'a> {
+    Arti(&'a mut RunningArti),
+    LittleTor(&'a mut RunningLittleTor),
+}
+
+impl OwnedTorChild<'_> {
+    fn is_alive(&mut self) -> bool {
+        match self {
+            Self::Arti(child) => matches!(child.try_wait(), Ok(None)),
+            Self::LittleTor(child) => matches!(child.try_wait(), Ok(None)),
+        }
+    }
+}
+
 pub struct CommonsHttpsTransport<'a> {
-    arti: &'a mut RunningArti,
+    child: OwnedTorChild<'a>,
     ready: ReadyTorTransport,
     cancellation: DiscoveryCancellation,
 }
+
 impl<'a> CommonsHttpsTransport<'a> {
-    /// Verify the route on THIS child, rather than combining an unrelated process
-    /// with an old readiness token. Bootstrap has its own existing 90-second gate.
+    /// Existing Arti path. The readiness token is minted from this exact child.
     pub fn new(arti: &'a mut RunningArti) -> Result<Self, DiscoveryError> {
-        if tokio::runtime::Handle::try_current().is_ok() { return Err(DiscoveryError::Transport); }
+        if tokio::runtime::Handle::try_current().is_ok() {
+            return Err(DiscoveryError::Transport);
+        }
         let ready = verify_tor_readiness(arti, Duration::from_secs(90))
-            .map_err(readiness_failure)?;
-        Ok(Self { arti, ready, cancellation: DiscoveryCancellation::default() })
+            .map_err(arti_readiness_failure)?;
+        Ok(Self {
+            child: OwnedTorChild::Arti(arti),
+            ready,
+            cancellation: DiscoveryCancellation::default(),
+        })
     }
-    pub fn cancellation(&self) -> DiscoveryCancellation { self.cancellation.clone() }
+
+    /// little-t Tor path. It yields the same ReadyTorTransport capability only
+    /// after the same loopback SOCKS5 remote-DNS destination proof succeeds.
+    pub fn new_little_tor(tor: &'a mut RunningLittleTor) -> Result<Self, DiscoveryError> {
+        if tokio::runtime::Handle::try_current().is_ok() {
+            return Err(DiscoveryError::Transport);
+        }
+        let ready = verify_little_tor_readiness(tor, Duration::from_secs(90))
+            .map_err(little_tor_readiness_failure)?;
+        Ok(Self {
+            child: OwnedTorChild::LittleTor(tor),
+            ready,
+            cancellation: DiscoveryCancellation::default(),
+        })
+    }
+
+    pub fn cancellation(&self) -> DiscoveryCancellation {
+        self.cancellation.clone()
+    }
+
     pub fn into_search(self) -> CommonsSearch<Self> {
         let ready = self.ready;
         CommonsSearch::new(self, ready)
     }
 }
+
 impl CommonsTransport for CommonsHttpsTransport<'_> {
     fn fetch(&mut self, plan: &CommonsSearchPlan) -> Result<Vec<u8>, DiscoveryError> {
         if plan.proxy_url() != self.ready.proxy_url() || plan.max_redirects() != 0 {
             return Err(DiscoveryError::InvalidRequest);
         }
         let cancel = self.cancellation.clone();
-        let arti = &mut self.arti;
-        execute(plan.url(), plan.proxy_url(), plan.user_agent(), plan.timeout(),
-                plan.max_response_bytes(), trusted_roots(), &cancel,
-                || matches!(arti.try_wait(), Ok(None)))
+        let child = &mut self.child;
+        execute(
+            plan.url(),
+            plan.proxy_url(),
+            plan.user_agent(),
+            plan.timeout(),
+            plan.max_response_bytes(),
+            trusted_roots(),
+            &cancel,
+            || child.is_alive(),
+        )
     }
 }
 
 // Classify without formatting or retaining a possibly URL-bearing source chain.
-fn readiness_failure(error: TorReadinessError) -> DiscoveryError {
+fn stage_failure(stage: TorReadinessStage) -> ReadinessFailure {
+    match stage {
+        TorReadinessStage::Listener => ReadinessFailure::ListenerTimeout,
+        TorReadinessStage::Negotiation => ReadinessFailure::NegotiationTimeout,
+        TorReadinessStage::Destination => ReadinessFailure::DestinationTimeout,
+    }
+}
+
+fn arti_readiness_failure(error: TorReadinessError) -> DiscoveryError {
     DiscoveryError::Readiness(match error {
-        TorReadinessError::Timeout(timeout) => match timeout.stage {
-            TorReadinessStage::Listener => ReadinessFailure::ListenerTimeout,
-            TorReadinessStage::Negotiation => ReadinessFailure::NegotiationTimeout,
-            TorReadinessStage::Destination => ReadinessFailure::DestinationTimeout,
-        },
+        TorReadinessError::Timeout(timeout) => stage_failure(timeout.stage),
         TorReadinessError::BootstrapActivation(_) => ReadinessFailure::BootstrapActivation,
         TorReadinessError::ChildExited(_) => ReadinessFailure::ChildExited,
         TorReadinessError::Protocol(_) => ReadinessFailure::Protocol,
         TorReadinessError::Io { .. } => ReadinessFailure::Io,
+    })
+}
+
+fn little_tor_readiness_failure(error: LittleTorReadinessError) -> DiscoveryError {
+    DiscoveryError::Readiness(match error {
+        LittleTorReadinessError::Timeout(timeout) => stage_failure(timeout.stage),
+        LittleTorReadinessError::ChildExited(_) => ReadinessFailure::ChildExited,
+        LittleTorReadinessError::Protocol(_) => ReadinessFailure::Protocol,
+        LittleTorReadinessError::Io { .. } => ReadinessFailure::Io,
     })
 }
 fn network_failure(error: reqwest::Error) -> DiscoveryError {
