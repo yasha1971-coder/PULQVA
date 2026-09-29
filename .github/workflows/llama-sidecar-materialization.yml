@@ -37,7 +37,7 @@ jobs:
       - name: Configure CPU-only release build
         shell: pwsh
         run: |
-          cmake -S "$env:RUNNER_TEMP/llama.cpp" -B "$env:RUNNER_TEMP/llama-build" -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_IS_DEV=OFF -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DGGML_METAL=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=ON
+          cmake -S "$env:RUNNER_TEMP/llama.cpp" -B "$env:RUNNER_TEMP/llama-build" -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_IS_DEV=OFF -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DGGML_METAL=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=ON -DBUILD_SHARED_LIBS=OFF -DGGML_BACKEND_DL=OFF -DLLAMA_OPENSSL=OFF
           if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
       - name: Build llama-cli only
         shell: pwsh
@@ -56,6 +56,8 @@ jobs:
           $size = (Get-Item $exe).Length
           if ($size -le 0 -or $size -gt 100MB) { throw "unexpected llama-cli size" }
           $upstream = (git -C "$env:RUNNER_TEMP/llama.cpp" rev-parse HEAD).Trim()
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { throw "llama-cli runtime smoke failed" }
           $receipt = [ordered]@{
             schema = 1
             scope = "llama-sidecar-materialization"
@@ -64,6 +66,8 @@ jobs:
             source_commit = $upstream
             build_is_dev = $false
             cpu_only = $true
+            static_runtime_baseline = $true
+            runtime_smoke = "version-pass"
             executable = $name
             byte_size = $size
             sha256 = $sha
