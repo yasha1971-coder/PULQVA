@@ -21,6 +21,7 @@ pub struct TorReadinessTimeout {
     pub stage: TorReadinessStage,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum SocksProbeError {
     Retryable(TorReadinessStage),
     Protocol(&'static str),
@@ -42,15 +43,24 @@ pub(crate) fn socks_connect_probe(
         SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, endpoint.port(), 0, 0)),
     ];
 
+    probe_loopbacks(addresses, |local| {
+        socks_connect_probe_at(local, destination_host, destination_port, timeout)
+    })
+}
+
+/// Deterministic loopback ordering seam used by readiness regression tests.
+pub(crate) fn probe_loopbacks(
+    addresses: [SocketAddr; 2],
+    mut probe: impl FnMut(SocketAddr) -> Result<(), SocksProbeError>,
+) -> Result<IpAddr, SocksProbeError> {
     let mut furthest = TorReadinessStage::Listener;
     for local in addresses {
-        match socks_connect_probe_at(local, destination_host, destination_port, timeout) {
+        match probe(local) {
             Ok(()) => return Ok(local.ip()),
             Err(SocksProbeError::Retryable(stage)) => furthest = furthest.max(stage),
             Err(error) => return Err(error),
         }
     }
-
     Err(SocksProbeError::Retryable(furthest))
 }
 
