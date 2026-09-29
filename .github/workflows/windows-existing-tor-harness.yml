@@ -1,0 +1,72 @@
+name: windows-existing-tor-harness
+
+on:
+  pull_request:
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/windows-existing-tor-harness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          rustup default 1.91.0
+      - name: Verify pinned toolchain and source
+        shell: pwsh
+        run: |
+          if ((rustc --version).Split()[1] -ne "1.91.0") { throw "wrong rustc" }
+          if ((cargo --version).Split()[1] -ne "1.91.0") { throw "wrong cargo" }
+          $head = (git rev-parse HEAD).Trim()
+          if ($head -ne "${{ github.event.pull_request.head.sha }}") { throw "wrong source SHA" }
+          if ((git status --porcelain).Length -ne 0) { throw "dirty checkout" }
+      - name: Build native Windows existing-Tor harness
+        shell: pwsh
+        run: |
+          cargo build --locked -p pulqva-discovery --example real_commons_file_existing_tor
+          if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
+      - name: Create bounded receipt
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = "target\debug\examples\real_commons_file_existing_tor.exe"
+          if (!(Test-Path $exe)) { throw "harness missing" }
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item $exe).Length
+          if ($size -le 0 -or $size -gt 100MB) { throw "unexpected harness size" }
+          $receipt = [ordered]@{
+            schema = 1
+            scope = "windows-existing-tor-harness-build"
+            source_sha = "${{ github.event.pull_request.head.sha }}"
+            rust = (rustc --version)
+            cargo = (cargo --version)
+            artifact = "real_commons_file_existing_tor.exe"
+            byte_size = $size
+            sha256 = $sha
+            live_network_tested = $false
+          }
+          New-Item -ItemType Directory -Force "windows-harness-artifact" | Out-Null
+          Copy-Item $exe "windows-harness-artifact\real_commons_file_existing_tor.exe"
+          $receipt | ConvertTo-Json | Set-Content -Encoding utf8 "windows-harness-artifact\receipt.json"
+          Write-Host "PULQVA_WINDOWS_HARNESS_BUILD_OK size=$size sha256=$sha"
+      - name: Verify source remained clean
+        shell: pwsh
+        run: |
+          if ((git status --porcelain).Length -ne 0) { throw "source tree changed" }
+      - name: Upload native Windows harness
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-windows-existing-tor-harness-${{ github.event.pull_request.head.sha }}
+          path: windows-harness-artifact/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
