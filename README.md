@@ -10,7 +10,7 @@ PULQVA is an open-source experiment in a different interface to the Internet: st
 
 **AI without surveillance. Internet without browsing. Intent without URLs.**
 
-**По-русски:** скажи ИИ, что тебе нужно → получи реальные варианты → выбери → получи сам файл. Приватность должна обеспечиваться архитектурой, а не обещанием. [Подробнее](#по-русски).
+Скажи ИИ, что тебе нужно → получи реальные варианты → выбери → получи сам файл. Приватность должна обеспечиваться архитектурой, а не обещанием. [Подробнее](#по-русски).
 
 > **Pre-alpha. The Linux backend request → choice → file path has now been reproduced on two fresh GitHub runners and on the owner's WSL2 laptop.**
 > The complete AI-powered, one-click Windows/Linux product is **not ready yet**.
