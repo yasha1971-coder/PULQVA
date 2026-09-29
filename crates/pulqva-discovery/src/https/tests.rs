@@ -232,9 +232,25 @@ fn readiness_categories_do_not_expose_underlying_messages() {
         }), ReadinessFailure::BootstrapActivation),
     ];
     for (source, expected) in cases {
-        let error = readiness_failure(source);
+        let error = arti_readiness_failure(source);
         assert_eq!(error, DiscoveryError::Readiness(expected));
         assert!(!format!("{error:?}: {error}").contains("PRIVATE"));
         assert!(std::error::Error::source(&error).is_none());
+    }
+}
+
+#[test]
+fn little_tor_readiness_categories_use_the_same_public_stage_vocabulary() {
+    use pulqva_privacy::{LittleTorReadinessError, TorReadinessTimeout};
+    let cases = [
+        (TorReadinessStage::Listener, ReadinessFailure::ListenerTimeout),
+        (TorReadinessStage::Negotiation, ReadinessFailure::NegotiationTimeout),
+        (TorReadinessStage::Destination, ReadinessFailure::DestinationTimeout),
+    ];
+    for (stage, expected) in cases {
+        let error = little_tor_readiness_failure(
+            LittleTorReadinessError::Timeout(TorReadinessTimeout { stage }),
+        );
+        assert_eq!(error, DiscoveryError::Readiness(expected));
     }
 }
