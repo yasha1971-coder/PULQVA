@@ -37,7 +37,7 @@ jobs:
       - name: Configure CPU-only release build
         shell: pwsh
         run: |
-          cmake -S "$env:RUNNER_TEMP/llama.cpp" -B "$env:RUNNER_TEMP/llama-build" -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_IS_DEV=OFF -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DGGML_METAL=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=ON
+          cmake -S "$env:RUNNER_TEMP/llama.cpp" -B "$env:RUNNER_TEMP/llama-build" -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_IS_DEV=OFF -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DGGML_METAL=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=ON
           if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
       - name: Build llama-cli only
         shell: pwsh
