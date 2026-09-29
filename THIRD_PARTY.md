@@ -7,9 +7,10 @@ This is an initial inventory, not a completed distribution-compliance audit.
 
 | Component | Licensing point to verify for each shipped artifact |
 | --- | --- |
+| Tor Project Expert Bundle | The Windows production baseline now pins an official Expert Bundle archive. Before redistribution, inventory the exact `tor.exe`, adjacent DLLs/data, their licenses/notices, and any corresponding-source or attribution obligations. Do not assume the license of Tor core alone covers every file in the bundle. |
 | FFmpeg | Current pinned asset names include GPL builds. Determine the exact license/version and included libraries from the build; retain licenses, corresponding source and build information as required. Do not describe these binaries as LGPL-only. |
 | yt-dlp | Source uses Unlicense, but official PyInstaller executables include GPLv3+ components. Inspect notices and source requirements for the pinned Windows/Linux executables, not just the repository license. |
-| Arti, Tauri, Rust dependencies | Collect exact dependency versions, license texts and required notices for the chosen build/features. |
+| Arti, Tauri, Rust dependencies | Arti remains the current verified Linux path and historical Windows evidence. Collect exact dependency versions, license texts and required notices for any shipped Arti/Tauri/Rust build/features. |
 | Future JS runtimes or AI models | Verify redistribution terms before bundling; neither model availability nor a free service implies redistribution rights. |
 
 Before a binary release, record the exact artifact hashes, dependency inventory,
@@ -18,6 +19,7 @@ The root LICENSE alone does not satisfy these obligations. No binary release is
 declared cleared by this document.
 
 Primary sources:
+- https://www.torproject.org/
 - https://ffmpeg.org/legal.html
 - https://github.com/yt-dlp/yt-dlp#licensing
 - https://www.apache.org/licenses/LICENSE-2.0

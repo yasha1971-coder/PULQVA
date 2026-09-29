@@ -1,23 +1,46 @@
 # NEXT
 
-## CURRENT: T067 verified; T068 is the next live vertical gate
+## CURRENT: T068 active — Windows Tor transport prerequisite is proven
 
-T067 exact head 51a21c476d49738184678bb6e5c3d8ff29be68fd passed all 10 PR
-workflows. It proves deterministic typed request -> >=2 choices -> explicit
-selection -> bounded local file/receipt orchestration. It does NOT prove Internet,
-Tor search or live download.
+T067 exact head `51a21c476d49738184678bb6e5c3d8ff29be68fd` proved deterministic typed
+request -> >=2 choices -> explicit selection -> bounded local file/receipt orchestration.
+It did not prove live Internet retrieval.
 
-Current-world review 2026-09-27 preserves the architecture: keep frontend networkless,
-Tor fail-closed and remote DNS; do not make YouTube the generic first-live criterion.
-yt-dlp/Deno/EJS compatibility remains a subsequent adapter gate; remote executable
-components must not be silently fetched.
+On 2026-09-29, a real Windows host removed the Tor transport blocker without weakening
+Windows security:
 
-T068 READY: use the SAME T067 coordinator for one bounded live Tor-backed vertical
-fixture: natural-language request -> real externally obtained candidate choices ->
-explicit selection -> real downloaded file -> receipt. Choose a stable small public
-fixture that does not require account/API key/JS challenge. All external operations
-must cross the existing ReadyTorTransport/privacy boundary. No clearnet fallback.
+- Smart App Control remained in ENFORCE mode;
+- local Cargo/Arti compilation was rejected by Windows Code Integrity event 3077;
+- official Tor Project Expert Bundle 15.0.23 was hash-verified;
+- `tor.exe` 0.4.9.12 executed successfully;
+- Tor reached bootstrap 100%;
+- loopback SOCKS5 became ready;
+- the Tor Project check API returned `IsTor=true`;
+- the bounded Tor process was stopped after the proof.
 
-ONE next action: PREPARE T068 by selecting and documenting the stable live fixture
-and exact existing adapters required. Do not implement or launch T068 in the T067
-closeout phase.
+ADR-0007 therefore selects the pinned official Tor Expert Bundle for the Windows
+production sidecar. No end-user Arti compilation, no disabling Smart App Control, and
+no silent runtime download of executable components.
+
+The architecture remains unchanged above the sidecar boundary:
+frontend networkless, Tor fail-closed, remote DNS through SOCKS, and external adapters
+authorized only by `ReadyTorTransport`.
+
+T068 is **not done yet**. Its acceptance still requires the SAME T067 coordinator to
+perform one bounded live path:
+
+`natural-language request -> >=2 real external choices -> explicit selection -> real file -> receipt`.
+
+Current-world review continues to keep YouTube/EJS/POT/SABR outside this first generic
+live proof. Use a stable small public fixture with no account/API key/JS challenge.
+
+## ONE next action
+
+Implement the pinned Windows official-Tor runtime beneath the existing privacy boundary:
+materialize the verified packaged runtime, launch it hidden, certify its loopback SOCKS
+endpoint into the existing `ReadyTorTransport`, and then drive the unchanged T067
+coordinator through the first real request -> choice -> file fixture.
+
+Do not add a clearnet fallback. Do not fetch Tor at application runtime. Do not mark
+T068 complete until the selected real file and typed receipt exist and the Tor-unavailable
+negative path still fails closed.
