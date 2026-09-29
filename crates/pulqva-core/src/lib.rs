@@ -5,10 +5,12 @@
 
 mod candidate;
 mod intent;
+mod interpreted_intent;
 mod journey;
 
 pub use candidate::{SearchCandidate, SearchCandidateError};
 pub use intent::{SearchIntent, SearchIntentError};
+pub use interpreted_intent::{ChoiceMode, InterpretedIntent, InterpretedIntentError, MAX_INTERPRETED_QUERY_BYTES};
 pub use journey::{
     CandidateRetrieval, CandidateSearch, ChoiceSet, FileReceipt, JourneyError,
     SelectedCandidate, request_choices, retrieve_choice,
