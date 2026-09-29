@@ -1,8 +1,7 @@
 use std::{
     error::Error,
     fmt,
-    io::{self, Read, Write},
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, TcpStream},
+    io,
     process::ExitStatus,
     thread,
     time::{Duration, Instant},
@@ -11,12 +10,11 @@ use std::{
 use crate::{
     ArtiProcessError, ReadyTorTransport, RunningArti,
     arti_ready::certify_tor_ready,
+    tor_socks_probe::{ATTEMPT_SLICE, RETRY_DELAY, SocksProbeError, socks_connect_probe},
 };
 
 const READINESS_HOST: &str = "example.com";
 const READINESS_PORT: u16 = 443;
-const ATTEMPT_SLICE: Duration = Duration::from_secs(12);
-const RETRY_DELAY: Duration = Duration::from_millis(100);
 
 /// Explicitly activates bootstrap for a previously deferred Arti child, then
 /// verifies that the Tor transport can establish an outbound TCP connection
@@ -61,7 +59,12 @@ pub fn verify_tor_readiness(
         let remaining = deadline.saturating_duration_since(now);
         let attempt_timeout = remaining.min(ATTEMPT_SLICE);
 
-        match socks_connect_probe(running.endpoint(), attempt_timeout) {
+        match socks_connect_probe(
+            running.endpoint(),
+            READINESS_HOST,
+            READINESS_PORT,
+            attempt_timeout,
+        ) {
             Ok(verified_loopback) => {
                 return Ok(certify_tor_ready(
                     running.endpoint(),
@@ -82,117 +85,6 @@ pub fn verify_tor_readiness(
             }
         }
     }
-}
-
-fn socks_connect_probe(
-    endpoint: crate::TorSocksEndpoint,
-    timeout: Duration,
-) -> Result<IpAddr, SocksProbeError> {
-    let addresses = [
-        SocketAddr::V4(SocketAddrV4::new(
-            Ipv4Addr::LOCALHOST,
-            endpoint.port(),
-        )),
-        SocketAddr::V6(SocketAddrV6::new(
-            Ipv6Addr::LOCALHOST,
-            endpoint.port(),
-            0,
-            0,
-        )),
-    ];
-
-    for local in addresses {
-        match socks_connect_probe_at(local, timeout) {
-            Ok(()) => return Ok(local.ip()),
-            Err(SocksProbeError::Retryable) => continue,
-            Err(error) => return Err(error),
-        }
-    }
-
-    Err(SocksProbeError::Retryable)
-}
-
-fn socks_connect_probe_at(
-    local: SocketAddr,
-    timeout: Duration,
-) -> Result<(), SocksProbeError> {
-    let connect_timeout = timeout.min(Duration::from_secs(2));
-
-    let mut stream = match TcpStream::connect_timeout(&local, connect_timeout) {
-        Ok(stream) => stream,
-        Err(source) if is_retryable_io(&source) => return Err(SocksProbeError::Retryable),
-        Err(_) => return Err(SocksProbeError::Retryable),
-    };
-
-    stream
-        .set_read_timeout(Some(timeout))
-        .map_err(|_| SocksProbeError::Retryable)?;
-    stream
-        .set_write_timeout(Some(timeout))
-        .map_err(|_| SocksProbeError::Retryable)?;
-
-    stream
-        .write_all(&[0x05, 0x01, 0x00])
-        .map_err(|_| SocksProbeError::Retryable)?;
-
-    let mut method = [0_u8; 2];
-    stream
-        .read_exact(&mut method)
-        .map_err(|_| SocksProbeError::Retryable)?;
-
-    if method != [0x05, 0x00] {
-        return Err(SocksProbeError::Protocol(
-            "Tor SOCKS endpoint rejected no-auth SOCKS5 negotiation",
-        ));
-    }
-
-    let host = READINESS_HOST.as_bytes();
-    let host_len = u8::try_from(host.len()).map_err(|_| {
-        SocksProbeError::Protocol("Tor readiness hostname is too long for SOCKS5")
-    })?;
-
-    let mut request = Vec::with_capacity(7 + host.len());
-    request.extend_from_slice(&[0x05, 0x01, 0x00, 0x03, host_len]);
-    request.extend_from_slice(host);
-    request.extend_from_slice(&READINESS_PORT.to_be_bytes());
-
-    stream
-        .write_all(&request)
-        .map_err(|_| SocksProbeError::Retryable)?;
-
-    let mut response = [0_u8; 4];
-    stream
-        .read_exact(&mut response)
-        .map_err(|_| SocksProbeError::Retryable)?;
-
-    if response[0] != 0x05 {
-        return Err(SocksProbeError::Protocol(
-            "Tor SOCKS endpoint returned an invalid SOCKS5 version",
-        ));
-    }
-
-    if response[1] == 0x00 {
-        return Ok(());
-    }
-
-    Err(SocksProbeError::Retryable)
-}
-
-fn is_retryable_io(source: &io::Error) -> bool {
-    matches!(
-        source.kind(),
-        io::ErrorKind::ConnectionRefused
-            | io::ErrorKind::ConnectionReset
-            | io::ErrorKind::ConnectionAborted
-            | io::ErrorKind::TimedOut
-            | io::ErrorKind::WouldBlock
-            | io::ErrorKind::NotConnected
-    )
-}
-
-enum SocksProbeError {
-    Retryable,
-    Protocol(&'static str),
 }
 
 #[derive(Debug)]
