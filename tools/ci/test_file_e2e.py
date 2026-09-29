@@ -106,7 +106,7 @@ class FileEvidenceTests(unittest.TestCase):
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual((result.returncode, result.stdout.strip()), (0, 'PULQVA_FILE_EVIDENCE_OK'))
         (self.root / 'selected.webm').unlink()
-        result = subprocess.run([sys.executable, str(script), str(self.root), SHA],
+        result = subprocess.run([sys.executable, str(script), str(self.root), SHA, 'linux'],
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual((result.returncode, result.stdout.strip()), (1, 'PULQVA_FILE_EVIDENCE_REJECTED'))
         self.assertNotIn(str(self.root), result.stdout + result.stderr)
