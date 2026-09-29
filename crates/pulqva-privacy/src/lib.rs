@@ -16,6 +16,8 @@ mod ffmpeg_real_proof;
 mod ffmpeg_completed;
 mod ffmpeg_process;
 mod ffmpeg_remux;
+mod little_tor;
+mod tor_socks_probe;
 mod ytdlp_artifact;
 mod ytdlp_completed;
 mod ytdlp_launch;
@@ -34,6 +36,11 @@ pub use arti_runtime::ArtiRuntimePlan;
 pub use ffmpeg_completed::{CompletedFfmpegRemuxResult, FfmpegRemuxArtifactError};
 pub use ffmpeg_process::{FfmpegCompletionError, FfmpegProcessError, RunningFfmpeg, launch_ffmpeg_remux};
 pub use ffmpeg_remux::{FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError};
+pub use little_tor::{
+    LittleTorConfigRenderError, LittleTorPrepareError, LittleTorProcessError,
+    LittleTorReadinessError, LittleTorRuntimePlan, PreparedLittleTorRuntime, RunningLittleTor,
+    launch_little_tor, prepare_little_tor_runtime, verify_little_tor_readiness,
+};
 pub use ytdlp_artifact::{CompletedMediaArtifactReceipt, MediaArtifactReceiptError};
 pub use ytdlp_completed::{CompletedDownloadDisplayFields, CompletedDownloadResult};
 pub use ytdlp_launch::YtDlpLaunchPlan;
@@ -107,5 +114,4 @@ mod tests {
         let endpoint = TorSocksEndpoint::new(19050).expect("non-zero port is valid");
         assert_eq!(endpoint.port(), 19050);
     }
-
 }
