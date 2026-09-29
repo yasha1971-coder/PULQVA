@@ -1,0 +1,6 @@
+ClientOnly 1
+SocksPort 127.0.0.1:19050
+DNSPort 0
+DataDirectory "runtime/data"
+AvoidDiskWrites 1
+SafeLogging 1
