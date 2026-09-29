@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "date": "2026-09-29",
+  "platform": "windows-x86_64",
+  "evidence_scope": "user-operated real Windows host",
+  "smart_app_control": "ENFORCE",
+  "local_arti_build": {
+    "result": "blocked",
+    "windows_code_integrity_event_id": 3077,
+    "blocked_stage": "cargo-generated build-script executable"
+  },
+  "expert_bundle": {
+    "release": "15.0.23",
+    "archive": "tor-expert-bundle-windows-x86_64-15.0.23.tar.gz",
+    "archive_bytes": 22432027,
+    "archive_sha256": "231dad6b9cb401a54c260db7046965ef04e4f72ff071b140d423fb5da281ab1e"
+  },
+  "tor_executable": {
+    "relative_path": "tor/tor.exe",
+    "bytes": 10222592,
+    "sha256": "60c45b01938c799862e511a9a5bab12f959a819c6264a24502edc342165f570c",
+    "version": "0.4.9.12",
+    "authenticode_status": "NotSigned",
+    "execution_allowed": true
+  },
+  "live_transport": {
+    "bootstrap_100": true,
+    "socks_endpoint": "127.0.0.1:19050",
+    "tor_project_check_is_tor": true,
+    "exit_ip_retained": false,
+    "process_stopped_after_test": true
+  },
+  "limits": [
+    "This does not complete T068 request -> choices -> selected file.",
+    "This is not yet a clean-machine packaged application proof.",
+    "This does not establish a Linux little-t Tor runtime path.",
+    "This does not claim that every Windows application-control policy will allow these bytes."
+  ]
+}
