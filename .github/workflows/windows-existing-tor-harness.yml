@@ -27,7 +27,11 @@ jobs:
           if ((rustc --version).Split()[1] -ne "1.91.0") { throw "wrong rustc" }
           if ((cargo --version).Split()[1] -ne "1.91.0") { throw "wrong cargo" }
           $head = (git rev-parse HEAD).Trim()
-          if ($head -ne "${{ github.event.pull_request.head.sha }}") { throw "wrong source SHA" }
+          $expected = "${{ github.event.pull_request.head.sha }}"
+          Write-Host "CHECKED_OUT_SHA=$head"
+          Write-Host "PR_HEAD_SHA=$expected"
+          # pull_request workflows may be checked out at GitHub's synthetic merge
+          # commit. Provenance below records both the tested checkout and PR head.
           if ((git status --porcelain).Length -ne 0) { throw "dirty checkout" }
       - name: Build native Windows existing-Tor harness
         shell: pwsh
@@ -46,7 +50,8 @@ jobs:
           $receipt = [ordered]@{
             schema = 1
             scope = "windows-existing-tor-harness-build"
-            source_sha = "${{ github.event.pull_request.head.sha }}"
+            tested_checkout_sha = (git rev-parse HEAD).Trim()
+            pr_head_sha = "${{ github.event.pull_request.head.sha }}"
             rust = (rustc --version)
             cargo = (cargo --version)
             artifact = "real_commons_file_existing_tor.exe"
