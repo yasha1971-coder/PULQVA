@@ -1,0 +1,55 @@
+name: llama-sidecar-build-contract
+
+on:
+  pull_request:
+    paths:
+      - "sidecars/llama.cpp/**"
+      - ".github/workflows/llama-sidecar-build-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: windows-latest
+            platform: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate pinned source contract
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $contract = Get-Content "sidecars/llama.cpp/CONTRACT.md" -Raw
+          if ($contract -notmatch "v0\.4\.1") { throw "stable tag missing" }
+          if ($contract -notmatch "b29c606") { throw "release commit missing" }
+          if ($contract -notmatch "LLAMA_BUILD_IS_DEV=OFF") { throw "release-build flag missing" }
+          $schema = Get-Content "sidecars/llama.cpp/intent.schema.json" -Raw | ConvertFrom-Json
+          if ($schema.additionalProperties -ne $false) { throw "schema must deny extra fields" }
+          if ($schema.properties.choice_mode.enum.Count -ne 2) { throw "choice enum drift" }
+          Write-Host "PULQVA_LLAMA_BUILD_CONTRACT_OK platform=${{ matrix.platform }}"
+      - name: Record planned release build
+        shell: pwsh
+        run: |
+          $receipt = [ordered]@{
+            schema = 1
+            scope = "llama-sidecar-build-plan"
+            platform = "${{ matrix.platform }}"
+            upstream = "ggml-org/llama.cpp"
+            source_tag = "v0.4.1"
+            source_commit_short = "b29c606"
+            build_is_dev = $false
+            cpu_only_baseline = $true
+            binary_materialized = $false
+            model_materialized = $false
+          }
+          $out = Join-Path $env:RUNNER_TEMP "pulqva-llama-plan"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          $receipt | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $out "receipt.json")
+          Get-Content (Join-Path $out "receipt.json")
