@@ -15,7 +15,7 @@ from pathlib import Path
 from ci_evidence_guard import Verdict, evaluate
 
 CODE_STEPS = ('checkout', 'python', 'guard', 'rust', 'contracts', 'compile')
-LIVE_STEPS = ('arti', 'live', 'receipt')
+LIVE_STEPS = ('sidecars', 'live', 'receipt')
 OUTCOMES = frozenset(('success', 'failure', 'skipped', 'cancelled'))
 
 
