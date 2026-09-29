@@ -62,7 +62,7 @@ the previous allowlist value. This update promotes the independently reproduced 
 `SHA256SUMS`; the promotion commit must pass its own CI before T059 can close.
 This is evidence for those builds, not a guarantee across arbitrary future runner images.
 
-A version string alone is executable authentication. Changing Arti, toolchain, features, build
+A version string alone is not executable authentication. Changing Arti, toolchain, features, build
 recipe, or expected executable bytes requires a dedicated atomic identity update with Windows/Linux
 CI evidence.
 
