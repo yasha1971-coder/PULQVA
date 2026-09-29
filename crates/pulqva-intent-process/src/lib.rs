@@ -17,6 +17,7 @@ const POLL: Duration = Duration::from_millis(10);
 #[derive(Debug, Clone)]
 pub struct LocalIntentProcessPlan {
     executable: PathBuf,
+    arguments: Vec<String>,
     timeout: Duration,
 }
 
@@ -26,9 +27,14 @@ impl LocalIntentProcessPlan {
     {
         let executable = executable.into();
         if timeout.is_zero() { return Err(LocalIntentProcessError::InvalidPlan); }
-        Ok(Self { executable, timeout })
+        Ok(Self { executable, arguments: Vec::new(), timeout })
+    }
+    pub fn with_argument(mut self, argument: impl Into<String>) -> Self {
+        self.arguments.push(argument.into());
+        self
     }
     pub fn executable(&self) -> &Path { &self.executable }
+    pub fn arguments(&self) -> &[String] { &self.arguments }
     pub fn timeout(&self) -> Duration { self.timeout }
 }
 
@@ -44,6 +50,7 @@ pub fn interpret_with_local_process(
     validate_human_request(human_request)?;
 
     let mut child = Command::new(plan.executable())
+        .args(plan.arguments())
         .env_clear()
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -147,4 +154,63 @@ mod tests {
         assert_eq!(interpret_with_local_process(&plan, "find countdown video").unwrap_err(),
                    LocalIntentProcessError::Spawn);
     }
+
+    fn fixture_plan(mode: &str, timeout: Duration) -> LocalIntentProcessPlan {
+        let executable = std::env::var_os("CARGO_BIN_EXE_intent_fixture")
+            .map(PathBuf::from)
+            .expect("Cargo must expose the deterministic fixture binary");
+        LocalIntentProcessPlan::new(executable, timeout).unwrap().with_argument(mode)
+    }
+
+    #[test]
+    fn fixture_valid_json_crosses_the_strict_boundary() {
+        let intent = interpret_with_local_process(
+            &fixture_plan("valid", Duration::from_secs(2)), "find a countdown video"
+        ).unwrap();
+        assert_eq!(intent.query(), "countdown video");
+        assert_eq!(intent.choice_mode(), pulqva_core::ChoiceMode::Ask);
+    }
+
+    #[test]
+    fn fixture_malformed_output_fails_closed() {
+        assert_eq!(
+            interpret_with_local_process(
+                &fixture_plan("malformed", Duration::from_secs(2)), "countdown"
+            ).unwrap_err(),
+            LocalIntentProcessError::InvalidOutput
+        );
+    }
+
+    #[test]
+    fn fixture_oversized_output_is_rejected() {
+        assert_eq!(
+            interpret_with_local_process(
+                &fixture_plan("oversized", Duration::from_secs(2)), "countdown"
+            ).unwrap_err(),
+            LocalIntentProcessError::OutputTooLarge
+        );
+    }
+
+    #[test]
+    fn fixture_nonzero_exit_is_rejected() {
+        assert_eq!(
+            interpret_with_local_process(
+                &fixture_plan("crash", Duration::from_secs(2)), "countdown"
+            ).unwrap_err(),
+            LocalIntentProcessError::ChildFailed
+        );
+    }
+
+    #[test]
+    fn fixture_timeout_kills_and_reaps_child() {
+        let started = Instant::now();
+        assert_eq!(
+            interpret_with_local_process(
+                &fixture_plan("timeout", Duration::from_millis(100)), "countdown"
+            ).unwrap_err(),
+            LocalIntentProcessError::Timeout
+        );
+        assert!(started.elapsed() < Duration::from_secs(3));
+    }
+
 }
