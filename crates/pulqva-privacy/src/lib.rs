@@ -17,6 +17,7 @@ mod ffmpeg_completed;
 mod ffmpeg_process;
 mod ffmpeg_remux;
 mod little_tor;
+mod running_tor;
 mod tor_socks_probe;
 mod ytdlp_artifact;
 mod ytdlp_completed;
@@ -36,6 +37,10 @@ pub use arti_runtime::ArtiRuntimePlan;
 pub use ffmpeg_completed::{CompletedFfmpegRemuxResult, FfmpegRemuxArtifactError};
 pub use ffmpeg_process::{FfmpegCompletionError, FfmpegProcessError, RunningFfmpeg, launch_ffmpeg_remux};
 pub use ffmpeg_remux::{FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError};
+pub use running_tor::{
+    ReadyRunningTorTransport, RunningTorTransport, TorTransportProcessError,
+    TorTransportReadinessError, establish_ready_running_tor,
+};
 pub use little_tor::{
     LittleTorConfigRenderError, LittleTorPrepareError, LittleTorProcessError,
     LittleTorReadinessError, LittleTorRuntimePlan, PreparedLittleTorRuntime, RunningLittleTor,
