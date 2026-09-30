@@ -13,8 +13,10 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        id: checkout
       - name: Fetch exact llama.cpp source
         shell: bash
         run: |
@@ -24,6 +26,7 @@ jobs:
           git -C "$RUNNER_TEMP/llama.cpp" checkout --detach FETCH_HEAD
           test "$(git -C "$RUNNER_TEMP/llama.cpp" rev-parse HEAD)" = "b29c606e28a01b1bc8c1351026a0fa6e616bf6c4"
       - name: Build pinned CPU llama-cli
+        id: build
         shell: bash
         run: |
           set -euo pipefail
@@ -40,6 +43,7 @@ jobs:
           echo "MODEL_SHA256=$actual"
           test "$actual" = "57d1997790d1744fba5b40a7317df71ea5e2acee28c47e78f0cce39c0703f8cf"
       - name: Control A - Qwen unconstrained 16 tokens
+        id: qwen_control
         shell: bash
         run: |
           set -euo pipefail
@@ -47,24 +51,32 @@ jobs:
           timeout 30 "$RUNNER_TEMP/llama-build/bin/llama-cli" \
             -m "$RUNNER_TEMP/Qwen3.5-0.8B-Q4_0.gguf" \
             -p "$prompt" -n 16 --temp 0 --no-display-prompt --simple-io \
-            > "$RUNNER_TEMP/qwen-control.txt"
+            > "$RUNNER_TEMP/qwen-control.txt" 2> "$RUNNER_TEMP/qwen-stderr.txt"
           test -s "$RUNNER_TEMP/qwen-control.txt"
           head -c 1000 "$RUNNER_TEMP/qwen-control.txt"
           echo
           echo PULQVA_QWEN08_UNCONSTRAINED_CONTROL_OK
 
+      # A failed control must remain red, but cannot suppress the other model.
       - name: Control B - materialize SmolLM2 1.7B Q4_K_M
+        id: smol_model
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
           model="$RUNNER_TEMP/SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
           curl --fail --location --retry 3 --retry-delay 2 -o "$model" \
-            "https://huggingface.co/lmstudio-community/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf?download=true"
+            "https://huggingface.co/lmstudio-community/SmolLM2-1.7B-Instruct-GGUF/resolve/69467cdeb964c7bef9f417f3d6c6de83702d4855/SmolLM2-1.7B-Instruct-Q4_K_M.gguf?download=true"
           test -s "$model"
           echo "SMOLLM2_BYTES=$(stat -c %s "$model")"
-          echo "SMOLLM2_SHA256=$(sha256sum "$model" | awk '{print $1}')"
+          actual="$(sha256sum "$model" | awk '{print $1}')"
+          echo "SMOLLM2_SHA256=$actual"
+          test "$(stat -c %s "$model")" = "1055609536"
+          test "$actual" = "48db74b86a7e5f1d177f8efbf9929aa3e42bdb07bdc338c14a380a90cd98bde6"
 
       - name: Control B - SmolLM2 constrained intent
+        id: smol_control
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.smol_model.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -80,7 +92,7 @@ jobs:
           timeout 60 "$RUNNER_TEMP/llama-build/bin/llama-cli" \
             -m "$RUNNER_TEMP/SmolLM2-1.7B-Instruct-Q4_K_M.gguf" \
             -p "$prompt" -n 64 --temp 0 --grammar-file "$RUNNER_TEMP/intent.gbnf" \
-            --no-display-prompt --simple-io > "$RUNNER_TEMP/smol-output.txt"
+            --no-display-prompt --simple-io > "$RUNNER_TEMP/smol-output.txt" 2> "$RUNNER_TEMP/smol-stderr.txt"
           cat "$RUNNER_TEMP/smol-output.txt"
           python3 - <<'PY'
           import json, pathlib, os
@@ -93,3 +105,53 @@ jobs:
           if "countdown" not in obj["query"].lower(): raise SystemExit("semantic query failure")
           print("PULQVA_SMOLLM2_CONSTRAINED_CONTROL_OK", json.dumps(obj,ensure_ascii=False))
           PY
+
+      - name: Preserve diagnostic evidence even when a control fails
+        id: evidence
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        shell: bash
+        env:
+          STEP_STATES: ${{ toJSON(steps) }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil, subprocess
+          tmp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          out = tmp / "pulqva-intent-control"
+          out.mkdir()
+          event = json.loads(pathlib.Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+          states = json.loads(os.environ["STEP_STATES"])
+          receipt = {
+              "scope": "T069-E diagnostic controls; NOT product acceptance",
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "source_head": event["pull_request"]["head"]["sha"],
+              "checkout_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "llama_source_expected": "b29c606e28a01b1bc8c1351026a0fa6e616bf6c4",
+              "qwen_sha256_expected": "57d1997790d1744fba5b40a7317df71ea5e2acee28c47e78f0cce39c0703f8cf",
+              "smol_sha256_expected": "48db74b86a7e5f1d177f8efbf9929aa3e42bdb07bdc338c14a380a90cd98bde6",
+              "outcomes": {key: value["outcome"] for key, value in states.items()},
+              "files": {},
+          }
+          for name in ("intent.gbnf", "qwen-control.txt", "qwen-stderr.txt", "smol-output.txt", "smol-stderr.txt"):
+              source = tmp / name
+              if not source.is_file():
+                  receipt["files"][name] = {"present": False}
+                  continue
+              data = source.read_bytes()
+              shutil.copyfile(source, out / name)
+              receipt["files"][name] = {"present": True, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+              print("=== " + name + " (first 4096 bytes) ===")
+              print(data[:4096].decode("utf-8", errors="replace"))
+          text = json.dumps(receipt, indent=2, ensure_ascii=False)
+          (out / "receipt.json").write_text(text + "\n", encoding="utf-8")
+          print(text)
+          PY
+      - name: Upload fixed-public-fixture diagnostics
+        if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: t069e-model-control-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulqva-intent-control/
+          if-no-files-found: error
+          retention-days: 7
