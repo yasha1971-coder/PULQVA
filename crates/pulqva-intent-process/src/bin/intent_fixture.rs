@@ -5,7 +5,8 @@ fn main() {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input).unwrap();
     match mode.as_str() {
-        "valid" => print!("{}", r#"{"query":"countdown video","choice_mode":"ask"}"#),
+        "valid" => print!("{}", r#"{"kind":"intent","query":"countdown video","choice_mode":"ask"}"#),
+        "reject" => print!("{}", r#"{"kind":"reject","reason":"semantic_authority"}"#),
         "malformed" => print!("{}", r#"{"query":"broken""#),
         "oversized" => print!("{}", "x".repeat(5000)),
         "crash" => std::process::exit(17),
