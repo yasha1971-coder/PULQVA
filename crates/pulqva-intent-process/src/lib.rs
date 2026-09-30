@@ -6,7 +6,7 @@
 //! provider SDK, shell invocation, or filesystem authority beyond the explicit
 //! executable path supplied by the caller.
 
-use pulqva_core::InterpretedIntent;
+use pulqva_core::Interpretation;
 use std::{error::Error, fmt, io::{Read, Write}, path::{Path, PathBuf},
           process::{Command, Stdio}, thread, time::{Duration, Instant}};
 
@@ -46,7 +46,7 @@ impl LocalIntentProcessPlan {
 pub fn interpret_with_local_process(
     plan: &LocalIntentProcessPlan,
     human_request: &str,
-) -> Result<InterpretedIntent, LocalIntentProcessError> {
+) -> Result<Interpretation, LocalIntentProcessError> {
     validate_human_request(human_request)?;
 
     let mut child = Command::new(plan.executable())
@@ -89,7 +89,7 @@ pub fn interpret_with_local_process(
         return Err(LocalIntentProcessError::OutputTooLarge);
     }
     let text = std::str::from_utf8(&bytes).map_err(|_| LocalIntentProcessError::Utf8)?;
-    pulqva_intent_json::parse_interpreted_intent_json(text.trim_end_matches(['\r','\n']))
+    pulqva_intent_json::parse_interpretation_json(text.trim_end_matches(['\r','\n']))
         .map_err(|_| LocalIntentProcessError::InvalidOutput)
 }
 
