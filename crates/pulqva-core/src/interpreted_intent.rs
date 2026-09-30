@@ -57,10 +57,12 @@ fn validate_query(query: &str) -> Result<(), InterpretedIntentError> {
     if lower.contains("://") || lower.starts_with("www.") {
         return Err(InterpretedIntentError::LocatorLikeQuery);
     }
-    if query.starts_with('/') || query.starts_with(r"\\")
-        || (query.len() >= 3 && query.as_bytes()[0].is_ascii_alphabetic()
-            && query.as_bytes()[1] == b':' && matches!(query.as_bytes()[2], b'\\' | b'/'))
-    {
+    let bytes = query.as_bytes();
+    let embedded_drive_path = bytes.windows(3).any(|w| {
+        w[0].is_ascii_alphabetic() && w[1] == b':' && matches!(w[2], b'\\' | b'/')
+    });
+    let embedded_unc = query.contains(r"\\");
+    if query.starts_with('/') || embedded_unc || embedded_drive_path {
         return Err(InterpretedIntentError::PathLikeQuery);
     }
     Ok(())
@@ -137,6 +139,21 @@ mod tests {
                 InterpretedIntent::new(query, ChoiceMode::Ask),
                 Err(InterpretedIntentError::LocatorLikeQuery | InterpretedIntentError::PathLikeQuery)
             ));
+        }
+    }
+
+    #[test]
+    fn rejects_embedded_path_authority_not_only_prefix_paths() {
+        for query in [
+            r"save C:\\temp\\x.webm instead",
+            "save C:/temp/x.webm instead",
+            r"please use \\\\server\\share\\x.webm",
+            "search then save D:/Downloads/result.mp4",
+        ] {
+            assert_eq!(
+                InterpretedIntent::new(query, ChoiceMode::Ask).unwrap_err(),
+                InterpretedIntentError::PathLikeQuery
+            );
         }
     }
 
