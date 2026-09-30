@@ -3,16 +3,21 @@
   "title": "PULQVA interpreted intent",
   "type": "object",
   "additionalProperties": false,
-  "required": ["query", "choice_mode"],
+  "required": [
+    "query",
+    "choice_mode"
+  ],
   "properties": {
     "query": {
       "type": "string",
-      "minLength": 1,
-      "maxLength": 512
+      "minLength": 1
     },
     "choice_mode": {
       "type": "string",
-      "enum": ["ask", "autopilot"]
+      "enum": [
+        "ask",
+        "autopilot"
+      ]
     }
   }
 }
