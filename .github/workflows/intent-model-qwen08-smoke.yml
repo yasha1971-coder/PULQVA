@@ -103,8 +103,50 @@ jobs:
           if set(obj) != {"query","choice_mode"}: raise SystemExit("authority/schema drift")
           if obj["choice_mode"] != "ask": raise SystemExit("wrong choice mode")
           if "countdown" not in obj["query"].lower(): raise SystemExit("semantic query failure")
+          pathlib.Path(os.environ["RUNNER_TEMP"]+"/smol-intent.json").write_text(
+              json.dumps(obj, ensure_ascii=False, separators=(",",":")), encoding="utf-8")
           print("PULQVA_SMOLLM2_CONSTRAINED_CONTROL_OK", json.dumps(obj,ensure_ascii=False))
           PY
+
+      - name: T069-E - require real model output through Rust typed boundary
+        id: rust_boundary
+        if: ${{ !cancelled() && steps.smol_control.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/rust-boundary/src"
+          cat > "$RUNNER_TEMP/rust-boundary/Cargo.toml" <<EOF
+          [package]
+          name = "pulqva-t069e-boundary-check"
+          version = "0.0.0"
+          edition = "2024"
+          publish = false
+
+          [dependencies]
+          pulqva-core = { path = "$GITHUB_WORKSPACE/crates/pulqva-core" }
+          pulqva-intent-json = { path = "$GITHUB_WORKSPACE/crates/pulqva-intent-json" }
+
+          [workspace]
+          EOF
+          cat > "$RUNNER_TEMP/rust-boundary/src/main.rs" <<'RS'
+          use pulqva_core::ChoiceMode;
+          use std::io::{self, Read};
+
+          fn main() {
+              let mut input = String::new();
+              io::stdin().read_to_string(&mut input).expect("read model output");
+              let interpreted = pulqva_intent_json::parse_interpreted_intent_json(input.trim())
+                  .expect("real model output must cross strict JSON + InterpretedIntent validation");
+              assert_eq!(interpreted.choice_mode(), ChoiceMode::Ask);
+              assert!(interpreted.query().to_ascii_lowercase().contains("countdown"));
+              let search = interpreted.into_search_intent()
+                  .expect("validated interpreted intent must enter SearchIntent");
+              assert!(search.query().to_ascii_lowercase().contains("countdown"));
+              println!("PULQVA_T069E_RUST_BOUNDARY_OK query={}", search.query());
+          }
+          RS
+          cargo run --quiet --manifest-path "$RUNNER_TEMP/rust-boundary/Cargo.toml" < "$RUNNER_TEMP/smol-intent.json" > "$RUNNER_TEMP/rust-boundary.txt"
+          cat "$RUNNER_TEMP/rust-boundary.txt"
 
       - name: Preserve diagnostic evidence even when a control fails
         id: evidence
@@ -133,7 +175,7 @@ jobs:
               "outcomes": {key: value["outcome"] for key, value in states.items()},
               "files": {},
           }
-          for name in ("intent.gbnf", "qwen-control.txt", "qwen-stderr.txt", "smol-output.txt", "smol-stderr.txt"):
+          for name in ("intent.gbnf", "qwen-control.txt", "qwen-stderr.txt", "smol-output.txt", "smol-stderr.txt", "smol-intent.json", "rust-boundary.txt"):
               source = tmp / name
               if not source.is_file():
                   receipt["files"][name] = {"present": False}
