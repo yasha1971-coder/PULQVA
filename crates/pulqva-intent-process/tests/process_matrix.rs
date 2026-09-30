@@ -10,9 +10,12 @@ fn fixture_plan(mode: &str, timeout: Duration) -> LocalIntentProcessPlan {
 
 #[test]
 fn valid_json_crosses_the_strict_boundary() {
-    let intent = interpret_with_local_process(
+    let interpretation = interpret_with_local_process(
         &fixture_plan("valid", Duration::from_secs(2)), "find a countdown video"
     ).unwrap();
+    let pulqva_core::Interpretation::Intent(intent) = interpretation else {
+        panic!("valid fixture must produce Intent");
+    };
     assert_eq!(intent.query(), "countdown video");
     assert_eq!(intent.choice_mode(), pulqva_core::ChoiceMode::Ask);
 }
