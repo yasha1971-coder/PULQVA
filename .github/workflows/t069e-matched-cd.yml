@@ -2,7 +2,6 @@ name: t069e-matched-cd
 on:
   pull_request:
     paths:
-      - 'eval/intent/**'
       - '.github/workflows/t069e-matched-cd.yml'
 permissions:
   contents: read
