@@ -3,7 +3,7 @@
 //! This crate is a narrow adapter. It decodes JSON into validated core types
 //! and intentionally contains no provider, network, transport, or execution logic.
 
-use pulqva_core::{ChoiceMode, InterpretedIntent, InterpretedIntentError, SearchIntent, SearchIntentError};
+use pulqva_core::{ChoiceMode, Interpretation, InterpretedIntent, InterpretedIntentError, RejectReason, SearchIntent, SearchIntentError};
 use serde::Deserialize;
 use std::{error::Error, fmt};
 
@@ -13,6 +13,19 @@ struct WireSearchIntent {
     query: String,
 }
 
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum WireInterpretation {
+    Intent { query: String, choice_mode: WireChoiceMode },
+    Reject { reason: WireRejectReason },
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WireRejectReason {
+    SemanticAuthority,
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -26,6 +39,33 @@ struct WireInterpretedIntent {
 enum WireChoiceMode {
     Ask,
     Autopilot,
+}
+
+/// Parses the complete tagged local interpretation protocol.
+///
+/// Accepted shapes:
+/// {"kind":"intent","query":"semantic search terms","choice_mode":"ask|autopilot"}
+/// {"kind":"reject","reason":"semantic_authority"}
+///
+/// Reject has no query or executable authority and cannot become SearchIntent.
+pub fn parse_interpretation_json(input: &str)
+    -> Result<Interpretation, InterpretedIntentJsonError>
+{
+    let wire: WireInterpretation =
+        serde_json::from_str(input).map_err(InterpretedIntentJsonError::Decode)?;
+    match wire {
+        WireInterpretation::Intent { query, choice_mode } => {
+            let mode = match choice_mode {
+                WireChoiceMode::Ask => ChoiceMode::Ask,
+                WireChoiceMode::Autopilot => ChoiceMode::Autopilot,
+            };
+            InterpretedIntent::new(query, mode)
+                .map(Interpretation::Intent)
+                .map_err(InterpretedIntentJsonError::Validation)
+        }
+        WireInterpretation::Reject { reason: WireRejectReason::SemanticAuthority } =>
+            Ok(Interpretation::Reject(RejectReason::SemanticAuthority)),
+    }
 }
 
 /// Parses the only structured output shape future local inference may emit.
@@ -156,6 +196,31 @@ mod tests {
             .expect_err("blank query must be rejected");
 
         assert!(matches!(error, IntentJsonError::Validation(_)));
+    }
+
+    #[test]
+    fn parses_fail_closed_reject_without_authority_payload() {
+        let value = super::parse_interpretation_json(
+            r#"{"kind":"reject","reason":"semantic_authority"}"#
+        ).unwrap();
+        assert!(matches!(value, pulqva_core::Interpretation::Reject(
+            pulqva_core::RejectReason::SemanticAuthority
+        )));
+    }
+
+    #[test]
+    fn reject_refuses_query_path_url_and_extra_payloads() {
+        for input in [
+            r#"{"kind":"reject","reason":"semantic_authority","query":"countdown"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","path":"C:\\temp"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","url":"https://example.com"}"#,
+            r#"{"kind":"reject","reason":"other"}"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpretation_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ));
+        }
     }
 
     #[test]
