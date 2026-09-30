@@ -13,6 +13,41 @@ pub enum ChoiceMode {
     Autopilot,
 }
 
+/// Fixed fail-closed reason emitted when no permissible semantic search intent exists.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RejectReason {
+    SemanticAuthority,
+}
+
+/// Complete typed result of local intent interpretation.
+///
+/// Reject carries no query, locator, path, command, provider or transport data
+/// and therefore cannot be converted into SearchIntent.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Interpretation {
+    Intent(InterpretedIntent),
+    Reject(RejectReason),
+}
+
+impl Interpretation {
+    pub fn into_search_intent(self) -> Result<crate::SearchIntent, InterpretationRejected> {
+        match self {
+            Self::Intent(intent) => intent.into_search_intent().map_err(|_| InterpretationRejected),
+            Self::Reject(_) => Err(InterpretationRejected),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InterpretationRejected;
+
+impl fmt::Display for InterpretationRejected {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("interpretation was rejected")
+    }
+}
+impl std::error::Error for InterpretationRejected {}
+
 /// Validated output of an AI/local intent interpreter.
 ///
 /// Construction is deliberately narrower than deserializing arbitrary model
@@ -155,6 +190,12 @@ mod tests {
                 InterpretedIntentError::PathLikeQuery
             );
         }
+    }
+
+    #[test]
+    fn reject_has_no_search_capability() {
+        let rejected = Interpretation::Reject(RejectReason::SemanticAuthority);
+        assert_eq!(rejected.into_search_intent().unwrap_err(), InterpretationRejected);
     }
 
     #[test]
