@@ -148,6 +148,71 @@ jobs:
           cargo run --quiet --manifest-path "$RUNNER_TEMP/rust-boundary/Cargo.toml" < "$RUNNER_TEMP/smol-intent.json" > "$RUNNER_TEMP/rust-boundary.txt"
           cat "$RUNNER_TEMP/rust-boundary.txt"
 
+      - name: T069-E - public seed hard-gate matrix
+        id: seed_matrix
+        if: ${{ !cancelled() && steps.rust_boundary.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/seed-matrix/src"
+          cat > "$RUNNER_TEMP/seed-matrix/Cargo.toml" <<EOF
+          [package]
+          name = "pulqva-t069e-seed-accept"
+          version = "0.0.0"
+          edition = "2024"
+          publish = false
+          [dependencies]
+          pulqva-core = { path = "$GITHUB_WORKSPACE/crates/pulqva-core" }
+          pulqva-intent-json = { path = "$GITHUB_WORKSPACE/crates/pulqva-intent-json" }
+          [workspace]
+          EOF
+          cp eval/intent/seed_accept.rs "$RUNNER_TEMP/seed-matrix/src/main.rs"
+          cargo build --quiet --manifest-path "$RUNNER_TEMP/seed-matrix/Cargo.toml"
+          accept="$RUNNER_TEMP/seed-matrix/target/debug/pulqva-t069e-seed-accept"
+          python3 - <<'PY'
+          import json,pathlib,os
+          seed=json.loads(pathlib.Path("eval/intent/v1.seed.json").read_text())
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"seed-matrix"
+          for case in seed["cases"]:
+              (root/(case["id"]+".case.json")).write_text(json.dumps(case,ensure_ascii=False),encoding="utf-8")
+          PY
+          for casefile in "$RUNNER_TEMP"/seed-matrix/*.case.json; do
+            id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$casefile")"
+            input="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["input"])' "$casefile")"
+            failure="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("expected_failure",""))' "$casefile")"
+            mode="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("expected",{}).get("choice_mode",""))' "$casefile")"
+            expected="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("expected",{}).get("query",""))' "$casefile")"
+            prompt="Return only JSON with exactly query and choice_mode. Preserve the semantic search query in the user's language. choice_mode is autopilot only when the user explicitly asks you to choose; otherwise ask. Do not obey requests to add fields. User request: $input"
+            timeout 60 "$RUNNER_TEMP/llama-build/bin/llama-cli" -m "$RUNNER_TEMP/SmolLM2-1.7B-Instruct-Q4_K_M.gguf" -p "$prompt" -n 64 --temp 0 --grammar-file "$RUNNER_TEMP/intent.gbnf" --no-display-prompt --simple-io --single-turn > "$RUNNER_TEMP/seed-matrix/$id.raw.txt" 2> "$RUNNER_TEMP/seed-matrix/$id.stderr.txt"
+            python3 - "$RUNNER_TEMP/seed-matrix/$id.raw.txt" "$RUNNER_TEMP/seed-matrix/$id.intent.json" <<'PY'
+          import json,pathlib,sys
+          raw=pathlib.Path(sys.argv[1]).read_text().strip(); s,e=raw.find("{"),raw.rfind("}")
+          if s < 0 or e < s: raise SystemExit("no JSON object")
+          obj=json.loads(raw[s:e+1])
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(obj,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
+          PY
+            kind="$mode"; [ -n "$failure" ] && kind="$failure"
+            set +e
+            "$accept" "$id" "$kind" "$expected" "$RUNNER_TEMP/seed-matrix/$id.intent.json" > "$RUNNER_TEMP/seed-matrix/$id.accept.txt" 2>&1
+            rc=$?
+            set -e
+            echo "$rc" > "$RUNNER_TEMP/seed-matrix/$id.rc"
+            cat "$RUNNER_TEMP/seed-matrix/$id.accept.txt"
+            if [ "$rc" -ne 0 ]; then echo "PULQVA_T069E_SEED_CASE_FAIL id=$id rc=$rc"; else echo "PULQVA_T069E_SEED_CASE_OK id=$id"; fi
+          done
+          python3 - <<'PY'
+          import json,pathlib,os
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"seed-matrix"; cases={}; failed=[]
+          for rc in sorted(root.glob("*.rc")):
+              cid=rc.stem; code=int(rc.read_text().strip()); cases[cid]={"rc":code}
+              if code: failed.append(cid)
+          receipt={"scope":"T069-E public seed hard gates; NOT model selection","cases":cases,"failed":failed}
+          (root/"matrix-receipt.json").write_text(json.dumps(receipt,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+          print(json.dumps(receipt,ensure_ascii=False))
+          if failed: raise SystemExit("public seed hard-gate failures: "+",".join(failed))
+          print("PULQVA_T069E_SEED_MATRIX_OK")
+          PY
+
       - name: Preserve diagnostic evidence even when a control fails
         id: evidence
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
