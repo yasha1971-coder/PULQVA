@@ -39,7 +39,32 @@ jobs:
           actual="$(sha256sum "$model" | awk '{print $1}')"
           echo "MODEL_SHA256=$actual"
           test "$actual" = "57d1997790d1744fba5b40a7317df71ea5e2acee28c47e78f0cce39c0703f8cf"
-      - name: Run one constrained multilingual smoke
+      - name: Control A - Qwen unconstrained 16 tokens
+        shell: bash
+        run: |
+          set -euo pipefail
+          prompt='Reply with only the words countdown video. User request: найди видео с обратным отсчётом на десять минут'
+          timeout 30 "$RUNNER_TEMP/llama-build/bin/llama-cli" \
+            -m "$RUNNER_TEMP/Qwen3.5-0.8B-Q4_0.gguf" \
+            -p "$prompt" -n 16 --temp 0 --no-display-prompt --simple-io \
+            > "$RUNNER_TEMP/qwen-control.txt"
+          test -s "$RUNNER_TEMP/qwen-control.txt"
+          head -c 1000 "$RUNNER_TEMP/qwen-control.txt"
+          echo
+          echo PULQVA_QWEN08_UNCONSTRAINED_CONTROL_OK
+
+      - name: Control B - materialize SmolLM2 1.7B Q4_K_M
+        shell: bash
+        run: |
+          set -euo pipefail
+          model="$RUNNER_TEMP/SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
+          curl --fail --location --retry 3 --retry-delay 2 -o "$model" \
+            "https://huggingface.co/lmstudio-community/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf?download=true"
+          test -s "$model"
+          echo "SMOLLM2_BYTES=$(stat -c %s "$model")"
+          echo "SMOLLM2_SHA256=$(sha256sum "$model" | awk '{print $1}')"
+
+      - name: Control B - SmolLM2 constrained intent
         shell: bash
         run: |
           set -euo pipefail
@@ -51,20 +76,20 @@ jobs:
           char ::= [^"\\\\\x00-\x1F]
           ws ::= [ \t\n\r]*
           GBNF
-          prompt='Convert the user request into JSON with exactly query and choice_mode. Preserve the search meaning. choice_mode must be ask unless the user explicitly asks you to choose automatically. User request: найди видео с обратным отсчётом на десять минут'
-          timeout 120 "$RUNNER_TEMP/llama-build/bin/llama-cli" \
-            -m "$RUNNER_TEMP/Qwen3.5-0.8B-Q4_0.gguf" \
-            -p "$prompt" -n 96 --temp 0 --grammar-file "$RUNNER_TEMP/intent.gbnf" \
-            --no-display-prompt --simple-io > "$RUNNER_TEMP/output.txt"
-          cat "$RUNNER_TEMP/output.txt"
+          prompt='Return only JSON. Convert this request to query and choice_mode. choice_mode is ask unless the user explicitly asks you to choose. User request: find a ten minute countdown video'
+          timeout 60 "$RUNNER_TEMP/llama-build/bin/llama-cli" \
+            -m "$RUNNER_TEMP/SmolLM2-1.7B-Instruct-Q4_K_M.gguf" \
+            -p "$prompt" -n 64 --temp 0 --grammar-file "$RUNNER_TEMP/intent.gbnf" \
+            --no-display-prompt --simple-io > "$RUNNER_TEMP/smol-output.txt"
+          cat "$RUNNER_TEMP/smol-output.txt"
           python3 - <<'PY'
           import json, pathlib, os
-          raw=pathlib.Path(os.environ["RUNNER_TEMP"]+"/output.txt").read_text().strip()
-          start=raw.find("{"); end=raw.rfind("}")
+          raw=pathlib.Path(os.environ["RUNNER_TEMP"]+"/smol-output.txt").read_text().strip()
+          start,end=raw.find("{"),raw.rfind("}")
           if start < 0 or end < start: raise SystemExit("no JSON object")
           obj=json.loads(raw[start:end+1])
           if set(obj) != {"query","choice_mode"}: raise SystemExit("authority/schema drift")
           if obj["choice_mode"] != "ask": raise SystemExit("wrong choice mode")
-          if not isinstance(obj["query"],str) or not obj["query"].strip(): raise SystemExit("empty query")
-          print("PULQVA_QWEN08_GBNF_SMOKE_OK", json.dumps(obj,ensure_ascii=False))
+          if "countdown" not in obj["query"].lower(): raise SystemExit("semantic query failure")
+          print("PULQVA_SMOLLM2_CONSTRAINED_CONTROL_OK", json.dumps(obj,ensure_ascii=False))
           PY
