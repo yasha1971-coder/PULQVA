@@ -50,7 +50,7 @@ jobs:
           prompt='Reply with only the words countdown video. User request: найди видео с обратным отсчётом на десять минут'
           timeout 30 "$RUNNER_TEMP/llama-build/bin/llama-cli" \
             -m "$RUNNER_TEMP/Qwen3.5-0.8B-Q4_0.gguf" \
-            -p "$prompt" -n 16 --temp 0 --no-display-prompt --simple-io \
+            -p "$prompt" -n 16 --temp 0 --no-display-prompt --simple-io --single-turn \
             > "$RUNNER_TEMP/qwen-control.txt" 2> "$RUNNER_TEMP/qwen-stderr.txt"
           test -s "$RUNNER_TEMP/qwen-control.txt"
           head -c 1000 "$RUNNER_TEMP/qwen-control.txt"
@@ -92,7 +92,7 @@ jobs:
           timeout 60 "$RUNNER_TEMP/llama-build/bin/llama-cli" \
             -m "$RUNNER_TEMP/SmolLM2-1.7B-Instruct-Q4_K_M.gguf" \
             -p "$prompt" -n 64 --temp 0 --grammar-file "$RUNNER_TEMP/intent.gbnf" \
-            --no-display-prompt --simple-io > "$RUNNER_TEMP/smol-output.txt" 2> "$RUNNER_TEMP/smol-stderr.txt"
+            --no-display-prompt --simple-io --single-turn > "$RUNNER_TEMP/smol-output.txt" 2> "$RUNNER_TEMP/smol-stderr.txt"
           cat "$RUNNER_TEMP/smol-output.txt"
           python3 - <<'PY'
           import json, pathlib, os
