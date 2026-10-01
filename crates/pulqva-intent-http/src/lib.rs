@@ -27,8 +27,11 @@ impl std::error::Error for IntentHttpError {}
 impl From<std::io::Error> for IntentHttpError { fn from(e:std::io::Error)->Self{Self::Io(e)} }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ResponseEnvelope { content: String }
+struct ResponseEnvelope { choices: Vec<Choice> }
+#[derive(Deserialize)]
+struct Choice { message: Message }
+#[derive(Deserialize)]
+struct Message { content: String }
 
 pub fn interpret_via_loopback(endpoint: LoopbackIntentEndpoint, request_json: &str)
     -> Result<Interpretation, IntentHttpError>
@@ -49,5 +52,6 @@ pub fn interpret_via_loopback(endpoint: LoopbackIntentEndpoint, request_json: &s
     let status=head.lines().next().ok_or(IntentHttpError::Envelope)?;
     if !status.starts_with("HTTP/1.1 200 ") { return Err(IntentHttpError::HttpStatus); }
     let env:ResponseEnvelope=serde_json::from_str(body).map_err(|_|IntentHttpError::Envelope)?;
-    pulqva_intent_json::parse_interpretation_json(&env.content).map_err(|_|IntentHttpError::Interpretation)
+    let content=env.choices.first().ok_or(IntentHttpError::Envelope)?.message.content.as_str();
+    pulqva_intent_json::parse_interpretation_json(content).map_err(|_|IntentHttpError::Interpretation)
 }
