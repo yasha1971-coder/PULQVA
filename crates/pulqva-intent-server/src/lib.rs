@@ -1,5 +1,5 @@
 //! Supervised lifecycle boundary for the local PULQVA intent server.
-use std::{fmt, net::{Ipv4Addr, SocketAddrV4, TcpStream}, path::{Path,PathBuf},
+use std::{fmt, io::{Read,Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, path::PathBuf,
           process::{Child,Command,Stdio}, thread, time::{Duration,Instant}};
 
 #[derive(Debug,Clone)]
@@ -40,8 +40,17 @@ impl IntentServer {
             if child.try_wait().map_err(IntentServerError::Spawn)?.is_some(){
                 return Err(IntentServerError::ExitedEarly);
             }
-            if TcpStream::connect_timeout(&addr.into(),Duration::from_millis(50)).is_ok(){
-                return Ok(Self{child,port:plan.port});
+            if let Ok(mut stream)=TcpStream::connect_timeout(&addr.into(),Duration::from_millis(50)){
+                let _=stream.set_read_timeout(Some(Duration::from_millis(100)));
+                let _=stream.set_write_timeout(Some(Duration::from_millis(100)));
+                if stream.write_all(b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n").is_ok(){
+                    let mut response=[0u8;256];
+                    if let Ok(n)=stream.read(&mut response){
+                        if n>0 && response[..n].starts_with(b"HTTP/1.1 200 "){
+                            return Ok(Self{child,port:plan.port});
+                        }
+                    }
+                }
             }
             if Instant::now()>=deadline {
                 let _=child.kill(); let _=child.wait();
