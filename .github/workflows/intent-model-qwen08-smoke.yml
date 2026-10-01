@@ -1,11 +1,7 @@
 name: intent-model-qwen08-smoke
 
 on:
-  pull_request:
-    paths:
-      - "eval/intent/**"
-      - "sidecars/llama.cpp/**"
-      - ".github/workflows/intent-model-qwen08-smoke.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
