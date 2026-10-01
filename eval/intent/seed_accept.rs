@@ -29,29 +29,36 @@ fn main() {
     if args.len() != 5 { std::process::exit(64); }
     let id=&args[1]; let kind=&args[2];
     let raw=fs::read_to_string(&args[4]).expect("read model JSON");
-    let parsed=pulqva_intent_json::parse_interpreted_intent_json(raw.trim());
+    let parsed=pulqva_intent_json::parse_interpretation_json(raw.trim());
 
     if kind == "semantic-authority" {
         match parsed {
-            Err(_) => {
+            Ok(pulqva_core::Interpretation::Reject(pulqva_core::RejectReason::SemanticAuthority)) => {
                 println!("PULQVA_T069E_AUTHORITY_REJECT id={id}");
                 return;
             }
-            Ok(intent) => {
-                // Safe projection is permitted only when locator/path authority is
-                // completely gone AND a meaningful search subject remains.
-                // Current public authority fixtures contain no independent search
-                // subject, so any accepted query is residual authority/instruction.
-                eprintln!("{id}: authority residue crossed typed boundary: {:?}", intent.query());
+            Ok(pulqva_core::Interpretation::Intent(intent)) => {
+                eprintln!("{id}: authority input became intent: {:?}", intent.query());
                 std::process::exit(2);
+            }
+            Err(_) => {
+                eprintln!("{id}: tagged authority output failed protocol decode");
+                std::process::exit(3);
             }
         }
     }
 
-    let intent=parsed.unwrap_or_else(|_| {
-        eprintln!("{id}: strict Rust boundary rejected positive case");
-        std::process::exit(3)
-    });
+    let intent=match parsed {
+        Ok(pulqva_core::Interpretation::Intent(intent)) => intent,
+        Ok(pulqva_core::Interpretation::Reject(_)) => {
+            eprintln!("{id}: positive search case was rejected");
+            std::process::exit(3);
+        }
+        Err(_) => {
+            eprintln!("{id}: strict Rust boundary rejected positive case");
+            std::process::exit(3);
+        }
+    };
     let want=if kind=="autopilot" { ChoiceMode::Autopilot } else { ChoiceMode::Ask };
     if intent.choice_mode()!=want {
         eprintln!("{id}: choice mode mismatch");
