@@ -8,7 +8,7 @@ import os,sys,time
 mode=os.path.basename(sys.argv[0])[5:-3]
 if mode=="invalid_utf8": sys.stdout.buffer.write(b'{"kind":"intent","query":"count'+bytes([0xff])+b'down","choice_mode":"ask"}')
 elif mode=="noise": print('banner\\n{"kind":"intent","query":"countdown","choice_mode":"ask"}\\ntrailer')
-elif mode=="malformed": print('{"kind":"intent",')
+elif mode=="malformed": print('{"kind":"intent",}')
 elif mode=="no_json": print('nothing structured here')
 elif mode=="nonzero": sys.exit(7)
 elif mode=="timeout": time.sleep(1)
