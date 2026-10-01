@@ -6,16 +6,16 @@ use std::{fmt, io::{Read,Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, path:
 pub struct IntentServerPlan {
     executable: PathBuf,
     model: PathBuf,
-    schema: PathBuf,
+    schema_json: String,
     port: u16,
     readiness_timeout: Duration,
 }
 impl IntentServerPlan {
     pub fn new(executable: impl Into<PathBuf>, model: impl Into<PathBuf>,
-        schema: impl Into<PathBuf>, port:u16, readiness_timeout:Duration)
+        schema_json: impl Into<String>, port:u16, readiness_timeout:Duration)
         -> Result<Self,IntentServerError> {
         if port==0 || readiness_timeout.is_zero() { return Err(IntentServerError::InvalidPlan); }
-        Ok(Self{executable:executable.into(),model:model.into(),schema:schema.into(),port,readiness_timeout})
+        Ok(Self{executable:executable.into(),model:model.into(),schema_json:schema_json.into(),port,readiness_timeout})
     }
     pub fn port(&self)->u16{self.port}
 }
@@ -30,7 +30,6 @@ impl IntentServer {
         cmd.arg("-m").arg(&plan.model)
            .arg("--host").arg("127.0.0.1")
            .arg("--port").arg(plan.port.to_string())
-           .arg("--json-schema-file").arg(&plan.schema)
            .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
            .env_clear();
         let mut child=cmd.spawn().map_err(IntentServerError::Spawn)?;
@@ -47,7 +46,10 @@ impl IntentServer {
                     let mut response=[0u8;256];
                     if let Ok(n)=stream.read(&mut response){
                         if n>0 && response[..n].starts_with(b"HTTP/1.1 200 ") && response[..n].ends_with(b"\r\n\r\n{\"status\":\"ok\"}"){
-                            return Ok(Self{child,port:plan.port});
+                            let endpoint=pulqva_intent_http::LoopbackIntentEndpoint::new(plan.port,Duration::from_millis(500)).map_err(|_|IntentServerError::InvalidPlan)?;
+                            if let Ok(request)=pulqva_intent_http::build_interpretation_request("find countdown", &plan.schema_json) {
+                                if pulqva_intent_http::interpret_via_loopback(endpoint,&request).is_ok(){ return Ok(Self{child,port:plan.port}); }
+                            }
                         }
                     }
                 }
