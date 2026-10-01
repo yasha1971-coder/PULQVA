@@ -1,14 +1,10 @@
 name: t069e-dispatch-launcher
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/t069e-run-request'
 permissions:
   contents: read
 jobs:
   matched:
-    if: github.event_name == 'workflow_dispatch' || hashFiles('.github/t069e-run-request') != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
