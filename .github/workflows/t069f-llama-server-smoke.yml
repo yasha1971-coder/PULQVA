@@ -43,7 +43,12 @@ jobs:
           echo "T069F_MODEL_SHA256=7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5" >> "$RUNNER_TEMP/evidence/provenance.txt"
           echo "T069F_FEATURE_HEAD=$(git rev-parse HEAD)" >> "$RUNNER_TEMP/evidence/provenance.txt"
           cargo test --locked -p pulqva-intent-server --test lifecycle -- --nocapture | tee "$RUNNER_TEMP/evidence/deterministic-lifecycle.txt"
-          echo "T069F_REAL_SERVER_PREPARED=1" >> "$RUNNER_TEMP/evidence/provenance.txt"
+          cargo run --quiet --locked -p pulqva-intent-server --bin real_server_smoke -- \
+            "$RUNNER_TEMP/build/bin/llama-server" \
+            "$RUNNER_TEMP/Qwen3-4B-Q4_K_M.gguf" \
+            "sidecars/llama.cpp/intent.schema.json" \
+            "$RUNNER_TEMP/evidence/receipt.json" \
+            19081
       - name: Upload evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
