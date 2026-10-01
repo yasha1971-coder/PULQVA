@@ -12,20 +12,20 @@ fn serve(body:&'static str, delay_ms:u64)->u16 {
     }); port
 }
 #[test] fn accepts_intent_and_reject() {
-    let b=r#"{"content":"{\"kind\":\"intent\",\"query\":\"countdown\",\"choice_mode\":\"ask\"}"}"#;
+    let b=r#"{"choices":[{"message":{"content":"{\"kind\":\"intent\",\"query\":\"countdown\",\"choice_mode\":\"ask\"}"}}],"id":"fixture"}"#;
     let x=interpret_via_loopback(LoopbackIntentEndpoint::new(serve(b,0),Duration::from_secs(1)).unwrap(),"{}").unwrap();
     assert!(matches!(x,Interpretation::Intent(_)));
-    let b=r#"{"content":"{\"kind\":\"reject\",\"reason\":\"semantic_authority\"}"}"#;
+    let b=r#"{"choices":[{"message":{"content":"{\"kind\":\"reject\",\"reason\":\"semantic_authority\"}"}}],"id":"fixture"}"#;
     let x=interpret_via_loopback(LoopbackIntentEndpoint::new(serve(b,0),Duration::from_secs(1)).unwrap(),"{}").unwrap();
     assert_eq!(x,Interpretation::Reject(RejectReason::SemanticAuthority));
 }
 #[test] fn fails_closed_on_schema_bypass_and_timeout() {
     for b in [
-      r#"{"content":"{\"kind\":\"reject\",\"reason\":\"semantic_authority\",\"url\":\"https://example.com\"}"}"#,
-      r#"{"content":"not json"}"#,
-      r#"{"content":"{\"kind\":\"intent\",\"query\":\"x\",\"choice_mode\":\"ask\"}","extra":1}"#
+      r#"{"choices":[{"message":{"content":"{\"kind\":\"reject\",\"reason\":\"semantic_authority\",\"url\":\"https://example.com\"}"}}]}"#,
+      r#"{"choices":[{"message":{"content":"not json"}}]}"#,
+      r#"{"choices":[],"id":"no-choice"}"#
     ] {
       assert!(interpret_via_loopback(LoopbackIntentEndpoint::new(serve(b,0),Duration::from_secs(1)).unwrap(),"{}").is_err());
     }
-    assert!(interpret_via_loopback(LoopbackIntentEndpoint::new(serve(r#"{"content":"x"}"#,300),Duration::from_millis(20)).unwrap(),"{}").is_err());
+    assert!(interpret_via_loopback(LoopbackIntentEndpoint::new(serve(r#"{"choices":[{"message":{"content":"x"}}]}"#,300),Duration::from_millis(20)).unwrap(),"{}").is_err());
 }
