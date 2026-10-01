@@ -1,5 +1,6 @@
 use pulqva_core::Interpretation;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{fmt, io::{Read, Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, time::Duration};
 
 const MAX_HTTP_BYTES: usize = 64 * 1024;
@@ -25,6 +26,31 @@ impl fmt::Display for IntentHttpError {
 }
 impl std::error::Error for IntentHttpError {}
 impl From<std::io::Error> for IntentHttpError { fn from(e:std::io::Error)->Self{Self::Io(e)} }
+
+#[derive(Serialize)]
+struct ChatRequest<'a> {
+    messages: [ChatMessage<'a>; 1],
+    temperature: u8,
+    max_tokens: u16,
+    response_format: ResponseFormat<'a>,
+}
+#[derive(Serialize)]
+struct ChatMessage<'a> { role: &'static str, content: &'a str }
+#[derive(Serialize)]
+struct ResponseFormat<'a> { r#type: &'static str, schema: &'a Value }
+
+pub fn build_interpretation_request(user_request: &str, schema_json: &str)
+    -> Result<String, IntentHttpError>
+{
+    if user_request.is_empty() || user_request.len()>4096 { return Err(IntentHttpError::InvalidPlan); }
+    let schema:Value=serde_json::from_str(schema_json).map_err(|_|IntentHttpError::InvalidPlan)?;
+    let req=ChatRequest {
+        messages:[ChatMessage{role:"user",content:user_request}],
+        temperature:0, max_tokens:96,
+        response_format:ResponseFormat{r#type:"json_schema",schema:&schema},
+    };
+    serde_json::to_string(&req).map_err(|_|IntentHttpError::InvalidPlan)
+}
 
 #[derive(Deserialize)]
 struct ResponseEnvelope { choices: Vec<Choice> }
