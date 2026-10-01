@@ -6,9 +6,20 @@ fn main(){
  let l=TcpListener::bind(("127.0.0.1",port)).unwrap();
  let mut probes=0usize;
  loop{
-   let (mut s,_)=l.accept().unwrap(); let mut b=[0u8;512]; let _=s.read(&mut b);
+   let (mut s,_)=l.accept().unwrap();
+   let mut request_bytes=Vec::new(); let mut chunk=[0u8;1024];
+   loop {
+     let n=s.read(&mut chunk).unwrap(); if n==0 { break; }
+     request_bytes.extend_from_slice(&chunk[..n]);
+     if let Some(p)=request_bytes.windows(4).position(|w|w==b"\r\n\r\n") {
+       let head=String::from_utf8_lossy(&request_bytes[..p]);
+       let len=head.lines().find_map(|line|line.strip_prefix("Content-Length: ")).and_then(|x|x.parse::<usize>().ok()).unwrap_or(0);
+       if request_bytes.len() >= p+4+len { break; }
+     }
+     if request_bytes.len()>16*1024 { break; }
+   }
    probes+=1;
-   let request=String::from_utf8_lossy(&b);
+   let request=String::from_utf8_lossy(&request_bytes);
    let (status,body)=if request.starts_with("GET /health") {
      ("200 OK", if model.contains("loading") {"{\"status\":\"loading\"}"} else {"{\"status\":\"ok\"}"})
    } else if request.starts_with("POST /v1/chat/completions") && model.contains("bad-completion") {
