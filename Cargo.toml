@@ -3,6 +3,7 @@ members = [
     "crates/pulqva-core",
     "crates/pulqva-intent-json",
     "crates/pulqva-intent-process",
+    "crates/pulqva-intent-http",
     "crates/pulqva-privacy",
     "crates/pulqva-discovery",
 ]
