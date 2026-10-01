@@ -199,6 +199,38 @@ mod tests {
     }
 
     #[test]
+    fn tagged_schema_examples_match_rust_protocol() {
+        let intent = super::parse_interpretation_json(
+            r#"{"kind":"intent","query":"countdown video","choice_mode":"ask"}"#
+        ).unwrap();
+        assert!(matches!(intent, pulqva_core::Interpretation::Intent(_)));
+
+        let reject = super::parse_interpretation_json(
+            r#"{"kind":"reject","reason":"semantic_authority"}"#
+        ).unwrap();
+        assert!(matches!(reject, pulqva_core::Interpretation::Reject(
+            pulqva_core::RejectReason::SemanticAuthority
+        )));
+    }
+
+    #[test]
+    fn tagged_protocol_rejects_cross_branch_and_authority_payloads() {
+        for input in [
+            r#"{"kind":"intent","query":"countdown"}"#,
+            r#"{"kind":"intent","query":"countdown","choice_mode":"ask","reason":"semantic_authority"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","choice_mode":"ask"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","query":"countdown"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","command":"curl"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","proxy":"socks5h://127.0.0.1:1"}"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpretation_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ), "unexpectedly accepted: {input}");
+        }
+    }
+
+    #[test]
     fn parses_fail_closed_reject_without_authority_payload() {
         let value = super::parse_interpretation_json(
             r#"{"kind":"reject","reason":"semantic_authority"}"#
