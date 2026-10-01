@@ -14,9 +14,11 @@ fn diagnostic_reports_completion_failure_without_marking_ready(){
     assert_eq!(report["ready"],false);
     assert_eq!(report["phase"],"completion");
     assert_eq!(report["health_ok_seen"],true);
-    assert!(report["completion_attempts"].as_u64().unwrap()>0);
+    assert_eq!(report["completion_attempts"],1);
     assert_eq!(report["completion_error"],"HttpStatus");
-    assert_eq!(report["completion_io_timeout_ms"],500);
+    let budget=report["completion_budget_ms"].as_u64().unwrap();
+    assert!(budget>0 && budget<=500);
+    assert_eq!(report["completion_timeout_scope"],"total");
     assert!(std::net::TcpStream::connect(("127.0.0.1",port)).is_err());
 }
 

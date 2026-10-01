@@ -4,6 +4,8 @@ pub use diagnostics::{ReadinessDiagnostics, STDERR_RETAINED_BYTES};
 use std::{fmt, io::{Read,Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, path::PathBuf,
           process::{Child,Command,Stdio}, thread, time::{Duration,Instant}};
 
+const COMPLETION_BUDGET: Duration = Duration::from_secs(60);
+
 #[derive(Debug,Clone)]
 pub struct IntentServerPlan {
     executable: PathBuf,
@@ -21,7 +23,7 @@ impl IntentServerPlan {
     }
     pub fn port(&self)->u16{self.port}
 }
-#[derive(Debug)] pub enum IntentServerError { InvalidPlan, Spawn(std::io::Error), ExitedEarly, ReadinessTimeout }
+#[derive(Debug)] pub enum IntentServerError { InvalidPlan, Spawn(std::io::Error), ExitedEarly, ReadinessTimeout, CompletionFailed }
 impl fmt::Display for IntentServerError { fn fmt(&self,f:&mut fmt::Formatter<'_>)->fmt::Result{write!(f,"{self:?}")}}
 impl std::error::Error for IntentServerError {}
 
@@ -39,6 +41,7 @@ impl IntentServer {
         trace.phase = "process";
         trace.capture_enabled = capture;
         let started = Instant::now();
+        let deadline=started.checked_add(plan.readiness_timeout).ok_or(IntentServerError::InvalidPlan)?;
         let mut cmd=Command::new(&plan.executable);
         cmd.arg("-m").arg(&plan.model)
            .arg("--host").arg("127.0.0.1")
@@ -57,10 +60,10 @@ impl IntentServer {
                 trace.capture(stderr).map_err(IntentServerError::Spawn)?;
             }
         }
-        let deadline=Instant::now()+plan.readiness_timeout;
         let addr=SocketAddrV4::new(Ipv4Addr::LOCALHOST,plan.port);
         loop {
             trace.elapsed_ms = started.elapsed().as_millis().min(u64::MAX as u128) as u64;
+            if Instant::now()>=deadline { return Err(IntentServerError::ReadinessTimeout); }
             if owner.child.try_wait().map_err(IntentServerError::Spawn)?.is_some(){
                 trace.phase = "process";
                 trace.process_error = Some("exited_early".into());
@@ -83,20 +86,36 @@ impl IntentServer {
                                         trace.health_ok_seen = true;
                                         trace.health_error = None;
                                         trace.phase = "completion";
-                                        trace.completion_attempts += 1;
-                                        let endpoint=pulqva_intent_http::LoopbackIntentEndpoint::new(plan.port,Duration::from_millis(500)).map_err(|_|IntentServerError::InvalidPlan)?;
-                                        match pulqva_intent_http::build_interpretation_request("find countdown", &plan.schema_json) {
-                                            Ok(request) => match pulqva_intent_http::interpret_via_loopback(endpoint,&request) {
-                                                Ok(_) => {
-                                                    trace.ready=true;
-                                                    trace.phase="ready";
-                                                    trace.completion_error=None;
-                                                    trace.elapsed_ms=started.elapsed().as_millis().min(u64::MAX as u128) as u64;
-                                                    return Ok(owner);
+                                        let budget=deadline.saturating_duration_since(Instant::now()).min(COMPLETION_BUDGET);
+                                        if budget.is_zero() { return Err(IntentServerError::ReadinessTimeout); }
+                                        let probe_deadline=Instant::now().checked_add(budget).ok_or(IntentServerError::InvalidPlan)?.min(deadline);
+                                        trace.completion_budget_ms=budget.as_millis().min(u64::MAX as u128) as u64;
+                                        let endpoint=pulqva_intent_http::LoopbackIntentEndpoint::new(plan.port,budget).map_err(|_|IntentServerError::InvalidPlan)?;
+                                        let result=match pulqva_intent_http::build_interpretation_request("find countdown", &plan.schema_json) {
+                                            Ok(request) => {
+                                                trace.completion_attempts += 1;
+                                                pulqva_intent_http::interpret_via_loopback_until(endpoint,&request,probe_deadline)
+                                            }
+                                            Err(e) => Err(e),
+                                        };
+                                        trace.elapsed_ms=started.elapsed().as_millis().min(u64::MAX as u128) as u64;
+                                        // Terminal transition: never return to the health/reissue loop.
+                                        match result {
+                                            Ok(_) => {
+                                                if owner.child.try_wait().map_err(IntentServerError::Spawn)?.is_some(){
+                                                    trace.phase="process";
+                                                    trace.process_error=Some("exited_early".into());
+                                                    return Err(IntentServerError::ExitedEarly);
                                                 }
-                                                Err(e) => trace.completion_error=Some(format!("{e:?}")),
-                                            },
-                                            Err(_) => trace.completion_error=Some("request_builder_invalid_plan".into()),
+                                                trace.ready=true;
+                                                trace.phase="ready";
+                                                trace.completion_error=None;
+                                                return Ok(owner);
+                                            }
+                                            Err(e) => {
+                                                trace.completion_error=Some(format!("{e:?}"));
+                                                return Err(IntentServerError::CompletionFailed);
+                                            }
                                         }
                                     } else { trace.health_error=Some("health_predicate_mismatch".into()); }
                                 }

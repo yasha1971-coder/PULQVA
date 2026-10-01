@@ -4,7 +4,6 @@ fn main(){
  let port=a.windows(2).find(|w|w[0]=="--port").unwrap()[1].parse::<u16>().unwrap();
  let model=a.windows(2).find(|w|w[0]=="-m").unwrap()[1].clone();
  let l=TcpListener::bind(("127.0.0.1",port)).unwrap();
- let mut probes=0usize;
  loop{
    let (mut s,_)=l.accept().unwrap();
    let mut request_bytes=Vec::new(); let mut chunk=[0u8;1024];
@@ -18,17 +17,29 @@ fn main(){
      }
      if request_bytes.len()>16*1024 { break; }
    }
-   probes+=1;
    let request=String::from_utf8_lossy(&request_bytes);
+   let completion=request.starts_with("POST /v1/chat/completions");
+   if completion {
+     // Fixed public-fixture marker, independently counts requests seen by the server.
+     eprintln!("PULQVA_FIXTURE_COMPLETION");
+     if model.contains("delayed-completion") { thread::sleep(Duration::from_millis(750)); }
+   }
    let (status,body)=if request.starts_with("GET /health") {
      ("200 OK", if model.contains("loading") {"{\"status\":\"loading\"}"} else {"{\"status\":\"ok\"}"})
-   } else if request.starts_with("POST /v1/chat/completions") && model.contains("bad-completion") {
+   } else if completion && model.contains("bad-completion") {
      ("500 Internal Server Error","{\"error\":\"backend unavailable\"}")
+   } else if completion && model.contains("invalid-interpretation") {
+     ("200 OK","{\"choices\":[{\"message\":{\"content\":\"not json\"}}]}")
    } else {
      ("200 OK","{\"choices\":[{\"message\":{\"content\":\"{\\\"kind\\\":\\\"intent\\\",\\\"query\\\":\\\"countdown\\\",\\\"choice_mode\\\":\\\"ask\\\"}\"}}]}")
    };
    let r=format!("HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len());
-   let _=s.write_all(r.as_bytes());
+   if completion && model.contains("trickle-completion") {
+     for byte in r.as_bytes() {
+       if s.write_all(&[*byte]).is_err() { break; }
+       thread::sleep(Duration::from_millis(40));
+     }
+   } else { let _=s.write_all(r.as_bytes()); }
    if env::var("PULQVA_FIXTURE_ONCE").is_ok(){thread::sleep(Duration::from_millis(20));}
  }
 }

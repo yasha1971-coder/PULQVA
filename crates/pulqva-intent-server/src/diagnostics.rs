@@ -68,6 +68,7 @@ pub struct ReadinessDiagnostics {
     pub(crate) health_sample_hex: String,
     pub(crate) health_error: Option<String>,
     pub(crate) completion_attempts: u64,
+    pub(crate) completion_budget_ms: u64,
     pub(crate) completion_error: Option<String>,
     pub(crate) process_error: Option<String>,
     pub(crate) ready: bool,
@@ -110,7 +111,8 @@ impl ReadinessDiagnostics {
             "health_sample_hex":self.health_sample_hex,"health_error":self.health_error,
             "completion_attempts":self.completion_attempts,"completion_error":self.completion_error,
             "process_error":self.process_error,
-            "completion_io_timeout_ms":500,"health_io_timeout_ms":100,
+            "completion_budget_ms":self.completion_budget_ms,"completion_timeout_scope":"total",
+            "health_io_timeout_ms":100,
             "stderr_capture_enabled":self.capture_enabled,"stderr_retention_limit_bytes":STDERR_RETAINED_BYTES,
             "stderr":stderr
         })

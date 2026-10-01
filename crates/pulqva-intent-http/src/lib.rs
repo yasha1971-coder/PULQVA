@@ -1,7 +1,7 @@
 use pulqva_core::Interpretation;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{fmt, io::{Read, Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, time::Duration};
+use std::{fmt, io::{self, Read, Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, time::{Duration, Instant}};
 
 const MAX_HTTP_BYTES: usize = 64 * 1024;
 
@@ -19,7 +19,7 @@ impl LoopbackIntentEndpoint {
 
 #[derive(Debug)]
 pub enum IntentHttpError {
-    InvalidPlan, Io(std::io::Error), TooLarge, HttpStatus, Envelope, Interpretation,
+    InvalidPlan, Io(std::io::Error), TooLarge, HttpStatus, Envelope, Interpretation, Deadline,
 }
 impl fmt::Display for IntentHttpError {
     fn fmt(&self,f:&mut fmt::Formatter<'_>)->fmt::Result { write!(f,"{self:?}") }
@@ -59,25 +59,70 @@ struct Choice { message: Message }
 #[derive(Deserialize)]
 struct Message { content: String }
 
+fn remaining(deadline: Instant) -> Result<Duration, IntentHttpError> {
+    deadline.checked_duration_since(Instant::now()).filter(|d| !d.is_zero())
+        .ok_or(IntentHttpError::Deadline)
+}
+fn io_failure(error: io::Error) -> IntentHttpError {
+    match error.kind() {
+        io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock => IntentHttpError::Deadline,
+        _ => IntentHttpError::Io(error),
+    }
+}
+
+/// One request; endpoint.timeout is a total budget, never a fresh allowance per read.
 pub fn interpret_via_loopback(endpoint: LoopbackIntentEndpoint, request_json: &str)
     -> Result<Interpretation, IntentHttpError>
 {
+    let deadline=Instant::now().checked_add(endpoint.timeout).ok_or(IntentHttpError::InvalidPlan)?;
+    interpret_via_loopback_until(endpoint, request_json, deadline)
+}
+
+/// The caller's existing startup deadline can only shorten this request's budget.
+/// No retry, redirect, DNS resolution, or external destination is introduced.
+pub fn interpret_via_loopback_until(endpoint: LoopbackIntentEndpoint, request_json: &str, outer_deadline: Instant)
+    -> Result<Interpretation, IntentHttpError>
+{
+    let own_deadline=Instant::now().checked_add(endpoint.timeout).ok_or(IntentHttpError::InvalidPlan)?;
+    let deadline=outer_deadline.min(own_deadline);
     let addr=SocketAddrV4::new(Ipv4Addr::LOCALHOST,endpoint.port);
-    let mut s=TcpStream::connect_timeout(&addr.into(),endpoint.timeout)?;
-    s.set_read_timeout(Some(endpoint.timeout))?;
-    s.set_write_timeout(Some(endpoint.timeout))?;
+    let mut s=TcpStream::connect_timeout(&addr.into(),remaining(deadline)?).map_err(io_failure)?;
     let req=format!(
         "POST /v1/chat/completions HTTP/1.1\r\nHost: 127.0.0.1:{}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{}",
         endpoint.port,request_json.len(),request_json);
-    s.write_all(req.as_bytes())?;
+    let mut pending=req.as_bytes();
+    while !pending.is_empty() {
+        s.set_write_timeout(Some(remaining(deadline)?))?;
+        match s.write(pending) {
+            Ok(0) => return Err(IntentHttpError::Io(io::Error::from(io::ErrorKind::WriteZero))),
+            Ok(n) => pending=&pending[n..],
+            Err(e) if e.kind()==io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(io_failure(e)),
+        }
+    }
     let mut bytes=Vec::new();
-    s.take((MAX_HTTP_BYTES+1) as u64).read_to_end(&mut bytes)?;
-    if bytes.len()>MAX_HTTP_BYTES { return Err(IntentHttpError::TooLarge); }
+    let mut chunk=[0u8;4096];
+    loop {
+        s.set_read_timeout(Some(remaining(deadline)?))?;
+        let capacity=(MAX_HTTP_BYTES+1-bytes.len()).min(chunk.len());
+        match s.read(&mut chunk[..capacity]) {
+            Ok(0) => break,
+            Ok(n) => {
+                bytes.extend_from_slice(&chunk[..n]);
+                if bytes.len()>MAX_HTTP_BYTES { return Err(IntentHttpError::TooLarge); }
+            }
+            Err(e) if e.kind()==io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(io_failure(e)),
+        }
+    }
+    remaining(deadline)?;
     let text=std::str::from_utf8(&bytes).map_err(|_|IntentHttpError::Envelope)?;
     let (head,body)=text.split_once("\r\n\r\n").ok_or(IntentHttpError::Envelope)?;
     let status=head.lines().next().ok_or(IntentHttpError::Envelope)?;
     if !status.starts_with("HTTP/1.1 200 ") { return Err(IntentHttpError::HttpStatus); }
     let env:ResponseEnvelope=serde_json::from_str(body).map_err(|_|IntentHttpError::Envelope)?;
     let content=env.choices.first().ok_or(IntentHttpError::Envelope)?.message.content.as_str();
-    pulqva_intent_json::parse_interpretation_json(content).map_err(|_|IntentHttpError::Interpretation)
+    let intent=pulqva_intent_json::parse_interpretation_json(content).map_err(|_|IntentHttpError::Interpretation)?;
+    remaining(deadline)?;
+    Ok(intent)
 }
