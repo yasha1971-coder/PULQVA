@@ -20,6 +20,7 @@ def main():
     ap.add_argument('--candidate', required=True); ap.add_argument('--model', required=True)
     ap.add_argument('--llama-cli', required=True); ap.add_argument('--accept', required=True)
     ap.add_argument('--seed', default='eval/intent/v1.seed.json'); ap.add_argument('--out', required=True)
+    ap.add_argument('--timeout-seconds', type=float, default=90.0)
     a=ap.parse_args(); root=pathlib.Path(a.out); root.mkdir(parents=True,exist_ok=True)
     grammar=root/'interpretation.gbnf'; grammar.write_text(tagged_grammar(),encoding='utf-8')
     cases=json.loads(pathlib.Path(a.seed).read_text(encoding='utf-8'))['cases']; results={}
@@ -31,7 +32,7 @@ def main():
                 'Never put query, path, URL, command or extra fields in reject. User request: '+case['input'])
         with raw.open('wb') as o, err.open('wb') as e:
             try:
-                p=run([a.llama_cli,'-m',a.model,'-p',prompt,'-n','64','--temp','0','--grammar-file',str(grammar),'--no-display-prompt','--simple-io','--single-turn'],stdout=o,stderr=e,timeout=90)
+                p=run([a.llama_cli,'-m',a.model,'-p',prompt,'-n','64','--temp','0','--grammar-file',str(grammar),'--no-display-prompt','--simple-io','--single-turn'],stdout=o,stderr=e,timeout=a.timeout_seconds)
             except subprocess.TimeoutExpired:
                 results[cid]={'rc':124,'stage':'inference'}; continue
         if p.returncode:
