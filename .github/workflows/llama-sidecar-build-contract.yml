@@ -31,8 +31,12 @@ jobs:
           if ($contract -notmatch "b29c606") { throw "release commit missing" }
           if ($contract -notmatch "LLAMA_BUILD_IS_DEV=OFF") { throw "release-build flag missing" }
           $schema = Get-Content "sidecars/llama.cpp/intent.schema.json" -Raw | ConvertFrom-Json
-          if ($schema.additionalProperties -ne $false) { throw "schema must deny extra fields" }
-          if ($schema.properties.choice_mode.enum.Count -ne 2) { throw "choice enum drift" }
+          if ($schema.oneOf.Count -ne 2) { throw "tagged schema branch drift" }
+          if ($schema.oneOf[0].additionalProperties -ne $false -or $schema.oneOf[1].additionalProperties -ne $false) { throw "schema branches must deny extra fields" }
+          if ($schema.oneOf[0].properties.kind.const -ne "intent") { throw "intent tag drift" }
+          if ($schema.oneOf[0].properties.choice_mode.enum.Count -ne 2) { throw "choice enum drift" }
+          if ($schema.oneOf[1].properties.kind.const -ne "reject") { throw "reject tag drift" }
+          if ($schema.oneOf[1].properties.reason.const -ne "semantic_authority") { throw "reject reason drift" }
           Write-Host "PULQVA_LLAMA_BUILD_CONTRACT_OK platform=${{ matrix.platform }}"
       - name: Record planned release build
         shell: pwsh
