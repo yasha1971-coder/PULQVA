@@ -43,9 +43,9 @@ impl IntentServer {
                 let _=stream.set_read_timeout(Some(Duration::from_millis(100)));
                 let _=stream.set_write_timeout(Some(Duration::from_millis(100)));
                 if stream.write_all(b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n").is_ok(){
-                    let mut response=[0u8;256];
-                    if let Ok(n)=stream.read(&mut response){
-                        if n>0 && response[..n].starts_with(b"HTTP/1.1 200 ") && response[..n].ends_with(b"\r\n\r\n{\"status\":\"ok\"}"){
+                    let mut response=Vec::new();
+                    if stream.take(512).read_to_end(&mut response).is_ok(){
+                        if response.starts_with(b"HTTP/1.1 200 ") && response.ends_with(b"\r\n\r\n{\"status\":\"ok\"}"){
                             let endpoint=pulqva_intent_http::LoopbackIntentEndpoint::new(plan.port,Duration::from_millis(500)).map_err(|_|IntentServerError::InvalidPlan)?;
                             if let Ok(request)=pulqva_intent_http::build_interpretation_request("find countdown", &plan.schema_json) {
                                 if pulqva_intent_http::interpret_via_loopback(endpoint,&request).is_ok(){ return Ok(Self{child,port:plan.port}); }
