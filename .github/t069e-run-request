@@ -1,0 +1,6 @@
+T069-E explicit run request
+protocol=tagged-intent-reject-v1
+candidates=qwen3-4b,ministral3-3b
+authorized_after_l1=36827873323
+authorized_after_l2_5=36827873388
+single_wave=true
