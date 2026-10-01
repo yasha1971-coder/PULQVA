@@ -7,3 +7,4 @@ publish = false
 
 [dependencies]
 pulqva-intent-http = { path = "../pulqva-intent-http" }
+serde_json = "1"
