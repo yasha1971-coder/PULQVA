@@ -1,0 +1,17 @@
+name: t069e-dispatch-launcher
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  launch-note:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Record explicit launch target
+        run: |
+          echo "PULQVA_T069E_LAUNCHER_READY"
+          echo "Target ref: feat/T069-intent-contract"
+          echo "The actual matched workflow remains on the feature branch."
