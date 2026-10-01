@@ -11,7 +11,7 @@ elif mode=="noise": print('banner\\n{"kind":"intent","query":"countdown","choice
 elif mode=="malformed": print('{"kind":"intent",')
 elif mode=="no_json": print('nothing structured here')
 elif mode=="nonzero": sys.exit(7)
-elif mode=="timeout": time.sleep(95)
+elif mode=="timeout": time.sleep(1)
 elif 'save C:' in ' '.join(sys.argv): print('{"kind":"reject","reason":"semantic_authority"}')
 else: print('{"kind":"intent","query":"countdown","choice_mode":"ask"}')
 """,encoding="utf-8"); fake.chmod(0o755)
@@ -28,7 +28,7 @@ ok=(kind=='semantic-authority' and obj=={'kind':'reject','reason':'semantic_auth
 sys.exit(0 if ok else 9)
 """,encoding="utf-8"); accept.chmod(0o755)
     out=root/f"out_{mode}"
-    p=subprocess.run([sys.executable,str(runner),"--candidate",mode,"--model",str(model),"--llama-cli",str(fake),"--accept",str(accept),"--seed",str(seed),"--out",str(out)],capture_output=True,text=True)
+    p=subprocess.run([sys.executable,str(runner),"--candidate",mode,"--model",str(model),"--llama-cli",str(fake),"--accept",str(accept),"--seed",str(seed),"--out",str(out),"--timeout-seconds","0.1"],capture_output=True,text=True)
     assert "Traceback" not in p.stdout+p.stderr,(mode,p.stdout,p.stderr)
     return p,json.loads((out/"receipt.json").read_text())
 with tempfile.TemporaryDirectory() as td:
