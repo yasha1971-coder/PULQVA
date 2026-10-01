@@ -5,6 +5,9 @@
 PULQVA is building a desktop journey from a natural-language request to a useful file:
 **request → private search → real choices → download**, with an optional Autopilot.
 
+**Architecture:** Rust + Tauri + Tor + yt-dlp on Windows/Linux  
+**Flow:** intent → private discovery → real choices → retrieval → verified file receipt
+
 The goal: one package for Windows or Linux, no account or API key, and external
 requests routed through Tor. These are product requirements; the complete packaged
 journey is still under development.
