@@ -1,8 +1,6 @@
 name: t069e-matched-cd
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/t069e-matched-cd.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
