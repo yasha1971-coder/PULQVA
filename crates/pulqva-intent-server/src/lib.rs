@@ -46,7 +46,7 @@ impl IntentServer {
                 if stream.write_all(b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n").is_ok(){
                     let mut response=[0u8;256];
                     if let Ok(n)=stream.read(&mut response){
-                        if n>0 && response[..n].starts_with(b"HTTP/1.1 200 "){
+                        if n>0 && response[..n].starts_with(b"HTTP/1.1 200 ") && response[..n].ends_with(b"\r\n\r\n{\"status\":\"ok\"}"){
                             return Ok(Self{child,port:plan.port});
                         }
                     }
