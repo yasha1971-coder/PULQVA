@@ -598,6 +598,9 @@ dependencies = [
 [[package]]
 name = "pulqva-intent-server"
 version = "0.0.0"
+dependencies = [
+ "pulqva-intent-http",
+]
 
 [[package]]
 name = "pulqva-privacy"
