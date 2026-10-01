@@ -8,3 +8,8 @@ fn fixture()->PathBuf{PathBuf::from(env!("CARGO_BIN_EXE_server_fixture"))}
  std::thread::sleep(Duration::from_millis(30));
  assert!(std::net::TcpStream::connect(("127.0.0.1",port)).is_err());
 }
+
+#[test] fn http_200_loading_is_not_ready(){
+ let p=IntentServerPlan::new(fixture(),"loading-model.gguf","schema.json",free_port(),Duration::from_millis(80)).unwrap();
+ assert!(IntentServer::spawn(&p).is_err());
+}
