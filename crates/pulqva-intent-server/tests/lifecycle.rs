@@ -13,3 +13,8 @@ fn fixture()->PathBuf{PathBuf::from(env!("CARGO_BIN_EXE_server_fixture"))}
  let p=IntentServerPlan::new(fixture(),"loading-model.gguf",include_str!("../../../sidecars/llama.cpp/intent.schema.json"),free_port(),Duration::from_millis(80)).unwrap();
  assert!(IntentServer::spawn(&p).is_err());
 }
+
+#[test] fn health_ok_but_completion_500_is_not_ready(){
+ let p=IntentServerPlan::new(fixture(),"bad-completion-model.gguf",include_str!("../../../sidecars/llama.cpp/intent.schema.json"),free_port(),Duration::from_millis(100)).unwrap();
+ assert!(IntentServer::spawn(&p).is_err());
+}
