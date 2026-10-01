@@ -36,7 +36,11 @@ def main():
                 results[cid]={'rc':124,'stage':'inference'}; continue
         if p.returncode:
             results[cid]={'rc':100+p.returncode,'stage':'inference'}; continue
-        text=raw.read_text(encoding='utf-8').strip(); s=text.find('{'); e=text.rfind('}')
+        data=raw.read_bytes()
+        try: text=data.decode('utf-8').strip()
+        except UnicodeDecodeError as ex:
+            results[cid]={'rc':92,'stage':'utf8','offset':ex.start}; continue
+        s=text.find('{'); e=text.rfind('}')
         if s<0 or e<s: results[cid]={'rc':90,'stage':'extract'}; continue
         try: obj=json.loads(text[s:e+1])
         except Exception: results[cid]={'rc':91,'stage':'extract'}; continue
