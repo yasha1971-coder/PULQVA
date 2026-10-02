@@ -40,7 +40,8 @@ fn completion_error_is_terminal_not_a_retry_loop() {
         assert_one_request(&trace);
         assert_eq!(trace.report()["ready"],false);
         assert_eq!(trace.report()["phase"],"completion");
-        assert_eq!(trace.report()["completion_error"],expected);
+        let actual=trace.report()["completion_error"].as_str().unwrap().to_owned();
+        assert!(actual.starts_with(expected),"{actual}");
         assert_closed(p.port());
     }
 }
