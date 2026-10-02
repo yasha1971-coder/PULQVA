@@ -88,6 +88,48 @@ pub fn parse_interpreted_intent_json(input: &str)
         .map_err(InterpretedIntentJsonError::Validation)
 }
 
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InterpretationDiagnostic {
+    pub bytes: usize,
+    pub json_kind: &'static str,
+    pub kind_tag: &'static str,
+    pub has_query: bool,
+    pub query_is_string: bool,
+    pub has_choice_mode: bool,
+    pub choice_mode_known: bool,
+    pub has_reason: bool,
+    pub reason_known: bool,
+    pub unknown_fields: usize,
+}
+
+/// Structural diagnostics only: never returns query text or arbitrary model output.
+pub fn diagnose_interpretation_json(input: &str) -> InterpretationDiagnostic {
+    let bytes=input.len();
+    let Ok(value)=serde_json::from_str::<serde_json::Value>(input) else {
+        return InterpretationDiagnostic{bytes,json_kind:"invalid_json",kind_tag:"unavailable",
+            has_query:false,query_is_string:false,has_choice_mode:false,choice_mode_known:false,
+            has_reason:false,reason_known:false,unknown_fields:0};
+    };
+    let Some(obj)=value.as_object() else {
+        return InterpretationDiagnostic{bytes,json_kind:"non_object",kind_tag:"unavailable",
+            has_query:false,query_is_string:false,has_choice_mode:false,choice_mode_known:false,
+            has_reason:false,reason_known:false,unknown_fields:0};
+    };
+    let kind_tag=match obj.get("kind").and_then(|v|v.as_str()) {
+        Some("intent")=>"intent", Some("reject")=>"reject", Some(_)=>"other", None=>"missing",
+    };
+    let has_query=obj.contains_key("query");
+    let query_is_string=obj.get("query").is_some_and(|v|v.is_string());
+    let has_choice_mode=obj.contains_key("choice_mode");
+    let choice_mode_known=matches!(obj.get("choice_mode").and_then(|v|v.as_str()),Some("ask"|"autopilot"));
+    let has_reason=obj.contains_key("reason");
+    let reason_known=matches!(obj.get("reason").and_then(|v|v.as_str()),Some("semantic_authority"));
+    let unknown_fields=obj.keys().filter(|k| !matches!(k.as_str(),"kind"|"query"|"choice_mode"|"reason")).count();
+    InterpretationDiagnostic{bytes,json_kind:"object",kind_tag,has_query,query_is_string,
+        has_choice_mode,choice_mode_known,has_reason,reason_known,unknown_fields}
+}
+
 #[derive(Debug)]
 pub enum InterpretedIntentJsonError {
     Decode(serde_json::Error),
