@@ -361,6 +361,21 @@ mod tests {
     }
 
     #[test]
+    fn structural_diagnostics_never_echo_query_or_unknown_values() {
+        let secret="DO_NOT_ECHO_PRIVATE_QUERY";
+        let input=format!(r#"{{"kind":"intent","query":"{secret}","choice_mode":"wrong","url":"https://secret.invalid/x"}}"#);
+        let d=super::diagnose_interpretation_json(&input);
+        assert_eq!(d.json_kind,"object");
+        assert_eq!(d.kind_tag,"intent");
+        assert!(d.has_query && d.query_is_string && d.has_choice_mode);
+        assert!(!d.choice_mode_known);
+        assert_eq!(d.unknown_fields,1);
+        let debug=format!("{d:?}");
+        assert!(!debug.contains(secret));
+        assert!(!debug.contains("secret.invalid"));
+    }
+
+    #[test]
     fn trailing_or_multiple_json_values_are_rejected() {
         for input in [
             r#"{"query":"countdown","choice_mode":"ask"} garbage"#,
