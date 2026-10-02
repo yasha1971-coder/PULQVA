@@ -2,6 +2,10 @@
 import argparse, hashlib, json, pathlib, subprocess, sys
 
 def run(cmd, **kw):
+    # CI fixtures are Python scripts; invoke them through this interpreter so
+    # Windows does not ask CreateProcess to execute a .py file directly.
+    if pathlib.Path(cmd[0]).suffix.lower() == ".py":
+        cmd = [sys.executable, *cmd]
     return subprocess.run(cmd, check=False, **kw)
 
 def tagged_grammar():
