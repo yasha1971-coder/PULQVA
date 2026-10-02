@@ -5,6 +5,12 @@ use std::{fmt, io::{self, Read, Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}
 
 const MAX_HTTP_BYTES: usize = 64 * 1024;
 
+// Production policy derives from the T069-E interpreter rules in eval/intent.
+// Compile it in: user input cannot select a policy file or add message roles.
+// This is model guidance, not a replacement for strict Rust validation.
+const INTENT_SYSTEM_POLICY: &str = include_str!("../../../sidecars/llama.cpp/intent.system.txt");
+const _: () = assert!(!INTENT_SYSTEM_POLICY.is_empty() && INTENT_SYSTEM_POLICY.len() <= 2048);
+
 #[derive(Debug, Clone, Copy)]
 pub struct LoopbackIntentEndpoint {
     port: u16,
@@ -29,7 +35,7 @@ impl From<std::io::Error> for IntentHttpError { fn from(e:std::io::Error)->Self{
 
 #[derive(Serialize)]
 struct ChatRequest<'a> {
-    messages: [ChatMessage<'a>; 1],
+    messages: [ChatMessage<'a>; 2],
     temperature: u8,
     max_tokens: u16,
     response_format: ResponseFormat<'a>,
@@ -50,7 +56,10 @@ pub fn build_interpretation_request(user_request: &str, schema_json: &str)
     if user_request.is_empty() || user_request.len()>4096 { return Err(IntentHttpError::InvalidPlan); }
     let schema:Value=serde_json::from_str(schema_json).map_err(|_|IntentHttpError::InvalidPlan)?;
     let req=ChatRequest {
-        messages:[ChatMessage{role:"user",content:user_request}],
+        messages:[
+            ChatMessage{role:"system",content:INTENT_SYSTEM_POLICY},
+            ChatMessage{role:"user",content:user_request},
+        ],
         temperature:0, max_tokens:96,
         // Pinned llama-server reads response_format.json_schema.schema.
         // A top-level response_format.schema silently becomes a generic object.
