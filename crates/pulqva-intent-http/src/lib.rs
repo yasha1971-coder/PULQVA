@@ -38,7 +38,9 @@ struct ChatRequest<'a> {
 #[derive(Serialize)]
 struct ChatMessage<'a> { role: &'static str, content: &'a str }
 #[derive(Serialize)]
-struct ResponseFormat<'a> { r#type: &'static str, schema: &'a Value }
+struct ResponseFormat<'a> { r#type: &'static str, json_schema: JsonSchemaFormat<'a> }
+#[derive(Serialize)]
+struct JsonSchemaFormat<'a> { name: &'static str, strict: bool, schema: &'a Value }
 #[derive(Serialize)]
 struct ChatTemplateKwargs { enable_thinking: bool }
 
@@ -50,7 +52,11 @@ pub fn build_interpretation_request(user_request: &str, schema_json: &str)
     let req=ChatRequest {
         messages:[ChatMessage{role:"user",content:user_request}],
         temperature:0, max_tokens:96,
-        response_format:ResponseFormat{r#type:"json_schema",schema:&schema},
+        // Pinned llama-server reads response_format.json_schema.schema.
+        // A top-level response_format.schema silently becomes a generic object.
+        response_format:ResponseFormat{r#type:"json_schema",json_schema:JsonSchemaFormat{
+            name:"pulqva_intent",strict:true,schema:&schema,
+        }},
         chat_template_kwargs:ChatTemplateKwargs{enable_thinking:false},
     };
     serde_json::to_string(&req).map_err(|_|IntentHttpError::InvalidPlan)
