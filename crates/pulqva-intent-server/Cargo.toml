@@ -6,5 +6,6 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+pulqva-core = { path = "../pulqva-core" }
 pulqva-intent-http = { path = "../pulqva-intent-http" }
 serde_json = "1"
