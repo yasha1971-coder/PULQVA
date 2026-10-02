@@ -1,6 +1,6 @@
 use pulqva_core::Interpretation;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{value::RawValue, Value};
 use std::{fmt, io::{self, Read, Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, time::{Duration, Instant}};
 
 const MAX_HTTP_BYTES: usize = 64 * 1024;
@@ -46,7 +46,7 @@ struct ChatMessage<'a> { role: &'static str, content: &'a str }
 #[derive(Serialize)]
 struct ResponseFormat<'a> { r#type: &'static str, json_schema: JsonSchemaFormat<'a> }
 #[derive(Serialize)]
-struct JsonSchemaFormat<'a> { name: &'static str, strict: bool, schema: &'a Value }
+struct JsonSchemaFormat<'a> { name: &'static str, strict: bool, schema: &'a RawValue }
 #[derive(Serialize)]
 struct ChatTemplateKwargs { enable_thinking: bool }
 
@@ -54,7 +54,10 @@ pub fn build_interpretation_request(user_request: &str, schema_json: &str)
     -> Result<String, IntentHttpError>
 {
     if user_request.is_empty() || user_request.len()>4096 { return Err(IntentHttpError::InvalidPlan); }
-    let schema:Value=serde_json::from_str(schema_json).map_err(|_|IntentHttpError::InvalidPlan)?;
+    // Keep the existing parser's numeric, depth and syntax validation, but never
+    // serialize its sorted map: pinned llama.cpp uses property order in grammar.
+    let _:Value=serde_json::from_str(schema_json).map_err(|_|IntentHttpError::InvalidPlan)?;
+    let schema:&RawValue=serde_json::from_str(schema_json).map_err(|_|IntentHttpError::InvalidPlan)?;
     let req=ChatRequest {
         messages:[
             ChatMessage{role:"system",content:INTENT_SYSTEM_POLICY},
@@ -64,7 +67,7 @@ pub fn build_interpretation_request(user_request: &str, schema_json: &str)
         // Pinned llama-server reads response_format.json_schema.schema.
         // A top-level response_format.schema silently becomes a generic object.
         response_format:ResponseFormat{r#type:"json_schema",json_schema:JsonSchemaFormat{
-            name:"pulqva_intent",strict:true,schema:&schema,
+            name:"pulqva_intent",strict:true,schema,
         }},
         chat_template_kwargs:ChatTemplateKwargs{enable_thinking:false},
     };
