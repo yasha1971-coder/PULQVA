@@ -7,6 +7,11 @@ and save the actual file. That is the goal, not a finished feature list.
 
 **Pre-alpha. No ready-to-run app yet.**
 
+**[Sponsor the maintainer](https://github.com/sponsors/yasha1971-coder) · [PULQVA funding priorities](SPONSORSHIP.md)**
+
+Support is optional. This is the maintainer's shared Sponsors profile; contributions
+are not automatically earmarked for PULQVA and do not buy a released app.
+
 [Current status](#current-status) · [Backend evidence](#verified-result) ·
 [Privacy](#privacy) · [Contribute](CONTRIBUTING.md)
 
