@@ -1,93 +1,76 @@
 # PULQVA
 
-## Tell AI what you want. Get the file.
+**Tell it what you want. Get the file.**
 
-**Intent → Object. Privacy by design. Not by promise.**
+A desktop media tool in development. Describe what you need, choose a result,
+and save the actual file. That is the goal, not a finished feature list.
 
-> **What if AI could search the Internet for you without turning you into the product?**
+**Pre-alpha. No ready-to-run app yet.**
 
-PULQVA is an open-source experiment in a different interface to the Internet: start with human intent, not a URL. The product goal is simple — describe what you want, see real choices, choose, and receive the actual file — while the architecture makes privacy constraints explicit and fail-closed instead of asking you to trust a slogan.
+[Current status](#current-status) · [Backend evidence](#verified-result) ·
+[Privacy](#privacy) · [Contribute](CONTRIBUTING.md)
 
-**AI without surveillance. Internet without browsing. Intent without URLs.**
-
-Скажи ИИ, что тебе нужно → получи реальные варианты → выбери → получи сам файл. Приватность должна обеспечиваться архитектурой, а не обещанием. [Подробнее](#по-русски).
-
-> **Pre-alpha. Real backend evidence exists; the consumer product does not yet.**
->
-> **Verified Linux fixture:** the same fixed `countdown → 10 real choices → selected file` path succeeded twice on fresh GitHub runners. The owner then reproduced the same saved-file identity on an Ubuntu 24.04 WSL2 laptop and opened the resulting WebM.
->
-> **Verified native Windows Tor transport:** on 2026-09-29 the pinned official Tor Project Expert Bundle was hash-verified on a real Windows host with Smart App Control still in ENFORCE mode; Tor reached bootstrap 100%, exposed loopback SOCKS5, and the Tor Project check endpoint returned `IsTor=true`. The Windows request → choices → selected file path is still open.
->
-> **Not shipped:** finished AI intent parsing, desktop UI/Autopilot, native Windows file E2E, self-contained Windows/Linux packages, or a claim of absolute anonymity.
-
-**[See the evidence →](#verified-result)** · **[See what remains →](#current-status)**
-## Build PULQVA with us
-
-**Finish native Windows request → choice → file · Break our privacy assumptions · Build Intent → Object**
-
-PULQVA is being built in public. The most useful contribution today is not hype — it is evidence: reproduce a failure, find a privacy hole, or make the path from human intent to a real file smaller and safer.
-
-**[→ Start contributing](CONTRIBUTING.md)**
-
-[Product vision](#product-vision) · [Verified result](#verified-result) · [Privacy](#privacy) · [Related projects](#related-projects)
-
-## Product vision
-
-For someone who wants to find and save media without hunting for links or learning download commands:
+## What we're building
 
 ```text
-Open PULQVA
-    → describe the content: "Find a short countdown video"
-    → review real search results
-    → choose one and click Download
-    → receive the file in a predictable local folder
+Describe the media -> review real results -> pick one -> save the file
 ```
 
-**This is the product goal, not a claim that the whole interface works today.**
-The intended release is one self-contained package per supported OS: unpack/open,
-then use it without installing Python, Rust, Tor, yt-dlp, FFmpeg or an AI model yourself.
-No account or API key should be required for the default journey. An explicit
-Autopilot mode may choose a result for you.
+The intended default is local AI for interpreting the request, Tor for external
+search and downloads, and no required cloud AI account or API key. Local inference
+does not mean offline search: remote sources still receive search terms and download
+requests. A Tor failure must stop retrieval, not switch to a direct connection.
+The complete behavior is still under development.
 
-The planned intent layer interprets a phrase into validated structured data, not
-executable shell text. The trusted backend owns search and retrieval; a verified Tor
-sidecar provides the privacy transport and yt-dlp handles media downloads. The current
-Windows production baseline is the pinned official Tor Project Expert Bundle; the
-existing Linux implementation still uses its verified Arti path until separately
-migrated. A required Tor connection failure must stop the operation, never silently
-switch to a direct connection. The model/provider choice and full no-setup intent path
-are still open work.
+**Target architecture:** Rust + Tauri + local llama.cpp + Tor + yt-dlp.
+Windows and Linux are the release targets. The local intent work is in
+[PR #80](https://github.com/yasha1971-coder/PULQVA/pull/80); the model is not a final product choice.
+
+The release target is one self-contained package per OS. Users should not need to
+install Python, Rust, Tor, yt-dlp, FFmpeg or a model separately. Autopilot is planned;
+explicit result selection comes first.
+
+## Current status
+
+| Part | Status |
+| --- | --- |
+| Linux backend: request -> choices -> selected file | Reproduced for one fixed Commons fixture; evidence below |
+| Native Windows Tor bootstrap and SOCKS route | Verified on a real host; this is not Windows file E2E |
+| Native Windows request -> choices -> selected file | Open |
+| Local AI intent handling | Experimental; not accepted as a finished feature |
+| Desktop interface and Autopilot | Not shipped |
+| Full-journey privacy and failure handling | Partially evidenced; review and failure cases remain |
+| Self-contained Windows/Linux packages | Not shipped |
+
+**Can I use it now?** The repository is for development and experimental reproduction.
+There is no documented clean-machine consumer release. GitHub's **Code -> Download ZIP**
+downloads source code, not the application.
 
 ## Verified result
 
-The strongest file-level evidence today is deliberately narrower than the product vision.
+The retained evidence covers a backend fixture, not the planned AI-driven desktop app.
 
 ```text
-fixed request "countdown"
-    → Commons search through the PULQVA Tor transport
-    → 10 real choices
-    → explicit choice of result #2
-    → core retrieve_choice()
-    → yt-dlp through the existing Tor path
-    → size + SHA-1 verification
-    → selected.webm + receipt.json
+fixed query "countdown"
+    -> Commons search through the PULQVA Tor transport
+    -> 10 real choices
+    -> explicit choice of result #2
+    -> core retrieve_choice()
+    -> yt-dlp through the existing Tor path
+    -> size + SHA-1 verification
+    -> selected.webm + receipt.json
 ```
 
-**Reproduction record**
-
-| Environment | Result |
+| Environment | Recorded result |
 | --- | --- |
-| Fresh GitHub Linux runner #1 | PASS — retained artifact independently checked |
-| Fresh GitHub Linux runner #2 | PASS — same source, different runner, byte-identical saved media |
-| Owner laptop, Ubuntu 24.04 / WSL2 | PASS — owner-reported replay; same file size/SHA-1/SHA-256 and the resulting WebM opened successfully |
-| Native Windows | **TOR TRANSPORT PASS / FILE E2E OPEN** — real host, Smart App Control ENFORCE, official Tor bundle hash verified, bootstrap 100%, loopback SOCKS5 ready, Tor Project check `IsTor=true`; request → choices → selected file not yet executed |
+| Fresh GitHub Linux runner #1 | PASS; retained artifact independently checked |
+| Fresh GitHub Linux runner #2 | PASS; same source, different runner, byte-identical saved media |
+| Owner laptop, Ubuntu 24.04 / WSL2 | Owner-reported replay; same size/SHA-1/SHA-256 and WebM opened successfully |
+| Native Windows | Tor transport PASS; request -> choices -> selected file remains open |
 
-The three positive file observations used exact experimental source `0ed2af1` and the fixed
-test query/selection. They are **backend evidence**, not AI/UI interaction and not a released
-application. The Windows observation is a separate transport prerequisite proof and does not
-claim the file-level fixture has passed there.
-
-Saved media identity from the Linux/WSL2 fixture:
+The positive file observations used experimental source `0ed2af1` and the same fixed
+query and selection. They do not establish arbitrary queries, AI interpretation,
+desktop interaction or a released application.
 
 ```text
 File bytes:    2131934
@@ -95,77 +78,82 @@ File SHA-1:    a785d429082eab4ff173d3d9ec2577f8efe84eb6
 File SHA-256:  0d77b81c7670ff7766240766a83a7fab4a3ad3aeb81d72f039113285b0acf423
 ```
 
-**File-path evidence:** [implementation `0ed2af1`](https://github.com/yasha1971-coder/PULQVA/tree/0ed2af16d8a83194d8a4e967a3989fa2c2649452) · [GitHub run](https://github.com/yasha1971-coder/PULQVA/actions/runs/36420551778) · [PR #73 evidence record](https://github.com/yasha1971-coder/PULQVA/pull/73) · [owner-laptop record](https://github.com/yasha1971-coder/PULQVA/pull/73#issuecomment-5874201467)
+**File evidence:** [source](https://github.com/yasha1971-coder/PULQVA/tree/0ed2af16d8a83194d8a4e967a3989fa2c2649452) ·
+[run](https://github.com/yasha1971-coder/PULQVA/actions/runs/36420551778) ·
+[PR #73](https://github.com/yasha1971-coder/PULQVA/pull/73) ·
+[owner replay](https://github.com/yasha1971-coder/PULQVA/pull/73#issuecomment-5874201467).
 
-**Windows Tor transport evidence:** [ADR-0007](decisions/ADR-0007-windows-official-tor-runtime.md) · [native evidence receipt](sidecars/tor/WINDOWS_NATIVE_VERIFICATION.json) · [pinned sidecar contract](sidecars/tor/README.md)
+**Windows Tor evidence:** On 2026-09-29, the pinned official Tor Project Expert Bundle
+was hash-verified and run with Smart App Control still in ENFORCE mode. Tor reached
+bootstrap 100%, exposed loopback SOCKS5, and the Tor Project check returned `IsTor=true`.
+See [ADR-0007](decisions/ADR-0007-windows-official-tor-runtime.md), the
+[native receipt](sidecars/tor/WINDOWS_NATIVE_VERIFICATION.json), and the
+[sidecar contract](sidecars/tor/README.md). The existing Linux path uses Arti; the
+Windows sidecar baseline is the official Tor bundle.
 
-The GitHub Actions artifacts are temporary test evidence, **not an application download**. SHA-1 is compatibility with provider metadata; SHA-256 identifies the local bytes. Neither proves that media is safe.
-
-## Current status
-
-| Product gate | Status |
-| --- | --- |
-| Linux backend: request → real choices → selected file | **Reproduced** for the fixed Commons fixture |
-| Native Windows Tor bootstrap + SOCKS route | **Reproduced on a real host** with the pinned official Tor bundle |
-| Native Windows backend: request → choices → selected file | **Open** — transport blocker removed; backend integration/E2E remains |
-| Natural-language AI interpretation | **Open** — product goal, not part of the verified fixture |
-| Desktop UI / explicit choice / Autopilot | **Open** |
-| Tor fail-closed behavior across the complete product journey | **Partially evidenced; broader failure paths remain open** |
-| Self-contained Windows/Linux package | **Open** |
-| Clean-machine consumer release | **Not shipped** |
-
-**Can I use it now?** Developers can inspect the source and reproduce the experimental path. Nontechnical users should wait for a documented clean-machine release. GitHub's **Code → Download ZIP** is source code, not the PULQVA application.
+Actions artifacts are temporary test evidence, not app downloads. SHA-1 is used for
+compatibility with provider metadata; SHA-256 identifies the saved bytes. Neither
+proves that a file is safe.
 
 ## Privacy
 
-Tor routing is not absolute anonymity. Remote services can see the requests sent to
-them; a remote AI provider can read submitted text. Downloaded files may contain
-tracking or malicious content. A cryptographic hash does not make media safe.
+Privacy is a set of engineering constraints here, not a guarantee of anonymity.
 
-The first positive tests do **not** establish product-level cancellation during a
-download, handling of mid-flight Tor loss, confinement of all child-process traffic,
-bounded download disk usage, or race-proof file ownership. These remain engineering
-and review work, not hidden guarantees. Read [THREAT_MODEL.md](THREAT_MODEL.md) and
-[the privacy invariants](kernel/PRIVACY_INVARIANTS.md). This is not an audited product
-for high-risk use. Use only content you are authorized to download.
+The design requires external requests to use the approved Tor transport, remote DNS
+to stay inside that path, and model output to pass typed validation before it can
+influence a search. Model output must never become a shell command. See the
+[privacy invariants](kernel/PRIVACY_INVARIANTS.md).
 
-## Related projects
+Tor does not make a request unidentifiable in every situation. Sources can see the
+requests sent to them. A remote AI provider, if used, can read submitted text.
+Downloaded files may contain tracking or malicious content.
 
-PULQVA builds on existing work. **It does not claim to be the first or only tool
-combining AI, downloading or portable distribution.** These primary sources show
-real overlap; this is a documentation comparison, not a comparative execution audit.
+Product-level cancellation during downloads, mid-flight Tor loss, confinement of
+all child-process traffic, disk-growth limits and race-proof file ownership are
+not established by the positive fixture. These are open engineering and review
+work. Read [THREAT_MODEL.md](THREAT_MODEL.md).
 
-| Project | Relevant documented overlap |
-| --- | --- |
-| [Parabolic](https://github.com/NickvisionApps/Parabolic) | Graphical yt-dlp frontend. Its [releases](https://github.com/NickvisionApps/Parabolic/releases) include a Windows portable ZIP launched with a `.bat` file. |
-| [FreeTube](https://docs.freetubeapp.io/about/freetube/) | Desktop YouTube browsing without a Google account; its [Tor integration](https://docs.freetubeapp.io/usage/tor/) requires an externally running Tor client. |
-| [VidSnatch](https://github.com/sahajamit/VidSnatch) | Search, result selection, downloads, a web interface and MCP tools for AI assistants; its documented setup requires Python and FFmpeg for relevant operations. |
-| [ytdlpllm, author's description](https://blog.maxrenke.com/posts/ytdlpllm-A-Natural-Language-Youtube-Downloader/) | An existing natural-language → LLM → yt-dlp approach, with a web UI and package-install setup. |
+**Not audited for high-risk use. Download only content you are authorized to save.**
 
-PULQVA's intended distinction is the **whole default experience**: request-first
-interaction, visible choices, a Tor-routed fail-closed backend, no default account/API
-key, and one self-contained package. The complete combination is still a goal here;
-this review neither proves it is unique nor proves another project meets every requirement.
+## Related work
 
-## Support and development
+PULQVA is not the first tool to combine search, AI or media downloading.
 
-[Support the maintainer](https://github.com/sponsors/yasha1971-coder) ·
-[What support enables](SPONSORSHIP.md). Technical review and pilot feedback are welcome.
-The next priorities are native Windows request → choice → file integration,
-self-contained packages and independent privacy review.
+- [Parabolic](https://github.com/NickvisionApps/Parabolic): a graphical yt-dlp frontend.
+- [FreeTube](https://docs.freetubeapp.io/about/freetube/): desktop YouTube browsing without a Google account.
+- [VidSnatch](https://github.com/sahajamit/VidSnatch): search, selection, downloads and AI-facing tools.
+- [ytdlpllm](https://blog.maxrenke.com/posts/ytdlpllm-A-Natural-Language-Youtube-Downloader/): a natural-language-to-yt-dlp approach.
 
-For contributors and AI agents, read [AGENTS.md](AGENTS.md), [kernel/](kernel/),
-[PROJECT_STATE.json](PROJECT_STATE.json), [NEXT.md](NEXT.md) and the active
-[T068 task](tasks/ACTIVE/T068-first-live-tor-request-choice-file.md). State files
-describe their own branch snapshot; do not infer feature completion from a single
-workflow badge or from the product roadmap.
+The goal here is request-first interaction, visible choices, local intent handling,
+Tor-routed retrieval and a self-contained package. The whole combination is not
+finished. This is not a comparative benchmark or a claim of uniqueness.
+
+## Contributing
+
+Useful work now: reproduce a failure, review the privacy boundary, or help finish
+native Windows retrieval and packaging. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+For branch-specific engineering state, read [AGENTS.md](AGENTS.md),
+[PROJECT_STATE.json](PROJECT_STATE.json), [NEXT.md](NEXT.md), and the latest checkpoint
+in the relevant PR. State files describe their branch snapshot; a green component
+test does not mean the application is ready.
 
 ```bash
 python3 scripts/continuity_guard.py
 ```
 
+[Support development](https://github.com/sponsors/yasha1971-coder) ·
+[What support funds](SPONSORSHIP.md). Supporting development is not buying a released app.
+
+## По-русски
+
+PULQVA — разрабатываемое приложение: описать нужное медиа, увидеть варианты,
+выбрать и сохранить файл. Цель — локальный ИИ и поиск со скачиванием через Tor.
+Готовой версии для обычного пользователя пока нет. Выше приведены проверенные
+результаты отдельных частей и оставшиеся ограничения.
+
 ## License
 
-PULQVA's original code and documentation are licensed under [Apache-2.0](LICENSE).
-Third-party components keep their own licenses. Packaged Tor, FFmpeg and yt-dlp binaries
-require separate distribution checks; see [THIRD_PARTY.md](THIRD_PARTY.md).
+Original code and documentation: [Apache-2.0](LICENSE).
+Third-party components retain their own licenses. Bundled binaries require
+separate distribution checks; see [THIRD_PARTY.md](THIRD_PARTY.md).
