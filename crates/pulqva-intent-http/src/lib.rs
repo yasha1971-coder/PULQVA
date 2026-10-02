@@ -19,7 +19,7 @@ impl LoopbackIntentEndpoint {
 
 #[derive(Debug)]
 pub enum IntentHttpError {
-    InvalidPlan, Io(std::io::Error), TooLarge, HttpStatus, Envelope, Interpretation, Deadline,
+    InvalidPlan, Io(std::io::Error), TooLarge, HttpStatus, Envelope, Interpretation(pulqva_intent_json::InterpretationDiagnostic), Deadline,
 }
 impl fmt::Display for IntentHttpError {
     fn fmt(&self,f:&mut fmt::Formatter<'_>)->fmt::Result { write!(f,"{self:?}") }
@@ -122,7 +122,7 @@ pub fn interpret_via_loopback_until(endpoint: LoopbackIntentEndpoint, request_js
     if !status.starts_with("HTTP/1.1 200 ") { return Err(IntentHttpError::HttpStatus); }
     let env:ResponseEnvelope=serde_json::from_str(body).map_err(|_|IntentHttpError::Envelope)?;
     let content=env.choices.first().ok_or(IntentHttpError::Envelope)?.message.content.as_str();
-    let intent=pulqva_intent_json::parse_interpretation_json(content).map_err(|_|IntentHttpError::Interpretation)?;
+    let intent=pulqva_intent_json::parse_interpretation_json(content).map_err(|_|IntentHttpError::Interpretation(pulqva_intent_json::diagnose_interpretation_json(content)))?;
     remaining(deadline)?;
     Ok(intent)
 }
