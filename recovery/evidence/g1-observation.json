@@ -1,0 +1,29 @@
+{
+  "kind": "accepted observation summary; not a raw CI log or new execution",
+  "source_checkpoint": {
+    "id": 5970395272,
+    "url": "https://github.com/yasha1971-coder/PULQVA/pull/80#issuecomment-5970395272",
+    "observed_date": "2026-10-03"
+  },
+  "implementation_commit": "b005097ee305c9e522a838f2b5e0f5241c23396a",
+  "actual_checkout": "3f856e5c7d83bd10182ad4b17c3b0f15bc888064",
+  "same_git_tree": "25161263beb8d692ed149a70a4cff3bf5ad030fd",
+  "run": 37128225491,
+  "job": 111217831711,
+  "command": "cargo test --workspace --locked",
+  "rust": "1.91.0",
+  "os": "Ubuntu 24.04.5",
+  "public_tests_passed": [
+    "ask_preserves_unicode_query_and_choices_without_retrieval",
+    "autopilot_is_retained_as_data_without_retrieval",
+    "backend_errors_are_propagated_without_retry",
+    "reject_never_calls_search_or_retrieval",
+    "zero_or_one_result_is_not_promoted_to_a_choice_set"
+  ],
+  "scope": "typed adapter with recording fixtures, not live model/Tor/file E2E",
+  "limits": [
+    "Original log was inspected during G1 closeout; this is a durable transcription of that observation.",
+    "Synthetic merge commits need not remain reachable. Restore verifies the preserved implementation tree, not the continued existence of an obsolete merge ref.",
+    "No per-probe duration was captured in that old log. Do not fabricate a compliant matrix_receipt."
+  ]
+}

@@ -11,6 +11,7 @@ permissions:
 jobs:
   continuity:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,6 +19,12 @@ jobs:
 
       - name: Validate repository continuity state
         run: python3 scripts/continuity_guard.py
+
+      - name: Recovery contract probes
+        run: python3 scripts/test_recovery_guard.py "$RUNNER_TEMP/pulqva-recovery/matrix_receipt.json"
+
+      - name: Verify sealed continuation and retained evidence
+        run: python3 scripts/recovery_guard.py
 
       - name: Protect frozen kernel after v1 tag exists
         shell: bash
@@ -32,6 +39,18 @@ jobs:
           else
             echo "kernel-v1.0.0 tag not present yet; bootstrap phase."
           fi
+
+      - name: Export source backup and verify offline restore
+        run: python3 scripts/recovery_backup.py "$RUNNER_TEMP/pulqva-recovery"
+
+      - name: Retain recovery package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulqva-recovery/
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Freeze kernel v1 after T001
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
