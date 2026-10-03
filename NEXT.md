@@ -1,63 +1,68 @@
 # NEXT
 
-## CURRENT: T068-C2 first Linux live request -> choice -> file acceptance
+## CURRENT: T069 — local intent integration
 
-PR73 / feat/T068-live-tor-e2e. Parent 2000e8581a403a31d9001f9bbd9f950012e28ee3.
-Main and frozen kernel unchanged. Global verified anchor remains
-fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0. No full E2E result is claimed yet.
+PR80 / feat/T069-intent-contract. G1 implementation: b005097ee305c9e522a838f2b5e0f5241c23396a.
+State closeout parent: a97bddab3334cc85d9a00fe9188b141ec89fd6a5. Re-read live HEAD before edits.
+Global verified anchor stays fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0; parent T069 is NOT complete.
+Autonomous mode was cancelled. Work only on an owner command. No merge or release.
 
-Parent observation: rust-check36413808729 and discovery-contract-check36413808727
-passed. Of 13 associated workflows, 12 passed. In commons36413808736, Linux
-job108900033599 passed discovery and positive receipt; Windows108900033893 passed
-preflight/build and failed strict live. No new Windows root cause was inferred.
-The existing CandidateRetrieval now calls the typed yt-dlp launcher/completion
-and artifact verifier; its positive live path has NOT been exercised together.
+### DONE: G1 scoped deterministic acceptance
 
-ONE change: activate that exact core path in a fixed public Linux acceptance
-harness real_commons_file. Request 'countdown' -> actual Commons ChoiceSet ->
-explicit returned index1 -> retrieve_choice on the same CommonsSearch -> existing
-size/SHA-1 verifier -> FileReceipt. No direct URL shortcut or second downloader.
-The harness copies the verified bytes to selected.webm outside the Tor runtime,
-computes hashes while copying, stops/reaps Arti and removes the owned runtime,
-then writes receipt.json. Cancellation/stale-search regression runs AFTER retrieval.
-Only the public fixed request and result metadata are retained for this CI fixture.
+Read the completed original rust-check37128225491/job111217831711 log.
+Actual checkout3f856e5c7d83bd10182ad4b17c3b0f15bc888064 is the PR synthetic merge of
+b005097e into f05ce421b72badfb25cef0716661db4ecb4bab5b. Git tree25161263beb8d692ed149a70a4cff3bf5ad030fd
+matches the G1 implementation tree. Ubuntu24.04.5, pinned Rust1.91.0,
+cargo test --workspace --locked. Five public adapter tests and17 core unit tests passed,
+including the three existing journey regressions. Discovery suite41 passed; its one
+ignored environment helper ran separately through its parent. No new test was launched.
 
-Existing commons workflow: both harnesses compile in the unchanged full-target
-preflight. Linux reuses pinned yt-dlp 2026.08.19 plus repository SHA256SUMS before
-execution. Linux live invokes the compiled C2 harness under GNU timeout (300s,
-TERM then KILL after10s, process group; no --foreground). A separate Python
-hashlib oracle checks exact source SHA, selected metadata, size, SHA-1 and SHA-256
-against the SAVED FILE before artifact upload. Bundle must contain exactly two
-regular files: receipt.json and selected.webm. Missing file, corrupt content or
-invalid receipt cannot pass. Windows continues its existing strict C1 harness.
-No continue-on-error, dependency, lockfile, core/library or permission change.
+The public request_interpreted_choices adapter preserves query, candidate order and
+ChoiceMode, rejects before search, propagates errors and retains the two-choice minimum.
+It neither selects nor retrieves. These are fresh fixture tests, not a connected live
+model/Tor/file run. A ChoiceMode value is not consent; FileReceipt alone is not verification.
+Historical stdout has no per-probe timing contract; do not fabricate matrix_receipt.json
+from it or rerun these successful tests merely to rename the evidence.
 
-Local checks: 11 new Python tests passed (including actual verifier CLI success
-and failure). These use synthetic local fixtures, not downloaded WebM evidence.
-YAML, Bash syntax and step-ID compatibility checked; native Rust remains PENDING.
-No cargo/rustc exists locally; an official Rust download check failed DNS. Do not
-claim Rust compilation from textual checks or that unit tests prove Tor routing.
+Current documentation-parent CI listing:14 success,2 failure. Commons37130002218 and
+Arti37130002008 remain open. Status alone supplies no new failure diagnosis.
 
-Important limits: the current production completion uses blocking Child::wait;
-the test watchdog is NOT a product supervisor. Mid-flight Arti loss/cancellation,
-descendant confinement, bounded download growth and T066 filesystem race/cleanup
-limits remain open. SHA-1 is provider compatibility, not publisher authentication;
-SHA-256 identifies saved bytes. Selection value binding is not a session nonce.
-First positive Linux trace does not prove Windows, UI/AI, packaging or repetition.
+### ONE NEXT ACTION: T069-G2 executable evidence capture
 
-ONE NEXT ACTION: inspect the new exact-head all-target compile and live stage.
-If Linux succeeds, download its commons-live-result-ubuntu-24.04 ZIP, independently
-check the ZIP digest and both file hashes, and read its receipt/source SHA. Do not
-announce E2E from a workflow color or stdout marker alone. Then record whether the
-first positive trace is verified; a second fresh-state run is a later task.
-If code fails, read complete errors once; repair only the established cause.
-Publication commit and native run IDs are in the latest PR73 checkpoint.
+Extend the EXISTING real_server_smoke harness/evaluator in pulqva-intent-server with a
+bounded matrix receipt writer and verifier plus deterministic tests. Read only its
+current implementation/dependencies and applicable primary sources, then implement
+one coherent capture change; do not spend another pass restating the completed G1 trace.
+Preserve the old receipt.json format, actual model/prompt/schema/settings and acceptance.
+No new launcher, framework, provider or downloader. No real-model/network launch yet.
 
-Owner assistance rule: PR73 comment5864661936. Use a minimal safe owner action
-promptly for a confirmed tool barrier, then independently verify the result.
-Entry checkpoint5869245117. Prior detailed history remains in Git/PR comments.
-Primary-source review 2026-09-28: GNU timeout invocation/process-group semantics;
-GitHub artifact upload missing-file failure and retention. Existing project pins
-were retained; no latest dependency or new infrastructure was adopted.
-https://www.gnu.org/software/coreutils/manual/html_node/timeout-invocation.html
-https://docs.github.com/en/actions/tutorials/store-and-share-data
+Before any new expensive integration generation, capture a predeclared manifest and
+all probes (id,hypothesis,invariant_set,result,duration_ms,expected/observed,evidence refs)
+in matrix_receipt.json, including readiness failure/early-exit SKIP or ERROR records.
+Use monotonic durations; unavailable provenance/timing is explicit, never fabricated.
+Validate complete/duplicate/missing IDs, provenance and aggregate status. A single PID
+or serial order does not prove cache/slot/FS/transport isolation. Do not claim isolation
+until the pinned implementation has been checked. Fixes require a new closed generation.
+Use the protocol in AGENTS.md; deterministic capture tests must precede live evidence.
+
+This is a prerequisite to the SAME user journey, not a substitute for integration:
+local interpreter -> request_interpreted_choices -> real Tor discovery -> explicit choice
+-> retrieve_choice on the SAME CommonsSearch -> existing verified-file path.
+Keep pending: integration caller, real user selection/Autopilot authorization and ranking,
+held-out semantics, local CORS/auth, Windows model, Commons/Arti, mid-flight Tor loss,
+file ownership/races, UI/packages/clean machines and package egress.
+
+### G1 post-test primary-source review — 2026-10-03
+
+Rust API Guidelines type-safety and Rust Book Result support retaining semantic types
+and propagating errors without a second coordinator. The observed public-API fixture
+tests match that narrow design. Rust's test-runner documentation warns about shared state;
+these G1 cases use fresh recording fixtures but prove no live-runtime independence.
+Keep the adapter and pins; no new model experiment is justified by G1 closeout.
+https://rust-lang.github.io/api-guidelines/type-safety.html
+https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
+https://doc.rust-lang.org/book/ch11-02-running-tests.html
+
+Historical T068 NEXT/state: immutable a97bddab3334cc85d9a00fe9188b141ec89fd6a5 and PR73.
+Historical model smoke: attempt9/run36930160538/job111091620945/artifact11260241264,
+checkpoint5966597137. Do not repeat it without a new question or promote it to product E2E.
