@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "repository": "yasha1971-coder/PULQVA",
+  "active_branch": "feat/T069-intent-contract",
+  "active_pr": 80,
+  "entry_path": "START_HERE.md",
+  "checkpoint_path": "recovery/INDEX.json",
+  "recovery_floor_commit": "65f5f2d708c058d2bb98c612cc994f2d1f6afc9d",
+  "instruction": "Resolve active PR HEAD before reading State/NEXT or writing. main tracks merged baseline only. Never reset newer work to the recovery floor.",
+  "mode": "interactive_only_owner_cancelled_autonomy",
+  "product_ready": false
+}

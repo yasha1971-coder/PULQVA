@@ -17,5 +17,7 @@
     "YouTube/EJS/POT/SABR compatibility is a separate adapter/reliability gate and must not obscure the first generic live Tor E2E proof.",
     "Self-contained clean-machine Windows/Linux release packages remain unverified."
   ],
-  "updated": "2026-09-29"
+  "updated": "2026-09-29",
+  "active_development_entry": "PROJECT_ENTRY.json",
+  "scope_note": "This main-branch state describes the merged baseline, not the active development queue. For continuation resolve PROJECT_ENTRY.json and the live PR HEAD; do not restart historical T068 from this snapshot."
 }

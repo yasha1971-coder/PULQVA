@@ -1,5 +1,9 @@
 # NEXT
 
+> Active development is in PR #80 / `feat/T069-intent-contract`.
+> Read [START_HERE.md](START_HERE.md) and [PROJECT_ENTRY.json](PROJECT_ENTRY.json) first.
+> The T068 text below is the merged-baseline history, NOT the current work queue.
+
 ## CURRENT: T068 active — Windows Tor transport prerequisite is proven
 
 T067 exact head `51a21c476d49738184678bb6e5c3d8ff29be68fd` proved deterministic typed
