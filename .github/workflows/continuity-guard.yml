@@ -20,6 +20,9 @@ jobs:
       - name: Validate repository continuity state
         run: python3 scripts/continuity_guard.py
 
+      - name: Evidence-boundary codec contract matrix (no model or network)
+        run: python3 tools/ci/test_matrix_receipt.py "$RUNNER_TEMP/pulqva-recovery/g2a/matrix_receipt.json"
+
       - name: Recovery contract probes
         run: python3 scripts/test_recovery_guard.py "$RUNNER_TEMP/pulqva-recovery/matrix_receipt.json"
 

@@ -37,6 +37,11 @@ def fixture_plan():
                         for pid in ('A', 'B')])
 
 
+def failure_details(items):
+    """unittest stores TestCase objects; preserve their IDs, not unserializable objects."""
+    return [{'test': case.id(), 'detail': detail} for case, detail in items]
+
+
 def add(rec, pid, result='PASS'):
     rec.record(pid, result=result, duration_ms=0.25, observed={'fixture': result},
                evidence_refs=['fixture-observation'], reason='fixture_error' if result == 'ERROR' else None)
@@ -218,6 +223,22 @@ class MatrixReceiptTests(unittest.TestCase):
                 write_exclusive(p, self.complete())
             self.assertEqual(p.read_bytes(), before)
 
+    def test_failed_test_details_remain_serializable(self):
+        """A failed self-test must not prevent writing the other probe outcomes."""
+        class Fails(unittest.TestCase):
+            def runTest(self):
+                self.fail('fixed synthetic failure')
+        class Errors(unittest.TestCase):
+            def runTest(self):
+                raise ValueError('fixed synthetic error')
+        result = unittest.TestResult()
+        Fails().run(result)
+        Errors().run(result)
+        doc = dict(errors=failure_details(result.errors), failures=failure_details(result.failures))
+        self.assertEqual(len(doc['errors']), 1)
+        self.assertEqual(len(doc['failures']), 1)
+        self.assertEqual(json.loads(canonical(doc)), doc)
+
     def test_cli_verifies_against_separate_manifest(self):
         """The actual CLI requires a trusted manifest and exits nonzero on mismatch."""
         with tempfile.TemporaryDirectory(prefix='pulqva-matrix-cli-') as root:
@@ -278,7 +299,7 @@ def run_matrix(destination: Path) -> int:
         test.run(result)
         duration = (time.monotonic_ns() - started) / 1_000_000
         status = 'ERROR' if result.errors else 'FAIL' if result.failures else 'SKIP' if result.skipped else 'PASS'
-        raw.append(dict(id=test._testMethodName, result=status, errors=result.errors, failures=result.failures))
+        raw.append(dict(id=test._testMethodName, result=status, errors=failure_details(result.errors), failures=failure_details(result.failures)))
         recorder.record(test._testMethodName, result=status, duration_ms=duration,
                         observed=dict(tests_run=result.testsRun, errors=len(result.errors), failures=len(result.failures)),
                         evidence_refs=['test-results.json#' + test._testMethodName],

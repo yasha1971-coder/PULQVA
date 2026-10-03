@@ -11,15 +11,19 @@
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "e62b73d1a1e56eed9ad54e49ba36ccffc6dd6521",
-    "NEXT.md": "944d5b84effc13523d7364f31278bfb769a58647",
+    "PROJECT_STATE.json": "a708977c02fdff0ff69bbcfee727ffc30d393a66",
+    "NEXT.md": "47ec49efd017bcd7d6ad05f478c6f2bdf30d853c",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
     "kernel/KERNEL_VERSION": "3eefcb9dd5b38e2c1dc061052455dd97bcd51e6c",
     "decisions/INDEX.json": "e1268d0a6c3d297056d1db49c98ba2ea75e92705",
     "recovery/legacy/ADR-0007-windows-official-tor-runtime.md": "12352f634fda51b3fe12769fef6178f8b0ba6372",
-    "recovery/evidence/g1-observation.json": "c40a01c47d485f75b1cfe914e2037339b3646bb4"
+    "recovery/evidence/g1-observation.json": "c40a01c47d485f75b1cfe914e2037339b3646bb4",
+    "tools/ci/matrix_receipt.py": "44288e7a58a85e83e4ffc2c1971b3de4ab89f817",
+    "tools/ci/test_matrix_receipt.py": "f17f3b988ad12c0df4934e462b361d50106b1f29",
+    "decisions/T069-G2A-evidence-boundary-2026-10-03.md": "6a9b2194a55d99874016caf54a014881de1e8322",
+    "recovery/evidence/g2a-observation.json": "7dc344c61b85831069b31c7019727781dcaf35f2"
   },
   "state_contract": {
     "active_task": "T069",
@@ -66,7 +70,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "Implement T069-G2 evidence capture in existing real_server_smoke; deterministic gate first. No model rerun or new scheduler.",
+  "next_action": "Observe T069-G2 phase G2A-CI on the exact current-head continuity artifact; then passive readiness diagnostics. No blind rerun or scheduler.",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",
