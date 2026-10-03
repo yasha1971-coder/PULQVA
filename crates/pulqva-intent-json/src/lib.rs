@@ -3,7 +3,7 @@
 //! This crate is a narrow adapter. It decodes JSON into validated core types
 //! and intentionally contains no provider, network, transport, or execution logic.
 
-use pulqva_core::{SearchIntent, SearchIntentError};
+use pulqva_core::{ChoiceMode, Interpretation, InterpretedIntent, InterpretedIntentError, RejectReason, SearchIntent, SearchIntentError};
 use serde::Deserialize;
 use std::{error::Error, fmt};
 
@@ -11,6 +11,147 @@ use std::{error::Error, fmt};
 #[serde(deny_unknown_fields)]
 struct WireSearchIntent {
     query: String,
+}
+
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum WireInterpretation {
+    Intent { query: String, choice_mode: WireChoiceMode },
+    Reject { reason: WireRejectReason },
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WireRejectReason {
+    SemanticAuthority,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WireInterpretedIntent {
+    query: String,
+    choice_mode: WireChoiceMode,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WireChoiceMode {
+    Ask,
+    Autopilot,
+}
+
+/// Parses the complete tagged local interpretation protocol.
+///
+/// Accepted shapes:
+/// {"kind":"intent","query":"semantic search terms","choice_mode":"ask|autopilot"}
+/// {"kind":"reject","reason":"semantic_authority"}
+///
+/// Reject has no query or executable authority and cannot become SearchIntent.
+pub fn parse_interpretation_json(input: &str)
+    -> Result<Interpretation, InterpretedIntentJsonError>
+{
+    let wire: WireInterpretation =
+        serde_json::from_str(input).map_err(InterpretedIntentJsonError::Decode)?;
+    match wire {
+        WireInterpretation::Intent { query, choice_mode } => {
+            let mode = match choice_mode {
+                WireChoiceMode::Ask => ChoiceMode::Ask,
+                WireChoiceMode::Autopilot => ChoiceMode::Autopilot,
+            };
+            InterpretedIntent::new(query, mode)
+                .map(Interpretation::Intent)
+                .map_err(InterpretedIntentJsonError::Validation)
+        }
+        WireInterpretation::Reject { reason: WireRejectReason::SemanticAuthority } =>
+            Ok(Interpretation::Reject(RejectReason::SemanticAuthority)),
+    }
+}
+
+/// Parses the only structured output shape future local inference may emit.
+///
+/// Accepted shape:
+/// {"query":"semantic search terms","choice_mode":"ask|autopilot"}
+///
+/// Unknown fields are rejected before core validation. The decoder has no
+/// network, filesystem, process or provider authority.
+pub fn parse_interpreted_intent_json(input: &str)
+    -> Result<InterpretedIntent, InterpretedIntentJsonError>
+{
+    let wire: WireInterpretedIntent =
+        serde_json::from_str(input).map_err(InterpretedIntentJsonError::Decode)?;
+    let mode = match wire.choice_mode {
+        WireChoiceMode::Ask => ChoiceMode::Ask,
+        WireChoiceMode::Autopilot => ChoiceMode::Autopilot,
+    };
+    InterpretedIntent::new(wire.query, mode)
+        .map_err(InterpretedIntentJsonError::Validation)
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InterpretationDiagnostic {
+    pub bytes: usize,
+    pub json_kind: &'static str,
+    pub kind_tag: &'static str,
+    pub has_query: bool,
+    pub query_is_string: bool,
+    pub has_choice_mode: bool,
+    pub choice_mode_known: bool,
+    pub has_reason: bool,
+    pub reason_known: bool,
+    pub unknown_fields: usize,
+}
+
+/// Structural diagnostics only: never returns query text or arbitrary model output.
+pub fn diagnose_interpretation_json(input: &str) -> InterpretationDiagnostic {
+    let bytes=input.len();
+    let Ok(value)=serde_json::from_str::<serde_json::Value>(input) else {
+        return InterpretationDiagnostic{bytes,json_kind:"invalid_json",kind_tag:"unavailable",
+            has_query:false,query_is_string:false,has_choice_mode:false,choice_mode_known:false,
+            has_reason:false,reason_known:false,unknown_fields:0};
+    };
+    let Some(obj)=value.as_object() else {
+        return InterpretationDiagnostic{bytes,json_kind:"non_object",kind_tag:"unavailable",
+            has_query:false,query_is_string:false,has_choice_mode:false,choice_mode_known:false,
+            has_reason:false,reason_known:false,unknown_fields:0};
+    };
+    let kind_tag=match obj.get("kind").and_then(|v|v.as_str()) {
+        Some("intent")=>"intent", Some("reject")=>"reject", Some(_)=>"other", None=>"missing",
+    };
+    let has_query=obj.contains_key("query");
+    let query_is_string=obj.get("query").is_some_and(|v|v.is_string());
+    let has_choice_mode=obj.contains_key("choice_mode");
+    let choice_mode_known=matches!(obj.get("choice_mode").and_then(|v|v.as_str()),Some("ask"|"autopilot"));
+    let has_reason=obj.contains_key("reason");
+    let reason_known=matches!(obj.get("reason").and_then(|v|v.as_str()),Some("semantic_authority"));
+    let unknown_fields=obj.keys().filter(|k| !matches!(k.as_str(),"kind"|"query"|"choice_mode"|"reason")).count();
+    InterpretationDiagnostic{bytes,json_kind:"object",kind_tag,has_query,query_is_string,
+        has_choice_mode,choice_mode_known,has_reason,reason_known,unknown_fields}
+}
+
+#[derive(Debug)]
+pub enum InterpretedIntentJsonError {
+    Decode(serde_json::Error),
+    Validation(InterpretedIntentError),
+}
+
+impl fmt::Display for InterpretedIntentJsonError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Decode(_) => f.write_str("invalid interpreted-intent JSON"),
+            Self::Validation(error) => write!(f, "invalid interpreted intent: {error}"),
+        }
+    }
+}
+
+impl Error for InterpretedIntentJsonError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Decode(error) => Some(error),
+            Self::Validation(error) => Some(error),
+        }
+    }
 }
 
 /// Parses a strict JSON object into a validated SearchIntent.
@@ -98,4 +239,154 @@ mod tests {
 
         assert!(matches!(error, IntentJsonError::Validation(_)));
     }
+
+    #[test]
+    fn tagged_schema_examples_match_rust_protocol() {
+        let intent = super::parse_interpretation_json(
+            r#"{"kind":"intent","query":"countdown video","choice_mode":"ask"}"#
+        ).unwrap();
+        assert!(matches!(intent, pulqva_core::Interpretation::Intent(_)));
+
+        let reject = super::parse_interpretation_json(
+            r#"{"kind":"reject","reason":"semantic_authority"}"#
+        ).unwrap();
+        assert!(matches!(reject, pulqva_core::Interpretation::Reject(
+            pulqva_core::RejectReason::SemanticAuthority
+        )));
+    }
+
+    #[test]
+    fn tagged_protocol_rejects_cross_branch_and_authority_payloads() {
+        for input in [
+            r#"{"kind":"intent","query":"countdown"}"#,
+            r#"{"kind":"intent","query":"countdown","choice_mode":"ask","reason":"semantic_authority"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","choice_mode":"ask"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","query":"countdown"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","command":"curl"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","proxy":"socks5h://127.0.0.1:1"}"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpretation_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ), "unexpectedly accepted: {input}");
+        }
+    }
+
+    #[test]
+    fn parses_fail_closed_reject_without_authority_payload() {
+        let value = super::parse_interpretation_json(
+            r#"{"kind":"reject","reason":"semantic_authority"}"#
+        ).unwrap();
+        assert!(matches!(value, pulqva_core::Interpretation::Reject(
+            pulqva_core::RejectReason::SemanticAuthority
+        )));
+    }
+
+    #[test]
+    fn reject_refuses_query_path_url_and_extra_payloads() {
+        for input in [
+            r#"{"kind":"reject","reason":"semantic_authority","query":"countdown"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","path":"C:\\temp"}"#,
+            r#"{"kind":"reject","reason":"semantic_authority","url":"https://example.com"}"#,
+            r#"{"kind":"reject","reason":"other"}"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpretation_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn parses_strict_interpreted_intent() {
+        let intent = super::parse_interpreted_intent_json(
+            r#"{"query":"countdown video","choice_mode":"ask"}"#
+        ).unwrap();
+        assert_eq!(intent.query(), "countdown video");
+        assert_eq!(intent.choice_mode(), pulqva_core::ChoiceMode::Ask);
+    }
+
+    #[test]
+    fn parses_typed_autopilot_policy() {
+        let intent = super::parse_interpreted_intent_json(
+            r#"{"query":"rain ambience","choice_mode":"autopilot"}"#
+        ).unwrap();
+        assert_eq!(intent.choice_mode(), pulqva_core::ChoiceMode::Autopilot);
+    }
+
+    #[test]
+    fn rejects_unknown_model_authority_fields() {
+        for input in [
+            r#"{"query":"countdown","choice_mode":"ask","url":"https://example.com"}"#,
+            r#"{"query":"countdown","choice_mode":"ask","proxy":"socks5h://127.0.0.1:1"}"#,
+            r#"{"query":"countdown","choice_mode":"ask","command":"curl"}"#,
+            r#"{"query":"countdown","choice_mode":"ask","path":"C:\\temp"}"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpreted_intent_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn rejects_missing_invalid_or_free_text_choice_policy() {
+        for input in [
+            r#"{"query":"countdown"}"#,
+            r#"{"query":"countdown","choice_mode":"yes"}"#,
+            r#"{"query":"countdown","choice_mode":1}"#,
+            r#"{"query":"countdown","choice_mode":{"mode":"ask"}}"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpreted_intent_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn core_rejects_locator_path_control_and_oversize_after_decode() {
+        let cases = [
+            r#"{"query":"https://example.com/a.webm","choice_mode":"ask"}"#.to_owned(),
+            r#"{"query":"C:\\Users\\person\\file","choice_mode":"ask"}"#.to_owned(),
+            r#"{"query":"line\nbreak","choice_mode":"ask"}"#.to_owned(),
+            format!(r#"{{"query":"{}","choice_mode":"ask"}}"#, "x".repeat(pulqva_core::MAX_INTERPRETED_QUERY_BYTES + 1)),
+        ];
+        for input in cases {
+            assert!(matches!(
+                super::parse_interpreted_intent_json(&input),
+                Err(super::InterpretedIntentJsonError::Validation(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn structural_diagnostics_never_echo_query_or_unknown_values() {
+        let secret="DO_NOT_ECHO_PRIVATE_QUERY";
+        let input=format!(r#"{{"kind":"intent","query":"{secret}","choice_mode":"wrong","url":"https://secret.invalid/x"}}"#);
+        let d=super::diagnose_interpretation_json(&input);
+        assert_eq!(d.json_kind,"object");
+        assert_eq!(d.kind_tag,"intent");
+        assert!(d.has_query && d.query_is_string && d.has_choice_mode);
+        assert!(!d.choice_mode_known);
+        assert_eq!(d.unknown_fields,1);
+        let debug=format!("{d:?}");
+        assert!(!debug.contains(secret));
+        assert!(!debug.contains("secret.invalid"));
+    }
+
+    #[test]
+    fn trailing_or_multiple_json_values_are_rejected() {
+        for input in [
+            r#"{"query":"countdown","choice_mode":"ask"} garbage"#,
+            r#"{"query":"countdown","choice_mode":"ask"} {"query":"other","choice_mode":"ask"}"#,
+            r#"[{"query":"countdown","choice_mode":"ask"}]"#,
+        ] {
+            assert!(matches!(
+                super::parse_interpreted_intent_json(input),
+                Err(super::InterpretedIntentJsonError::Decode(_))
+            ));
+        }
+    }
+
 }

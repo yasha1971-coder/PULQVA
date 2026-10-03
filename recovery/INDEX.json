@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "repository": "yasha1971-coder/PULQVA",
+  "branch": "feat/T069-intent-contract",
+  "pr": 80,
+  "source_snapshot": "8440afb67540361ae6bbee1c3448bbf7c23a92eb",
+  "snapshot_note": "Historical source anchor, not a fabricated self-referential current HEAD. Resolve live HEAD before writing.",
+  "kernel_tree": "199a069695efe62e082a6886918e53e1c22a9179",
+  "product_trees": {
+    "crates": "5d69bd1da34833597e19c6586180a750584786fc",
+    "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
+  },
+  "sealed_files": {
+    "PROJECT_STATE.json": "a708977c02fdff0ff69bbcfee727ffc30d393a66",
+    "NEXT.md": "47ec49efd017bcd7d6ad05f478c6f2bdf30d853c",
+    "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
+    "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
+    "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
+    "kernel/KERNEL_VERSION": "3eefcb9dd5b38e2c1dc061052455dd97bcd51e6c",
+    "decisions/INDEX.json": "e1268d0a6c3d297056d1db49c98ba2ea75e92705",
+    "recovery/legacy/ADR-0007-windows-official-tor-runtime.md": "12352f634fda51b3fe12769fef6178f8b0ba6372",
+    "recovery/evidence/g1-observation.json": "c40a01c47d485f75b1cfe914e2037339b3646bb4",
+    "tools/ci/matrix_receipt.py": "44288e7a58a85e83e4ffc2c1971b3de4ab89f817",
+    "tools/ci/test_matrix_receipt.py": "f17f3b988ad12c0df4934e462b361d50106b1f29",
+    "decisions/T069-G2A-evidence-boundary-2026-10-03.md": "6a9b2194a55d99874016caf54a014881de1e8322",
+    "recovery/evidence/g2a-observation.json": "7dc344c61b85831069b31c7019727781dcaf35f2"
+  },
+  "state_contract": {
+    "active_task": "T069",
+    "next_task": "T069",
+    "last_completed_subtask": "T069-G1",
+    "next_subtask": "T069-G2",
+    "last_verified_commit": "fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0",
+    "execution_mode": "interactive_only_owner_cancelled_autonomy"
+  },
+  "g1_contract": {
+    "implementation_commit": "b005097ee305c9e522a838f2b5e0f5241c23396a",
+    "actual_checkout": "3f856e5c7d83bd10182ad4b17c3b0f15bc888064",
+    "checkout_tree": "25161263beb8d692ed149a70a4cff3bf5ad030fd",
+    "rust_check": 37128225491,
+    "job": 111217831711,
+    "public_adapter_tests": {
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0
+    }
+  },
+  "model_archive": {
+    "path": "recovery/evidence/t069f-attempt9.zip",
+    "sha256": "3fd06ce43ac44f1cb93aa8ce8b5588b83a7df88c4422b2558659199b61bdae88",
+    "members": {
+      "deterministic-lifecycle.txt": "8142c97094d3e566072ec44737b0a15f037cd72051e9df98e3a9847f6cf396af",
+      "receipt.json": "8f46790315ff9cf2666caa755aa44181e554d0e4d7b7850f3d82c1fd6f4365c0",
+      "provenance.txt": "9c0824b6a97e820b302324f7a947617dda970a80cd4d5f7a4a3e73a53899a308",
+      "receipt.stderr.bin": "d4652ec8c93fe3f4f81d3e7308afe28c4106c3259859ca8ac4e2e2c59d9353c0"
+    },
+    "source_commit": "94ce3a04f68e39efb589645e18fae52bf0df724c",
+    "launcher_commit": "0701d689eb25400062b2351d200852b1388a0716",
+    "run": 36930160538,
+    "job": 111091620945,
+    "artifact": 11260241264,
+    "attempt": 9,
+    "actions_expires_at": "2026-10-10T01:04:37Z",
+    "case_ids": [
+      "en_search",
+      "ru_search",
+      "uk_search",
+      "autopilot_search",
+      "authority_guard"
+    ],
+    "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
+  },
+  "next_action": "Observe T069-G2 phase G2A-CI on the exact current-head continuity artifact; then passive readiness diagnostics. No blind rerun or scheduler.",
+  "limitations": [
+    "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
+    "Backup is only durable when retained independently of Actions/account.",
+    "Raw G1 log and all GitHub comments are not mirrored by this archive.",
+    "Source recovery does not recreate external model, dependencies or runtime binaries."
+  ]
+}

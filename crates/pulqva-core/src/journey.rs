@@ -1,7 +1,7 @@
 use core::fmt;
 use std::path::{Path, PathBuf};
 
-use crate::{SearchCandidate, SearchIntent};
+use crate::{ChoiceMode, Interpretation, SearchCandidate, SearchIntent};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChoiceSet {
@@ -18,6 +18,25 @@ impl ChoiceSet {
     pub fn select(&self, index: usize) -> Result<SelectedCandidate, JourneyError> {
         let candidate = self.candidates.get(index).ok_or(JourneyError::InvalidSelection)?.clone();
         Ok(SelectedCandidate { index, candidate })
+    }
+}
+
+/// Discovered choices with the interpreter's choice policy retained.
+/// Policy data is not proof of user consent. The caller still owns selection,
+/// Autopilot authorization/ranking, and retrieval on the same search backend.
+#[derive(Clone, PartialEq, Eq)]
+pub struct InterpretedChoices {
+    choice_mode: ChoiceMode,
+    choices: ChoiceSet,
+}
+impl InterpretedChoices {
+    pub fn choice_mode(&self) -> ChoiceMode { self.choice_mode }
+    pub fn choices(&self) -> &ChoiceSet { &self.choices }
+}
+impl fmt::Debug for InterpretedChoices {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Do not include query text, titles or locators in default diagnostics.
+        f.write_str("InterpretedChoices { .. }")
     }
 }
 
@@ -78,6 +97,23 @@ pub fn request_choices(search: &mut impl CandidateSearch, request: impl Into<Str
 {
     let intent = SearchIntent::new(request).map_err(|_| JourneyError::InvalidRequest)?;
     ChoiceSet::new(intent.clone(), search.search(&intent)?)
+}
+
+/// Pass only validated interpretation data to discovery, retaining choice policy.
+/// Reject fails before invoking search. No selection, download, retry or raw-input
+/// fallback is performed; backend errors and ChoiceSet requirements are preserved.
+pub fn request_interpreted_choices(search: &mut impl CandidateSearch, interpretation: Interpretation)
+    -> Result<InterpretedChoices, JourneyError>
+{
+    let interpreted = match interpretation {
+        Interpretation::Intent(intent) => intent,
+        Interpretation::Reject(_) => return Err(JourneyError::InvalidRequest),
+    };
+    let choice_mode = interpreted.choice_mode();
+    let intent = interpreted.into_search_intent().map_err(|_| JourneyError::InvalidRequest)?;
+    let candidates = search.search(&intent)?;
+    let choices = ChoiceSet::new(intent, candidates)?;
+    Ok(InterpretedChoices { choice_mode, choices })
 }
 
 pub fn retrieve_choice(retrieval: &mut impl CandidateRetrieval, choices: &ChoiceSet,

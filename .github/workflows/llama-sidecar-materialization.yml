@@ -1,0 +1,89 @@
+name: llama-sidecar-materialization
+
+on:
+  pull_request:
+    paths:
+      - "sidecars/llama.cpp/**"
+      - ".github/workflows/llama-sidecar-materialization.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x64
+            exe: llama-cli
+          - os: windows-latest
+            platform: windows-x64
+            exe: llama-cli.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact upstream source tag
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          git clone --filter=blob:none --no-checkout https://github.com/ggml-org/llama.cpp.git "$env:RUNNER_TEMP/llama.cpp"
+          git -C "$env:RUNNER_TEMP/llama.cpp" fetch --depth=1 origin tag v0.4.1
+          git -C "$env:RUNNER_TEMP/llama.cpp" checkout --detach FETCH_HEAD
+          $head = (git -C "$env:RUNNER_TEMP/llama.cpp" rev-parse HEAD).Trim()
+          Write-Host "UPSTREAM_HEAD=$head"
+          if (!$head.StartsWith("b29c606")) { throw "upstream tag/commit drift" }
+      - name: Configure CPU-only release build
+        shell: pwsh
+        run: |
+          cmake -S "$env:RUNNER_TEMP/llama.cpp" -B "$env:RUNNER_TEMP/llama-build" -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_IS_DEV=OFF -DGGML_CUDA=OFF -DGGML_VULKAN=OFF -DGGML_METAL=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=ON -DBUILD_SHARED_LIBS=OFF -DGGML_BACKEND_DL=OFF -DLLAMA_OPENSSL=OFF
+          if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
+      - name: Build llama-cli only
+        shell: pwsh
+        run: |
+          cmake --build "$env:RUNNER_TEMP/llama-build" --config Release --target llama-cli --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw "llama-cli build failed" }
+      - name: Materialize bounded sidecar receipt
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $name = "${{ matrix.exe }}"
+          $matches = @(Get-ChildItem "$env:RUNNER_TEMP/llama-build" -Recurse -File -Filter $name)
+          if ($matches.Count -ne 1) { throw "expected exactly one llama-cli executable, got $($matches.Count)" }
+          $exe = $matches[0].FullName
+          $sha = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item $exe).Length
+          if ($size -le 0 -or $size -gt 100MB) { throw "unexpected llama-cli size" }
+          $upstream = (git -C "$env:RUNNER_TEMP/llama.cpp" rev-parse HEAD).Trim()
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { throw "llama-cli runtime smoke failed" }
+          $receipt = [ordered]@{
+            schema = 1
+            scope = "llama-sidecar-materialization"
+            platform = "${{ matrix.platform }}"
+            source_tag = "v0.4.1"
+            source_commit = $upstream
+            build_is_dev = $false
+            cpu_only = $true
+            static_runtime_baseline = $true
+            runtime_smoke = "version-pass"
+            executable = $name
+            byte_size = $size
+            sha256 = $sha
+            model_materialized = $false
+            live_inference_tested = $false
+          }
+          $out = Join-Path $env:RUNNER_TEMP "pulqva-llama-sidecar"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          Copy-Item $exe (Join-Path $out $name)
+          $receipt | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $out "receipt.json")
+          Write-Host "PULQVA_LLAMA_SIDECAR_BUILT platform=${{ matrix.platform }} size=$size sha256=$sha"
+      - name: Upload bounded sidecar
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-llama-cli-${{ matrix.platform }}-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/pulqva-llama-sidecar/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

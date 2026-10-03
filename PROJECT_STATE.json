@@ -6,66 +6,106 @@
   "source_of_truth": "repository",
   "last_verified_commit": "fe1fb03dd88e9dea01a4d70dd69082cb1ba8b4c0",
   "last_completed_task": "T067",
-  "active_task": "T068",
-  "next_task": "T068",
+  "active_task": "T069",
+  "next_task": "T069",
+  "last_completed_subtask": "T069-G1",
+  "next_subtask": "T069-G2",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
+  "scope_note": "G1 retains its recorded acceptance. G2A receipt codec has local deterministic evidence; remote CI for this change is pending. Neither full G2 live capture nor the readiness diagnostic recovery is complete. The global verified anchor is unchanged.",
   "known_blockers": [
-    "New Linux selected-file acceptance harness is implemented but native compile and execution are pending.",
-    "Windows strict live C1 remains unverified; previous DestinationTimeout is not a root-cause diagnosis.",
-    "Production yt-dlp completion blocks in Child::wait; the Linux test watchdog is not product-level cancellation or Arti-loss supervision.",
-    "Positive-path native fixtures do not establish controlled in-flight Tor loss, descendant egress confinement or download disk-growth limits.",
-    "Index/candidate value equality is not search-session provenance; same-valued foreign selections are indistinguishable.",
-    "File verification/copy is a snapshot assuming exclusive output ownership, not publisher authentication or race-proof paths.",
+    "Real local-model output is not yet connected end-to-end to Tor discovery, user selection and a verified saved file.",
+    "G2A matrix receipt codec is implemented with local tests; real_server_smoke/readiness event capture and actual runtime isolation are not wired to it. No new expensive matrix is authorized by codec success.",
+    "Four previously observed failed jobs remain open: Arti Windows compiler input atlprov.dll mismatch, Commons Linux ConnectOrTls, Commons Windows DestinationTimeout, media Linux DestinationTimeout. These are different boundaries, not one proven cause.",
+    "Local model service CORS/auth isolation, native Windows model execution and held-out query semantics remain unverified.",
+    "Production yt-dlp completion blocks in Child::wait; a test watchdog is not product-level cancellation or Tor-loss supervision.",
+    "Positive fixtures do not establish controlled in-flight Tor loss, descendant egress confinement or download disk-growth limits.",
+    "Index/candidate equality is not search-session provenance; same-valued foreign selections are indistinguishable.",
+    "File verification/copy assumes exclusive output ownership; it is neither publisher authentication nor race-proof path handling.",
     "T066 cleanup/races, readiness deadline overshoot and Arti SDK-content pinning remain open.",
-    "Repeated fresh-state E2E, Windows file E2E, YouTube/AI/UI and self-contained release packages remain unverified."
+    "Autopilot authorization/ranking, user-facing choice, UI integration, self-contained Windows/Linux packages, clean-machine acceptance and package egress remain open."
   ],
   "verification_context": {
-    "kind": "Parent scoped evidence, not full E2E",
-    "pr": 73,
-    "source_head": "2000e8581a403a31d9001f9bbd9f950012e28ee3",
-    "associated_workflows_completed": 13,
-    "associated_workflows_successful": 12,
-    "rust_check": 36413808729,
-    "native_contract_check": 36413808727,
-    "live_run": 36413808736,
-    "linux_job": 108900033599,
-    "linux": "discovery plus receipt passed; no selected file yet",
-    "windows_job": 108900033893,
-    "windows": "preflight/build passed; strict live failed"
+    "kind": "Observed existing deterministic G1 native log; no new model or network execution",
+    "pr": 80,
+    "branch": "feat/T069-intent-contract",
+    "implementation_commit": "b005097ee305c9e522a838f2b5e0f5241c23396a",
+    "actual_checkout": "3f856e5c7d83bd10182ad4b17c3b0f15bc888064",
+    "checkout_tree": "25161263beb8d692ed149a70a4cff3bf5ad030fd",
+    "checkout_note": "GitHub PR synthetic merge includes b005097e and has the same tree as that implementation commit.",
+    "rust_check": 37128225491,
+    "job": 111217831711,
+    "os": "Ubuntu 24.04.5 x86_64",
+    "rust": "1.91.0",
+    "command": "cargo test --workspace --locked",
+    "public_adapter_tests": {
+      "passed": 5,
+      "failed": 0,
+      "ignored": 0
+    },
+    "core_unit_tests": {
+      "passed": 17,
+      "failed": 0,
+      "ignored": 0
+    },
+    "discovery_unit_tests": {
+      "passed": 41,
+      "failed": 0,
+      "ignored": 1,
+      "note": "The ignored poisoned_child helper was separately executed by its isolated parent."
+    },
+    "limits": "Fixtures, not a live-model/Tor/file E2E. Historical log has no complete per-probe monotonic timings or matrix_receipt; it is not retroactively relabelled as compliant matrix evidence.",
+    "observed_date": "2026-10-03"
   },
-  "hash_adoption": {
-    "owner_import_commit": "0ce30e420101230393192a12d9ecc48cfb7f06ea",
-    "activation_commit": "93d84cc1d547908ccc80f34ee79c30a3be7a619a",
-    "sha1": "0.11.0",
-    "sha2": "0.11.0",
-    "lock_blob": "d76600cb071e21703d616b7a6958c849d4e25f72",
-    "lock_sha256": "c707e6c96369aa3e07a5667cbd1a8c85f68480af042b9fabd409204735cf377d",
-    "lock_bytes": 35109,
-    "whole_native_lock_blob_matches_repository": true,
-    "locked_native_preflight": "passed on both OSes"
+  "current_ci_observation": {
+    "source_head": "65f5f2d708c058d2bb98c612cc994f2d1f6afc9d",
+    "scope": "Historical 2026-10-03 inventory from checkpoint5972671898; not a result for the new codec commit. No old logs reread or old live jobs rerun for G2A.",
+    "successful_workflows": 13,
+    "failed_workflows": 3,
+    "failed_jobs": 4,
+    "checkpoint": 5972671898
   },
-  "c2_artifact_verifier": {
-    "implementation_commit": "33855bf3856c17342ccf4bda089d212ff55f810a",
-    "status": "native contracts passed; standalone content verification is not live E2E",
-    "contract_run": 36388757311,
-    "shared_tests_prepared": 8,
-    "unix_tests_prepared": 1,
-    "compile_fail_doctests_prepared": 1,
-    "local_rust_execution": false
+  "historical_model_evidence": {
+    "checkpoint": 5966597137,
+    "source_head": "94ce3a04f68e39efb589645e18fae52bf0df724c",
+    "run": 36930160538,
+    "attempt": 9,
+    "job": 111091620945,
+    "artifact": 11260241264,
+    "scope": "Five fixed-public semantic/ChoiceMode cases. Retained historical evidence; not rerun or rehashed during G1 closeout."
   },
-  "c2_live_acceptance": {
-    "parent": "2000e8581a403a31d9001f9bbd9f950012e28ee3",
-    "status": "implemented; native verification pending",
-    "target": "Linux first technical request-choice-file trace",
-    "new_local_python_tests_passed": 11,
-    "library_or_dependency_changes": false,
-    "existing_windows_strict_gate_changed": false,
-    "positive_e2e_verified": false,
-    "reproducible_e2e_verified": false,
-    "publication": "See latest PR73 checkpoint for exact head and run IDs"
+  "legacy_t068_snapshot": {
+    "source_commit": "a97bddab3334cc85d9a00fe9188b141ec89fd6a5",
+    "paths": [
+      "PROJECT_STATE.json",
+      "NEXT.md"
+    ],
+    "as_of": "2026-09-28",
+    "note": "Complete prior verification_context, hash_adoption, c2_artifact_verifier and c2_live_acceptance records remain at this immutable revision and PR73 checkpoints. They are historical, not the current queue."
   },
-  "owner_assistance_rule": "PR73 comment5864661936; check tools, request minimal safe external step for a confirmed barrier, independently verify the result",
-  "prior_detailed_history": "Preserved at 2000e8581a403a31d9001f9bbd9f950012e28ee3 and PR73 checkpoints",
-  "updated": "2026-09-28"
+  "execution_mode": "interactive_only_owner_cancelled_autonomy",
+  "owner_assistance_rule": "Use supported tools; request a minimal safe owner action only for a confirmed barrier; independently verify the result. Never bypass an explicit tool denial.",
+  "prior_detailed_history": "PR80 checkpoints5966597137,5966731022,5967983142,5969904153,5970140310; earlier PR73 history retained in Git.",
+  "updated": "2026-10-03",
+  "g2a_context": {
+    "status": "IMPLEMENTED_LOCAL_TESTS_PASS_REMOTE_CI_PENDING",
+    "scope": "Matrix codec and deterministic self-test only; no Rust/model/Tor/network fixes",
+    "candidate_1_commit": "6cc878f69802520025c2b91b89980d86a551993c",
+    "candidate_1_probes": 16,
+    "candidate_1_limit": "Post-test static review found non-JSON unittest failure detail; corrected separately before generation 2. Initial receipt preserved unchanged.",
+    "candidate_2_probes": 17,
+    "evidence_archive_sha256": "a01e2892b4b0d8dae021106c3f14c01bd38f061f77bbe7678b24459f8bfc2f10",
+    "source_note": "Local receipts identify Git base plus measured evaluator/test file digests; they do not pretend to be remote CI for a future commit.",
+    "post_test_review": "decisions/T069-G2A-evidence-boundary-2026-10-03.md",
+    "broader_local_regression": {
+      "command": "python -m unittest discover -s tools/ci -p test_*.py -v",
+      "tests": 54,
+      "errors": 1,
+      "error": "unchanged test_tagged_runner.py import failed at happy-case assertion; cause not established; no all-green claim or additional rerun",
+      "new_codec_tests_passed": 17
+    },
+    "local_evidence_archive": "PULQVA-G2A-contract-evidence.zip (conversation attachment; not mirrored into Git)",
+    "evidence_retention": "Local evidence is retained in the supplied archive. Exact remote CI matrix must be fetched and verified next before accepting G2A."
+  },
+  "next_phase": "T069-G2A-CI"
 }

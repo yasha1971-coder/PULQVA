@@ -86,3 +86,32 @@ A task is DONE only when:
 - no kernel invariant was weakened;
 - state files are updated;
 - the next task is explicit, but not started in the same response.
+
+## Test Matrix per Evidence Boundary — 2026-10-03
+
+One evidence boundary may contain many independent probes of ONE unchanged object/runtime, including probes that distinguish mutually exclusive hypotheses. Maximize independent evidence per expensive runtime, not the number of runs or fixes. One atomic task does NOT mean one probe. For evidence collection only, this section takes precedence over the splitting and stop-on-failure wording above; session budgets, privacy boundaries and separate implementation tasks still apply.
+
+### Before the run
+
+- Predeclare a bounded manifest: boundary/object, generation ID, all probe IDs, hypotheses, expected outcomes, invariant sets, dependencies and execution order. Do not choose acceptance criteria after seeing results.
+- Freeze source/actual checkout, binaries, model, production prompt/schema, flags, budgets, fixtures, evaluators and manifest. Inputs may vary only as predeclared. Record actual digests/provenance; unavailable values must be explicit, never invented.
+- Establish isolation: fresh input/context and owned output namespace per probe; no probe consumes another probe's output or modifies its assumptions. Account for KV cache/slots/history, environment, filesystem and transport state. Same PID or serial execution alone is not evidence of independence. Shared mutable or state-changing probes need a verified reset/isolation boundary, otherwise separate them. Preserve single-flight constraints; batching does not require concurrency.
+
+### During the run
+
+- Collect results without source edits, hot patches, rebuilds, changed model/prompt/schema/flags/budgets or adjusted acceptance. A series of tests must never become an opaque series of automatic repairs.
+- An ordinary failed probe must not suppress other safe, independent probes in the predeclared matrix. On a privacy/integrity violation, fail closed and mark all affected or unstarted probes SKIP with the reason. Never continue insecurely to fill the matrix.
+- Every planned probe remains represented, including on readiness failure, timeout or early exit: `id`, `hypothesis`, `invariant_set`, `result` (`PASS`, `FAIL`, `SKIP`, `ERROR`), `duration_ms`, expected/observed and evidence references. Measure duration with a monotonic clock. Missing timing is null with an explicit reason, never a fabricated measurement or PASS.
+
+### Evidence and decision
+
+- The shared artifact MUST contain `matrix_receipt.json`: protocol/version, boundary and generation ID, actual checkout and run/job/attempt IDs where applicable, captured object/runtime/model/prompt/schema/manifest digests, OS/arch/toolchain, isolation/order, every probe outcome, overall acceptance and limitations. Preserve raw supporting evidence consistent with privacy/retention rules; do not log private user inputs by default.
+- Missing required evidence, SKIP or ERROR cannot establish acceptance. Distinguish a test's PASS/FAIL against its expected outcome from confirmation/refutation of the underlying hypothesis. Mutually exclusive hypotheses need not both be confirmed for the matrix to be valid.
+- Close and preserve the generation before choosing ONE justified correction. Publish that correction as a separate atomic commit, pass its deterministic gate, then assign a NEW evidence generation. Never merge several fixes into one opaque generation. Reuse passed evidence within its stated scope; rerun only for a recorded new question or changed invariant.
+- Extend the existing harness/evaluator/verifier rather than creating a competing test platform. The receipt writer and verifier require deterministic tests for complete plans, early exits, missing/duplicate probes, incorrect provenance and status aggregation. Do not launch a new expensive matrix without the required evidence capture; do not retroactively relabel old receipts as compliant generations.
+
+This section is a mandatory operating rule, NOT a claim that the current harness emits or validates `matrix_receipt.json`. Implemented enforcement requires executable checks and observed results. It does not authorize an autonomous scheduler, merge, release, paid action or bypass of a tool denial.
+
+Primary-source review (2026-10-03): Rust's test-runner documentation identifies shared-state interference; GitHub's artifact documentation distinguishes an uploaded artifact digest from test acceptance. Decision: explicit probe isolation and independent receipt/digest verification, without replacing pinned runtime components.
+- https://doc.rust-lang.org/book/ch11-02-running-tests.html
+- https://docs.github.com/en/actions/tutorials/store-and-share-data

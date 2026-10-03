@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "decisions": [
+    {
+      "id": "ADR-0001",
+      "path": "decisions/ADR-0001-repository-is-source-of-truth.md",
+      "blob": "05aac9e377f0502a4d19b90243d043a5f95537f3"
+    },
+    {
+      "id": "ADR-0002",
+      "path": "decisions/ADR-0002-kernel-vs-adapters.md",
+      "blob": "5eb0f0eefb5a7221169205bb75d3b72c3e3ae09a"
+    },
+    {
+      "id": "ADR-0003",
+      "path": "decisions/ADR-0003-atomic-work-green-checkpoints.md",
+      "blob": "7f9bcaf37c0b6b9d2af455049dd1b1cc4396d3b1"
+    },
+    {
+      "id": "ADR-0004",
+      "path": "decisions/ADR-0004-arti-sidecar-for-tor-transport.md",
+      "blob": "3eee4b2d43668872af51016386c976f223f04923"
+    },
+    {
+      "id": "ADR-0005",
+      "path": "decisions/ADR-0005-project-license.md",
+      "blob": "674e23d29897b0aca6cd1c3d864206006a9b9e5a"
+    },
+    {
+      "id": "ADR-0006",
+      "path": "decisions/ADR-0006-js-runtime-candidate.md",
+      "blob": "8f22c5ce80174c6446e0d991b66c0134ddf1fdd6"
+    },
+    {
+      "id": "ADR-0007",
+      "path": "decisions/ADR-0007-commons-discovery-boundary.md",
+      "blob": "19fe86aa7adf82993e583c89e9eb8862db5db7da"
+    },
+    {
+      "id": "ADR-0008",
+      "path": "decisions/ADR-0008-commons-https-executor.md",
+      "blob": "f5d752840c32b0aa5c23cac60140da4c1f07e1f6"
+    },
+    {
+      "id": "ADR-0009",
+      "path": "decisions/ADR-0009-windows-official-tor-runtime.md",
+      "blob": "a145d376e1dd434e7701bd8e0bf37556f3c2d2e4"
+    },
+    {
+      "id": "ADR-0010",
+      "path": "decisions/ADR-0010-recoverable-project-state.md",
+      "blob": "c558825ebc8d6a8adf854d7b307edf5952f21516"
+    }
+  ],
+  "legacy_aliases": [
+    {
+      "legacy_id": "ADR-0007",
+      "source_commit": "3c7d42b6fbb06974d59bf99cb0d9f90ad4ca992c",
+      "source_path": "decisions/ADR-0007-windows-official-tor-runtime.md",
+      "canonical_id": "ADR-0009",
+      "retained_path": "recovery/legacy/ADR-0007-windows-official-tor-runtime.md",
+      "blob": "12352f634fda51b3fe12769fef6178f8b0ba6372"
+    }
+  ],
+  "precedence": {
+    "Windows Tor production sidecar": "ADR-0009 supersedes ADR-0004 only on Windows",
+    "Commons discovery": "ADR-0007",
+    "Linux Arti": "ADR-0004; separate evidence needed for migration"
+  },
+  "next_unallocated_number": 11
+}
