@@ -47,6 +47,14 @@ def main() -> int:
         status = assess(os.environ.get('GITHUB_EVENT_NAME', ''), sys.argv[1],
                         os.environ.get('PULQVA_SOURCE_SHA', ''), checkout,
                         os.environ.get('GITHUB_RUN_ATTEMPT', ''))
+        if (sys.argv[1] == 'ytdlp-tor-media-check'
+                and os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch'):
+            try:
+                from media_evidence import admit
+                status = admit(dict(os.environ), Path(__file__).resolve().parents[2],
+                               Path(os.environ.get('PULQVA_MEDIA_PREREQUISITE', '')))
+            except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError):
+                status['reason'] = 'media_prerequisite_or_generation_invalid'
         output = Path(sys.argv[2])
         output.mkdir(parents=True, exist_ok=False)
         with (output / 'live-status.json').open('x', encoding='utf-8') as stream:
@@ -54,13 +62,14 @@ def main() -> int:
             stream.write('\n')
         # Literal-only values: no untrusted event content in Actions command files.
         with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as stream:
-            stream.write('admitted=false\n')
+            stream.write('admitted=' + ('true' if status['admitted'] else 'false') + '\n')
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as stream:
-            stream.write('## Live: NOT TESTED\nAutomatic jobs run deterministic contracts only. '
-                         'These legacy live commands cannot run until a verified live collector '
-                         'and exact-generation admission are connected. No live PASS is claimed.\n')
+            stream.write('## Live: NOT TESTED\nAdmission state: ' + status['state'] + '. '
+                         'Only a validated explicit Linux media generation can proceed. '
+                         'Automatic events and other legacy paths have zero live budget. '
+                         'Admission is not a completed live test or file success.\n')
         print('PULQVA_LIVE_NOT_TESTED ' + status['state'])
-        return 0 if status['state'] == 'NOT_REQUESTED' else 1
+        return 0 if status['state'] == 'NOT_REQUESTED' or status['admitted'] else 1
     except (OSError, ValueError, KeyError, IndexError, subprocess.SubprocessError):
         print('PULQVA_LIVE_ADMISSION_ERROR')
         return 2

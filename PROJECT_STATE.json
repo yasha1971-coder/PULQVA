@@ -12,10 +12,10 @@
   "next_subtask": "T069-G2",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
-  "scope_note": "G2C1 containment is scoped-verified from hosted matrix and all four child-job/status artifacts. New owner-authorized bounded continuation state is pending its own CI. Positive live admission/capture and product E2E are still OPEN.",
+  "scope_note": "G2C1 containment and authority closeout3b212 are scoped-verified. G2C2 positive Linux media admission/capture is implemented and locally synthetic-tested; hosted acceptance and real execution are PENDING. No model-to-file or release acceptance.",
   "known_blockers": [
     "Real local-model output is not yet connected end-to-end to Tor discovery, user selection and a verified saved file.",
-    "G2A/G2B1 codec and native collector are scoped-verified; real model/readiness matrix capture and live isolation remain unimplemented.",
+    "G2A/G2B1 codec and native collector are scoped-verified. G2C2 live media capture is newly implemented, not yet accepted in hosted/live execution; real model capture and full live isolation remain open.",
     "Four previously observed failed jobs remain open: Arti Windows compiler input atlprov.dll mismatch, Commons Linux ConnectOrTls, Commons Windows DestinationTimeout, media Linux DestinationTimeout. These are different boundaries, not one proven cause.",
     "Local model service CORS/auth isolation, native Windows model execution and held-out query semantics remain unverified.",
     "Production yt-dlp completion blocks in Child::wait; a test watchdog is not product-level cancellation or Tor-loss supervision.",
@@ -24,7 +24,7 @@
     "File verification/copy assumes exclusive output ownership; it is neither publisher authentication nor race-proof path handling.",
     "T066 cleanup/races, readiness deadline overshoot and Arti SDK-content pinning remain open.",
     "Autopilot authorization/ranking, user-facing choice, UI integration, self-contained Windows/Linux packages, clean-machine acceptance and package egress remain open.",
-    "G2C1 separates four automatic deterministic contract jobs from old live jobs; hosted containment verified at977ca156. No positive live admission/capture is implemented. Those live jobs are explicitly NOT_TESTED, not fixed or accepted; other independent build/materialization jobs remain unchanged.",
+    "Automatic contracts remain on both OSes. Only explicit exact-source attempt1 Linux media may use the newly implemented same-run native prerequisite/capture path after its deterministic gate. Hosted G2C2 behavior and real media execution remain NOT_TESTED; other three legacy gates stay closed. No historical transport failure is repaired.",
     "G2B helper tests do not establish end-to-end observed/unobserved socket-trace equivalence. Native collector stdout was not retained in the original artifact; do not retroactively upgrade that evidence."
   ],
   "verification_context": {
@@ -60,20 +60,18 @@
     "observed_date": "2026-10-03"
   },
   "current_ci_observation": {
-    "source_head": "54136c31554af0192b1c10a78045009d610b70d0",
-    "scope": "17 completed prior-head PR workflow summaries, not the new generation; historical failure causes remain separate",
-    "successful_workflows": 15,
-    "failed_workflows": 2,
+    "source_head": "3b21251338e13f32d4ddf986dde24c579fd787a6",
+    "scope": "prior-head completed workflow summaries only; not new G2C2 acceptance",
+    "successful_workflows": 16,
+    "failed_workflows": 1,
     "failed_workflows_detail": [
       {
         "name": "arti-sidecar-check",
-        "run": 37205544512
-      },
-      {
-        "name": "commons-tor-discovery-check",
-        "run": 37205544339
+        "run": 37211105551,
+        "cause": "current log not re-read; historical SDK mismatch remains open"
       }
-    ]
+    ],
+    "note": "Four successful contract-only workflows contain unexecuted live jobs; skipped live is NOT_TESTED, not fixed."
   },
   "historical_model_evidence": {
     "checkpoint": 5966597137,
@@ -128,7 +126,7 @@
       "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
     }
   },
-  "next_phase": "T069-G2C2-PREPARE",
+  "next_phase": "T069-G2C2-OBSERVE",
   "g2b_context": {
     "status": "NATIVE_SCOPED_VERIFIED_VIA_G2B1",
     "scope": "Passive Tor readiness observations plus six deterministic native contracts; no new network action or policy change",
@@ -221,5 +219,36 @@
       "checkpoint"
     ],
     "limits": "No merge/release/deployment, paid action, outreach, bypass or concurrent mutation. Scheduler availability and successful writes are not implied by this authorization."
+  },
+  "g2c2_context": {
+    "status": "IMPLEMENTED_LOCAL_SYNTHETIC_PASS_HOSTED_PENDING",
+    "source_base": "3b21251338e13f32d4ddf986dde24c579fd787a6",
+    "prepare_checkpoint": 5982628558,
+    "boundary": "one usable explicit Linux media generation in the EXISTING workflow",
+    "local_generation": "df2182e2-ff82-4747-8b02-6b677c707a35",
+    "local_probes_passed": 20,
+    "related_trigger_contracts_passed": 11,
+    "related_native_collector_tests_passed": 11,
+    "implementation": "same-run exact-source six-test native prerequisite, explicit attempt1, minimal child environment, exclusive temp/home, prebuilt fixed fixture invoked once, pre-run manifest, bounded output/deadline, process-group cleanup and failure closeout",
+    "scope": "synthetic subprocess fixtures only; no local Rust/Arti/model/network run; original media removes object and checks size, NOT a retained verified file",
+    "next_action": "Observe exact new-head rust-check/media-controls artifact and two-OS deterministic media contracts. If accepted, a subsequent bounded phase dispatches this existing media workflow once at exact source; no blind rerun or unrelated transport repair."
+  },
+  "authority_closeout_ci": {
+    "source_head": "3b21251338e13f32d4ddf986dde24c579fd787a6",
+    "checkpoint": 5981327146,
+    "run": 37211105586,
+    "job": 111462311010,
+    "artifact": 11306158582,
+    "artifact_sha256": "5bbe977835d5b813b2c08dfd98bea5546a7db267d65e50f134b954623813f8c0",
+    "probes_passed": 21,
+    "scope": "already independently accepted source continuity; no repeat of tests"
+  },
+  "scheduler_observation": {
+    "automation_id": "6abf44bc84348191aab3e3e2c4540f94",
+    "is_enabled": false,
+    "last_run_time": "2026-10-04T16:16:36.369234Z",
+    "updated_at": "2026-10-04T16:17:42.412894Z",
+    "cause": "not established by available logs",
+    "note": "Observation is not owner revocation or evidence of successful scheduled writes. This interactive turn does not reactivate the scheduler."
   }
 }

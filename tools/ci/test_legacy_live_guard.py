@@ -101,14 +101,22 @@ class LegacyLiveGuardTests(unittest.TestCase):
         self.assertIn('  workflow_dispatch:\n', prefix)
         self.assertIn('needs: [admission, contracts]', live.split('    steps:', 1)[0])
         self.assertIn("github.event_name == 'workflow_dispatch' && needs.admission.outputs.admitted == 'true'", live)
-        self.assertEqual(hashlib.sha256(live.split('    steps:',1)[1].encode()).hexdigest(), BASELINE['steps_sha256'][name])
+        if name == 'ytdlp-tor-media-check':
+            prep = '      - name: Build exact pinned Arti sidecar' + live.split('      - name: Build exact pinned Arti sidecar',1)[1].split('      - name: Prebuild existing fixture before freezing evidence',1)[0]
+            self.assertEqual(hashlib.sha256(prep.encode()).hexdigest(), BASELINE['media_preparation_sha256'])
+            self.assertIn('python3 tools/ci/media_evidence.py capture', live)
+            self.assertIn('runs-on: ubuntu-24.04', live)
+            self.assertIn('needs: contracts', prefix)
+            self.assertIn('media-native-prerequisite-', prefix)
+        else:
+            self.assertEqual(hashlib.sha256(live.split('    steps:',1)[1].encode()).hexdigest(), BASELINE['steps_sha256'][name])
         self.assertIn(f'python3 tools/ci/legacy_live_guard.py {name}', prefix)
         self.assertIn('admitted: ${{ steps.admission.outputs.admitted }}', prefix)
         self.assertIn('live-status.json', prefix)
         self.assertIn('live NOT TESTED', prefix)
         self.assertNotIn('continue-on-error:', text)
         contracts = prefix.split('  contracts:',1)[1]
-        self.assertNotIn('    if:', contracts)
+        self.assertNotIn('    if:', contracts.split('    steps:',1)[0])
         self.assertNotIn('cargo +1.91.0 install arti', contracts)
         self.assertNotIn('--example real_arti_readiness --', contracts)
         for command in BASELINE['contracts'][name]:

@@ -3,39 +3,42 @@
 ## T069 — local intent -> Tor choices -> selection -> verified file
 
 Read live PR80 HEAD and entry/AGENTS/Kernel/State/index at the SAME version.
-Owner checkpoint5981185094 requests bounded continuations until stopped; read any
-newer stop first. No merge/release/payment or Kernel changes. Offline restore must
-never activate a scheduler. No claim that scheduled source writes have been tested.
+Global verified anchor, Kernel, transport/model/sidecar pins stay unchanged.
+No merge/release/payment or outreach. Scheduler was observed disabled; cause unknown;
+this interactive phase does not reactivate it. Authorization does not prove execution.
 
-## ONE NEXT ACTION: T069-G2 / G2C2-PREPARE
+## ONE NEXT ACTION: T069-G2 / G2C2-OBSERVE
 
-First OBSERVE the pending continuity check for this authority/closeout commit. Check
-actual checkout and all21 recovery probes, not only a green badge. Do not rerun the
-accepted G2C1 generation. If this gate fails, fix only its deterministic failure.
+Observe the new exact-head deterministic gate for G2C2. Do not repeat accepted
+G2C1/authority observations: checkpoint5981327146 already closed that phase.
+G2C2 adds an actual positive media admission and capture path, not another audit.
+Local frozen synthetic matrix passed20/20; related trigger contracts11/11 and
+native collector regression11/11 passed. None is a real Rust/Tor/model execution.
 
-Then implement ONE usable admitted immutable media/readiness generation in the
-EXISTING media workflow/path. Keep the three other legacy live gates closed.
-Prior G2C1 containment was accepted at977ca156 (run37208088561,11/11 probes);
-all four workflows ran their two OS contract jobs and skipped legacy live work before
-preparation. Exact matrix/status text members are retained in recovery/evidence/g2c1-37208088561.
-They do NOT establish live Tor acceptance or a positive launch path.
+Require the new rust-check `pulqva-media-controls` original manifest/receipt/raw
+outcomes and actual checkout to match this source. Inspect the media workflow's
+Linux/Windows contract jobs: both must execute; automatic live remains NOT_TESTED.
+On deterministic failure, retain its evidence and diagnose only that concrete failure.
+No blind duplicate, pin/time-budget relaxation or source change during pending CI.
 
-For the positive boundary: explicit request with exact source, relevant successful
-native prerequisite, frozen post-build runtime/configuration and PRE-RUN manifest;
-one bounded launch of the existing media fixture; owned fresh output, capture and
-complete closeout. Reject stale/missing prerequisites, changed identities, duplicates
-and absent capture/isolation. Test admission and failure capture before live execution.
-Keep model/prompt/schema, sidecar pins, Tor routing, retry/time budgets and original
-success predicates unchanged unless a separately justified correction requires it.
-Do not substitute another launcher or an always-false gate for the positive path.
+After hosted acceptance, a SUBSEQUENT bounded phase may dispatch the EXISTING
+`ytdlp-tor-media-check.yml` once on the exact feature ref, with input `source_sha`
+equal to that full SHA. It must be attempt1. The workflow runs both OS contracts
+and produces six native readiness prerequisites on Linux in that SAME run/source;
+admission independently checks manifest/receipt/raw exact named-test outcomes.
+Only then may the existing Linux media job build pinned sidecars and fixture,
+freeze measured identities, and execute that prebuilt fixture exactly once.
+Other three legacy live gates remain closed. No boolean override or second launcher.
 
-The existing media example removes its output and verifies size, not content hashes.
-Its successful marker is only scoped media-fixture evidence, NOT an independently
-verified saved file. Preserve this distinction until the existing file verifier is
-connected. Shared live retries are dependent observations, not independent probes.
+The evidence adapter has a pre-run manifest, one dependent journey probe,
+exclusive temp/home, minimal child environment, bounded pipes/outer deadline,
+owned process-group cleanup and failure/NOT_TESTED closeout. The original fixture's
+routes/destination/internal90s+180s budgets/retries are unchanged. Live retry attempts
+are dependent observations, not independent probes. Same-run artifacts and SHA checks
+are trusted-CI provenance, not independent authenticity or malicious-code protection.
 
-If positive admission tests and native gate pass, a later phase may execute that ONE
-generation, verify artifacts and act on the observed boundary. No blind retries.
-Historical Arti SDK mismatch, Commons faults, tagged-runner regression, full model
-integration, local CORS/auth, Windows model, consent, Tor-loss/descendant egress, FS
-ownership, UI/packages and clean-machine tests remain OPEN. Global anchor unchanged.
+This fixture checks the known media size and DELETES its output. Its PASS is NOT
+a retained content-verified file, a UI path, general model quality or release proof.
+After this boundary use the existing discovery file verifier and typed intent/choice
+chain. Keep SDK/Commons faults, service/Windows/consent/Tor-loss/egress/FS issues,
+UI/packages/clean-machine acceptance explicit. No more generic evidence framework.

@@ -11,8 +11,8 @@
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "2b9ac9ae933249d5b710ba0189723cb8eb928df5",
-    "NEXT.md": "7ee161ea8d108368cfbf8146f3edbebb560060fd",
+    "PROJECT_STATE.json": "14ffff5fd933d6608cb90652e3f01493a85d3e5a",
+    "NEXT.md": "7995f8c7f5a8134da6f787edc4149b2803291dba",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -28,20 +28,20 @@
     "crates/pulqva-privacy/src/arti_readiness/tests.rs": "be7180b01c6b06ef423dc253ff821961818d6c2e",
     "crates/pulqva-privacy/src/lib.rs": "037ff265939354e1a3da30900c52f1f21d3c5d86",
     "crates/pulqva-privacy/examples/real_ytdlp_tor_media.rs": "fa831e28731e1bb1a5cc77f14fd7c702c09f63b5",
-    ".github/workflows/rust-check.yml": "87d7faaaef038dd69ae5fd116eb68f1abade24d0",
+    ".github/workflows/rust-check.yml": "37850e19b20496f3fefef044f3473c2814444651",
     "tools/ci/readiness_contract_matrix.py": "a29d825489f82c7fbe900edfb3fa546ac2878bc5",
     "decisions/T069-G2B-passive-readiness-2026-10-04.md": "fdb890fc4a8128599af6a2af4742e318a8e12bfc",
     "tools/ci/test_readiness_contract_matrix.py": "09f47b66819aa0d14c8e9cd81afe4c043cdc1fce",
     "recovery/evidence/g2b-37202811555.zip": "d11070e9f2e7e64d993d2694cd07e6499b3daf29",
     "recovery/evidence/g2b1-admission-observation.json": "aad0378392a78977f93f6be109b86e2ca5cd2f46",
     "tools/ci/test_workflow_contract.py": "cc12580450f681c980c3f201bbc8ccce925b890a",
-    "tools/ci/legacy_live_guard.py": "a85afc51ed770b304dc3817c0c56309d49df7d3f",
-    "tools/ci/test_legacy_live_guard.py": "b1a28e3ec678eb7893df93b0758fa6189d8dd9e5",
-    "tools/ci/legacy_live_baseline.json": "0d24ee12256aae709862db8c046b4127e576f9c8",
+    "tools/ci/legacy_live_guard.py": "d19a4ac4a5af9ad8e42bc2e7104c82e961ccfabb",
+    "tools/ci/test_legacy_live_guard.py": "aa4a089741b855d18e11a5e9b32b4921b30e6ed5",
+    "tools/ci/legacy_live_baseline.json": "7208badd567b299279c56e30c1fd816302c9378b",
     "decisions/T069-G2C1-trigger-containment-2026-10-04.md": "937b6bf86dfdf63b057ee0148d2792bcf0658d24",
     "recovery/evidence/g2b1-37205544440.zip": "12c7a5a21efb3ce4efcfe9b9ec0201f3f103dc88",
     ".github/workflows/tor-readiness-check.yml": "d1a94396656b9e929e4b6156bcfa2b408a12c160",
-    ".github/workflows/ytdlp-tor-media-check.yml": "c5bd411d8fe62da0007bea4bec56ae9dd0ed4e2b",
+    ".github/workflows/ytdlp-tor-media-check.yml": "1f31f15118a29b90c4b91789ef765a1200dd7a8c",
     ".github/workflows/ytdlp-tor-metadata-check.yml": "a5cc21b7a3242264d8c927b541d9a917f9705f5e",
     ".github/workflows/commons-tor-discovery-check.yml": "29d8f110efeefae7a081584a972723c6f835142a",
     "START_HERE.md": "a95abac6aed824e530ca98e86e41cfa9443f7252",
@@ -54,7 +54,11 @@
     "recovery/evidence/g2c1-37208088561/matrix_receipt.json": "9951d86f1618f494ddc0b9a140821ab1bbc2b781",
     "recovery/evidence/g2c1-37208088561/manifest.json": "70ec4c350e0fd8011f96a7b1de6895c75f9bf0ef",
     "recovery/evidence/g2c1-37208088561/live-status-readiness.json": "513552e9cfc8b5acd3011eedf83d671d36c1df40",
-    "recovery/evidence/g2c1-37208088561/live-status-commons.json": "7fb052729947844328cb31188bbe7289a3e40915"
+    "recovery/evidence/g2c1-37208088561/live-status-commons.json": "7fb052729947844328cb31188bbe7289a3e40915",
+    "tools/ci/media_evidence.py": "f5a5afec0e43f890e941967569e56f3e9f97d926",
+    "tools/ci/test_media_evidence.py": "b7a2be9e9d5c3b023d8ba3b7cc4ffaf69cfaa77e",
+    "decisions/T069-G2C2-media-admission-2026-10-04.md": "2664b726254018b272c52dbc509bcb0f243b214f",
+    "recovery/evidence/g2c2-local-observation.json": "fdf85f10c29ab1a48eb0524ecdb1b893c6eecc45"
   },
   "state_contract": {
     "active_task": "T069",
@@ -101,7 +105,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "T069-G2C2: verify authority closeout CI, then implement one usable admitted media/readiness generation in the existing media path.",
+  "next_action": "T069-G2C2: observe new hosted controls; then one separately admitted immutable existing media generation at exact source.",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",

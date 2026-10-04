@@ -1,0 +1,9 @@
+{
+  "source_base": "3b21251338e13f32d4ddf986dde24c579fd787a6",
+  "generation_id": "df2182e2-ff82-4747-8b02-6b677c707a35",
+  "status": "LOCAL_SYNTHETIC_20_PASS",
+  "manifest_sha256": "c819dff420460e23311b2533f45577530ec0088d091534ba3d7c469c479bff45",
+  "receipt_sha256": "fa289faf70e065fbc3cdbb17c10c67369e0a3b7d431e1c91014ba27b502bf8cd",
+  "raw_sha256": "78c5adc065de5de54fe975841cf3698dc251727b0fae576cd1badfb4fac6e408",
+  "note": "Local source overlay identities are captured in original manifest; not a future remote commit or hosted/native evidence."
+}

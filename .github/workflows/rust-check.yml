@@ -14,6 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify media positive admission and bounded capture (synthetic)
+        env:
+          PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/ci/test_media_evidence.py "$RUNNER_TEMP/pulqva-media-controls"
+
+      - name: Retain media capture control matrix (not live Tor)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-media-controls-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulqva-media-controls/
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Verify automatic versus live trigger containment
         env:
           PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

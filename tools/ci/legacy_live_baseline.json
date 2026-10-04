@@ -30,5 +30,6 @@
       "cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture",
       "cargo +1.91.0 test --locked -p pulqva-discovery --example real_commons_file -- --nocapture"
     ]
-  }
+  },
+  "media_preparation_sha256": "7f7075194e99f81dd38224081d20539f6f1236ba8dc973ce263947b29c5fca5f"
 }
