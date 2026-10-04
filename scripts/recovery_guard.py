@@ -45,6 +45,41 @@ def git(root, *args):
                                    timeout=20).decode().strip()
 
 
+def validate_execution_mode(state):
+    """Validate declared authority consistency, not authorization authenticity.
+
+    Only the connected scheduler/owner can grant or revoke actual execution. Restoring
+    an offline bundle must NEVER start a task. This validator has no write/launch API.
+    """
+    mode = state.get('execution_mode')
+    authority = state.get('execution_authorization')
+    if mode == 'interactive_only_owner_cancelled_autonomy':
+        if authority is not None and (not isinstance(authority, dict) or authority.get('status') != 'revoked'):
+            raise ValueError('cancelled mode conflicts with execution authority')
+        return
+    if mode != 'scheduled_bounded_owner_authorized' or not isinstance(authority, dict):
+        raise ValueError('missing explicit bounded owner authority')
+    required = {
+        'schema': 1, 'status': 'authorized', 'origin': 'explicit_owner_message',
+        'automation_id': '6abf44bc84348191aab3e3e2c4540f94',
+        'cadence_minutes': 60, 'max_mutating_tasks_per_cycle': 1,
+        'max_live_generations_per_cycle': 1,
+        'stop_on_owner_request': True, 'stop_on_access_denial': True,
+    }
+    for key, value in required.items():
+        if type(authority.get(key)) is not type(value) or authority[key] != value:
+            raise ValueError('unsupported bounded execution authority: ' + key)
+    if (type(authority.get('checkpoint')) is not int or authority['checkpoint'] <= 0
+            or not isinstance(authority.get('owner_instruction'), str)
+            or not authority['owner_instruction'].strip()
+            or not isinstance(authority.get('authorized_date'), str)
+            or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', authority['authorized_date'])):
+        raise ValueError('owner authorization provenance missing')
+    if authority.get('grants') != ['read_repository', 'feature_branch_atomic_edit',
+                                   'deterministic_tests', 'admitted_live_generation', 'checkpoint']:
+        raise ValueError('execution grants expanded or missing')
+
+
 def validate(root: Path, check_git: bool = True):
     """Raise on inconsistent/absent evidence; return the only declared next action.
 
@@ -76,8 +111,7 @@ def validate(root: Path, check_git: bool = True):
         raise ValueError('missing next subtask/action')
     if not state.get('known_blockers') or 'scope_note' not in state:
         raise ValueError('scope or blockers lost')
-    if state['execution_mode'] != 'interactive_only_owner_cancelled_autonomy':
-        raise ValueError('autonomy must remain cancelled')
+    validate_execution_mode(state)
     evidence = state['verification_context']
     for key, value in index['g1_contract'].items():
         if evidence.get(key) != value:

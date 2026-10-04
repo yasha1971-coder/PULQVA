@@ -115,3 +115,15 @@ This section is a mandatory operating rule, NOT a claim that the current harness
 Primary-source review (2026-10-03): Rust's test-runner documentation identifies shared-state interference; GitHub's artifact documentation distinguishes an uploaded artifact digest from test acceptance. Decision: explicit probe isolation and independent receipt/digest verification, without replacing pinned runtime components.
 - https://doc.rust-lang.org/book/ch11-02-running-tests.html
 - https://docs.github.com/en/actions/tutorials/store-and-share-data
+
+## Explicit bounded-continuation authorization — 2026-10-04
+
+Owner checkpoint5981185094 supersedes the earlier cancellation for future bounded
+continuations only. Read `PROJECT_STATE.execution_authorization` and any newer owner
+stop before acting. One scheduled invocation still has one atomic mutating task, one
+new evidence generation/build wave at most, and the existing no-busy-poll limits.
+The request to maximize steps means useful evidence and successive saved phases,
+not concurrent repairs, unbounded retries or bypassing admission. Restoring an old
+snapshot NEVER re-enables a task. If connected writes are denied, checkpoint when
+possible and stop; repeated invocations must not repeat an unchanged blocker forever.
+This does not authorize merge/release/deployment, payment, outreach or weakened Kernel.

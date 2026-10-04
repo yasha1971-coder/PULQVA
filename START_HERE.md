@@ -40,9 +40,14 @@ The global verified anchor is not advanced by this recovery work.
 
 ## Authority
 
-Interactive work only. Owner cancelled autonomous mode. No scheduler, merge, release,
-paid action, solicitation or cancelled outreach. No bypass of denied tool access or Tor.
-Reports only on request; surface a blocker when owner action is genuinely required.
+The owner explicitly requested continued bounded work on 2026-10-04 (PR80 checkpoint
+5981185094). `PROJECT_STATE.execution_authorization` records the limits. Scheduled
+continuations are permitted, at most hourly, one atomic mutating task per cycle;
+this does NOT grant a legacy live launch, merge, release, deployment or paid action.
+Before each write read live HEAD/checkpoint and the current owner/scheduler state.
+A later stop/revocation wins over an old bundle. **Offline restoration never starts
+or re-enables a scheduler.** A recorded authorization is not proof of scheduler health.
+Stop on access/approval denial; never bypass it. Reports only on request.
 
 ## Offline recovery
 

@@ -1,0 +1,14 @@
+{
+  "admitted": false,
+  "attempt": 1,
+  "checkout_sha": "977ca156fec448e85118614f6d92bdcbb7d6cd0d",
+  "event": "pull_request",
+  "launch_budget": 0,
+  "live_result": "NOT_TESTED",
+  "reason": "automatic_contracts_only",
+  "schema": "pulqva-legacy-live-containment-v1",
+  "scope": "trigger containment only; no live test or product acceptance",
+  "source_sha": "977ca156fec448e85118614f6d92bdcbb7d6cd0d",
+  "state": "NOT_REQUESTED",
+  "workflow": "ytdlp-tor-metadata-check"
+}

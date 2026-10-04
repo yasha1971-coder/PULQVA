@@ -2,6 +2,10 @@
 """Independent recovery-contract probes against one unchanged validator."""
 from __future__ import annotations
 import hashlib
+import os
+import platform
+import subprocess
+import uuid
 import json
 from pathlib import Path
 import shutil
@@ -11,6 +15,8 @@ import time
 from recovery_guard import blob, load, validate
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tools/ci'))
+from matrix_receipt import MatrixRecorder, canonical, write_exclusive, verify
 
 
 def save(path, value):
@@ -30,6 +36,9 @@ def fixture(root):
     state.update(known_blockers=['synthetic fixture only'], scope_note='not product evidence',
                  verification_context=index['g1_contract'],
                  historical_model_evidence={'source_head': index['model_archive']['source_commit']})
+    declared = load(ROOT / 'PROJECT_STATE.json')
+    if 'execution_authorization' in declared:
+        state['execution_authorization'] = declared['execution_authorization']
     save(root / 'PROJECT_STATE.json', state)
     (root / 'NEXT.md').write_text('ONE NEXT ACTION: ' + state['next_subtask'])
     for name in index['sealed_files']:
@@ -90,6 +99,35 @@ def wrong_provenance(root):
     save(p, data)
 
 
+def authority_change(root, key, value):
+    p = root / 'PROJECT_STATE.json'
+    state = load(p)
+    state['execution_authorization'][key] = value
+    save(p, state)
+    seal(root, 'PROJECT_STATE.json')
+
+
+def remove_authority(root):
+    p = root / 'PROJECT_STATE.json'
+    state = load(p)
+    state.pop('execution_authorization', None)
+    save(p, state)
+    seal(root, 'PROJECT_STATE.json')
+
+
+def cancelled_mode(root):
+    p = root / 'PROJECT_STATE.json'
+    state = load(p)
+    state['execution_mode'] = 'interactive_only_owner_cancelled_autonomy'
+    state['execution_authorization']['status'] = 'revoked'
+    save(p, state)
+    seal(root, 'PROJECT_STATE.json')
+    p = root / 'recovery/INDEX.json'
+    index = load(p)
+    index['state_contract']['execution_mode'] = state['execution_mode']
+    save(p, index)
+
+
 CASES = [
     ('REC-01', 'A complete consistent envelope identifies G2 without chat', lambda r: None, True),
     ('REC-02', 'Unsealed state changes are detected', lambda r: (r/'PROJECT_STATE.json').write_text('{}'), False),
@@ -105,12 +143,61 @@ CASES = [
     ('REC-12', 'Changed model provenance is rejected', wrong_provenance, False),
     ('REC-13', 'Discarded blockers are rejected', lambda r: mutate_state(r, 'known_blockers', []), False),
     ('REC-14', 'A missing kernel contract fails', lambda r: (r/'kernel/CORE_CONTRACT.md').unlink(), False),
+    ('REC-15', 'Scheduled mode without owner record fails even after resealing', remove_authority, False),
+    ('REC-16', 'Revoked authority cannot run scheduled mode', lambda r: authority_change(r, 'status', 'revoked'), False),
+    ('REC-17', 'Owner stop restores valid cancelled mode without losing history', cancelled_mode, True),
+    ('REC-18', 'Expanded execution grants cannot be accepted', lambda r: authority_change(r, 'grants', ['merge']), False),
+    ('REC-19', 'Mutating work stays bounded to one task', lambda r: authority_change(r, 'max_mutating_tasks_per_cycle', 2), False),
+    ('REC-20', 'Boolean cannot masquerade as an integer budget', lambda r: authority_change(r, 'max_live_generations_per_cycle', True), False),
+    ('REC-21', 'Missing owner checkpoint denies authority', lambda r: authority_change(r, 'checkpoint', None), False),
 ]
 
 
+def measured_identity():
+    checkout = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'],
+                                       text=True, timeout=10).strip()
+    paths = {'runtime': Path(sys.executable).resolve(),
+             'evaluator': ROOT / 'scripts/recovery_guard.py',
+             'fixtures': Path(__file__), 'codec': ROOT / 'tools/ci/matrix_receipt.py',
+             'state': ROOT / 'PROJECT_STATE.json', 'index': ROOT / 'recovery/INDEX.json',
+             'adr_index': ROOT / 'decisions/INDEX.json',
+             'archive': ROOT / load(ROOT / 'recovery/INDEX.json')['model_archive']['path']}
+    components = {name: {'status': 'captured', 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+                  for name, p in paths.items()}
+    for name in ('model', 'prompt', 'schema'):
+        components[name] = {'status': 'not_applicable', 'sha256': None,
+                            'reason': 'synthetic source recovery; no inference'}
+    components['flags'] = {'status': 'captured', 'sha256': hashlib.sha256(
+        canonical({'check_git': False, 'fresh_fixture': True})).hexdigest()}
+    return {'source_sha': os.environ.get('PULQVA_SOURCE_SHA', checkout),
+            'checkout_sha': checkout, 'components': components,
+            'run_id': os.environ.get('GITHUB_RUN_ID'), 'run_id_reason': 'local run if absent',
+            'job_id': None, 'job_id_reason': 'bind external numeric job from Actions job list',
+            'attempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'attempt_reason': 'local run if absent',
+            'working_tree_note': 'Prepared overlays are bound by actual component digests, not a future commit.'}
+
+
 def main():
+    destination = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    plan = {'protocol': 'pulqva-evidence-boundary-v1', 'boundary': 'source recovery authority',
+            'generation_id': str(uuid.uuid4()), 'identity': measured_identity(),
+            'environment': {'os': platform.system(), 'arch': platform.machine(),
+                            'toolchain': 'Python ' + platform.python_version()},
+            'isolation': {'status': 'verified', 'strategy': 'Fresh TemporaryDirectory and independently loaded fixture per probe; source ZIP read-only.',
+                          'evidence_refs': ['recovery-test-results.json']},
+            'probes': [{'id': pid, 'hypothesis': hypothesis,
+                        'invariant_set': ['same validator and fixtures', 'fresh owned root', 'no network or model', 'no hot fixes'],
+                        'expected': {'accepted': expected}, 'depends_on': []}
+                       for pid, hypothesis, _, expected in CASES]}
+    recorder = MatrixRecorder(plan)
+    if destination:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        write_exclusive(destination.with_name('recovery-manifest.json'), plan)
     rows = []
     for probe, hypothesis, mutation, expected in CASES:
+        if measured_identity() != plan['identity']:
+            recorder.fail_closed('frozen_identity_changed')
+            break
         start = time.monotonic_ns()
         result, detail = 'ERROR', None
         try:
@@ -127,22 +214,22 @@ def main():
                 detail = {'accepted': accepted}
         except Exception as exc:
             detail = {'error_type': type(exc).__name__}
-        rows.append({'id': probe, 'hypothesis': hypothesis,
-                     'invariant_set': ['same validator source', 'fresh owned fixture', 'no network or model', 'no hot fixes'],
-                     'result': result, 'duration_ms': (time.monotonic_ns()-start)/1e6,
-                     'expected': {'accepted': expected}, 'observed': detail})
-    output = {'protocol': 'pulqva-continuity-probe-matrix-v1', 'boundary': 'recovery validator, synthetic fixtures',
-              'generation': 'fixed validator source digests below',
-              'source_sha256': {n: hashlib.sha256((ROOT/'scripts'/n).read_bytes()).hexdigest()
-                                for n in ('recovery_guard.py', 'test_recovery_guard.py')},
-              'isolation': 'one fresh TemporaryDirectory per probe; shared read-only input ZIP; no shared mutable runtime',
-              'probes': rows, 'all_ok': all(r['result']=='PASS' for r in rows),
-              'limitations': ['No Git ancestry in these synthetic cases; real bundle restore checks that separately.',
-                              'Not the real-model matrix implementation of T069-G2.']}
-    if len(sys.argv) > 1:
-        save(Path(sys.argv[1]), output)
+        duration = (time.monotonic_ns()-start)/1e6
+        rows.append({'id': probe, 'result': result, 'duration_ms': duration, 'observed': detail})
+        recorder.record(probe, result=result, duration_ms=duration, observed=detail,
+                        evidence_refs=['recovery-test-results.json#' + probe],
+                        reason='synthetic_probe_error' if result=='ERROR' else None)
+    raw = {'probes': rows}
+    output = recorder.close(measured_identity())
+    output['limitations'].extend(['Synthetic probes do not check Git history; source restore checks it separately.',
+                                  'Recorded owner authority is not an authenticity signature or live scheduler verification.'])
+    if destination:
+        raw_path = destination.with_name('recovery-test-results.json')
+        write_exclusive(raw_path, raw)
+        output['raw_evidence_sha256'] = hashlib.sha256(raw_path.read_bytes()).hexdigest()
+        write_exclusive(destination, output)
     print(json.dumps(output, indent=2))
-    return 0 if output['all_ok'] else 1
+    return 0 if verify(plan, output)=='PASS' else 1
 
 
 if __name__ == '__main__':
