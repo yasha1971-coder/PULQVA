@@ -1,1 +1,2 @@
 sidecars/arti/pulqva.toml text eol=lf
+sidecars/tor/*.torrc text eol=lf
