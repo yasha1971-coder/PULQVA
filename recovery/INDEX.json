@@ -7,12 +7,12 @@
   "snapshot_note": "Historical source anchor, not a fabricated self-referential current HEAD. Resolve live HEAD before writing.",
   "kernel_tree": "199a069695efe62e082a6886918e53e1c22a9179",
   "product_trees": {
-    "crates": "5d69bd1da34833597e19c6586180a750584786fc",
+    "crates": "14cc98aa7de373eabc5ebd28dfcf8e38886141b0",
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "a708977c02fdff0ff69bbcfee727ffc30d393a66",
-    "NEXT.md": "47ec49efd017bcd7d6ad05f478c6f2bdf30d853c",
+    "PROJECT_STATE.json": "c4b43771927e86ad2ea3e3dcb11eb9c538fa7240",
+    "NEXT.md": "36a46d864b9381dc9fc611badb3166f123c71155",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -23,7 +23,14 @@
     "tools/ci/matrix_receipt.py": "44288e7a58a85e83e4ffc2c1971b3de4ab89f817",
     "tools/ci/test_matrix_receipt.py": "f17f3b988ad12c0df4934e462b361d50106b1f29",
     "decisions/T069-G2A-evidence-boundary-2026-10-03.md": "6a9b2194a55d99874016caf54a014881de1e8322",
-    "recovery/evidence/g2a-observation.json": "7dc344c61b85831069b31c7019727781dcaf35f2"
+    "recovery/evidence/g2a-observation.json": "7dc344c61b85831069b31c7019727781dcaf35f2",
+    "crates/pulqva-privacy/src/arti_readiness.rs": "88234427553ae754a86a319268146a5a62fa71f3",
+    "crates/pulqva-privacy/src/arti_readiness/tests.rs": "be7180b01c6b06ef423dc253ff821961818d6c2e",
+    "crates/pulqva-privacy/src/lib.rs": "037ff265939354e1a3da30900c52f1f21d3c5d86",
+    "crates/pulqva-privacy/examples/real_ytdlp_tor_media.rs": "fa831e28731e1bb1a5cc77f14fd7c702c09f63b5",
+    ".github/workflows/rust-check.yml": "470955146db26110783fa99a1de91998ed3cd594",
+    "tools/ci/readiness_contract_matrix.py": "93b037ba14693c350aac6cccc393c8b33e0acedf",
+    "decisions/T069-G2B-passive-readiness-2026-10-04.md": "3f6ebbbf6a5197f0d5a792a62a6c4ba29e7643b2"
   },
   "state_contract": {
     "active_task": "T069",
@@ -70,11 +77,21 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "Observe T069-G2 phase G2A-CI on the exact current-head continuity artifact; then passive readiness diagnostics. No blind rerun or scheduler.",
+  "next_action": "Observe T069-G2B exact-head rust-check and its pulqva-readiness-contract artifact; verify all six native probes before any live readiness generation.",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",
     "Raw G1 log and all GitHub comments are not mirrored by this archive.",
     "Source recovery does not recreate external model, dependencies or runtime binaries."
-  ]
+  ],
+  "g2a_ci": {
+    "run": 37152930607,
+    "job": 111290338350,
+    "artifact": 11284622078,
+    "artifact_sha256": "611c45910a038a23aad262fd76a0b4c0695c690c6c783988dd481927f4c49349",
+    "generation_id": "0afec2d4-bfb9-40d9-8348-385f0634fb0f",
+    "actual_checkout": "85eaee75c0dcef7294ed5cb42370542e2224b610",
+    "probes_passed": 17,
+    "scope": "finite Python evidence-codec acceptance only"
+  }
 }

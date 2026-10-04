@@ -94,3 +94,85 @@ fn timeout_stage_display_contains_only_fixed_stage_information() {
         assert!(error.source().is_none());
     }
 }
+
+
+#[test]
+fn rd_wire_request_is_fixed_remote_domain_connect() {
+    let request = readiness_request().expect("fixed host fits SOCKS5 domain length");
+    let host = READINESS_HOST.as_bytes();
+    let mut expected = vec![0x05, 0x01, 0x00, 0x03, host.len() as u8];
+    expected.extend_from_slice(host);
+    expected.extend_from_slice(&READINESS_PORT.to_be_bytes());
+    assert_eq!(request, expected);
+}
+
+#[test]
+fn rd_reply_classifies_all_256_codes() {
+    for reply in 0_u8..=u8::MAX {
+        let actual = classify_socks_reply(reply);
+        let expected = match reply {
+            0x00 => TorSocksReplyClass::Succeeded,
+            0x01 => TorSocksReplyClass::GeneralFailure,
+            0x02 => TorSocksReplyClass::RulesetDenied,
+            0x03 => TorSocksReplyClass::NetworkUnreachable,
+            0x04 => TorSocksReplyClass::HostUnreachable,
+            0x05 => TorSocksReplyClass::ConnectionRefused,
+            0x06 => TorSocksReplyClass::TtlExpired,
+            0x07 => TorSocksReplyClass::CommandUnsupported,
+            0x08 => TorSocksReplyClass::AddressTypeUnsupported,
+            _ => TorSocksReplyClass::Unassigned,
+        };
+        assert_eq!(actual, expected, "REP={reply}");
+    }
+}
+
+#[test]
+fn rd_io_classification_distinguishes_timeout_kinds() {
+    for (kind, expected) in [
+        (io::ErrorKind::ConnectionRefused, TorReadinessIoKind::ConnectionRefused),
+        (io::ErrorKind::ConnectionReset, TorReadinessIoKind::ConnectionReset),
+        (io::ErrorKind::ConnectionAborted, TorReadinessIoKind::ConnectionAborted),
+        (io::ErrorKind::TimedOut, TorReadinessIoKind::TimedOut),
+        (io::ErrorKind::WouldBlock, TorReadinessIoKind::WouldBlock),
+        (io::ErrorKind::NotConnected, TorReadinessIoKind::NotConnected),
+        (io::ErrorKind::PermissionDenied, TorReadinessIoKind::Other),
+    ] {
+        assert_eq!(classify_io_kind(&io::Error::from(kind)), expected);
+    }
+}
+
+#[test]
+fn rd_trace_is_bounded_and_counts_omissions() {
+    let mut trace = TorReadinessTrace::default();
+    for _ in 0..(MAX_READINESS_OBSERVATIONS + 7) {
+        trace.push(TorReadinessObservation {
+            family: TorReadinessLoopbackFamily::Ipv4,
+            stage: TorReadinessStage::Destination,
+            operation: TorReadinessOperation::ReadDestination,
+            io_kind: Some(TorReadinessIoKind::TimedOut),
+            socks_reply: None,
+            socks_reply_class: None,
+            duration_ms: 1,
+        });
+    }
+    assert_eq!(trace.observations().len(), MAX_READINESS_OBSERVATIONS);
+    assert_eq!(trace.omitted(), 7);
+}
+
+#[test]
+fn rd_trace_contains_only_fixed_privacy_safe_fields() {
+    let mut trace = TorReadinessTrace::default();
+    trace.push(TorReadinessObservation {
+        family: TorReadinessLoopbackFamily::Ipv6,
+        stage: TorReadinessStage::Destination,
+        operation: TorReadinessOperation::ClassifyReply,
+        io_kind: None,
+        socks_reply: Some(0x05),
+        socks_reply_class: Some(TorSocksReplyClass::ConnectionRefused),
+        duration_ms: 3,
+    });
+    let rendered = format!("{trace:?}");
+    for forbidden in [READINESS_HOST, "19050", "/tmp/", "C:\\", "private-error-text"] {
+        assert!(!rendered.contains(forbidden), "leaked forbidden diagnostic text: {forbidden}");
+    }
+}

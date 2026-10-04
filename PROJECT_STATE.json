@@ -12,7 +12,7 @@
   "next_subtask": "T069-G2",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
-  "scope_note": "G1 retains its recorded acceptance. G2A receipt codec has local deterministic evidence; remote CI for this change is pending. Neither full G2 live capture nor the readiness diagnostic recovery is complete. The global verified anchor is unchanged.",
+  "scope_note": "G1 is scoped-accepted. G2A finite evidence codec is verified in remote continuity CI. G2B passive readiness instrumentation is published in this source generation, but its exact-head native contract matrix is pending; no live Tor/model/file acceptance follows from publication.",
   "known_blockers": [
     "Real local-model output is not yet connected end-to-end to Tor discovery, user selection and a verified saved file.",
     "G2A matrix receipt codec is implemented with local tests; real_server_smoke/readiness event capture and actual runtime isolation are not wired to it. No new expensive matrix is authorized by codec success.",
@@ -58,12 +58,21 @@
     "observed_date": "2026-10-03"
   },
   "current_ci_observation": {
-    "source_head": "65f5f2d708c058d2bb98c612cc994f2d1f6afc9d",
-    "scope": "Historical 2026-10-03 inventory from checkpoint5972671898; not a result for the new codec commit. No old logs reread or old live jobs rerun for G2A.",
-    "successful_workflows": 13,
-    "failed_workflows": 3,
-    "failed_jobs": 4,
-    "checkpoint": 5972671898
+    "source_head": "682c1b3338112946d13ca731abd6628f78535cf0",
+    "scope": "G2A exact-head observation before G2B publication; workflow summaries only outside the verified G2A continuity artifact.",
+    "successful_workflows": 14,
+    "failed_workflows": 2,
+    "failed_workflows_detail": [
+      {
+        "name": "arti-sidecar-check",
+        "run": 37152930571
+      },
+      {
+        "name": "commons-tor-discovery-check",
+        "run": 37152930591
+      }
+    ],
+    "checkpoint": 5977450855
   },
   "historical_model_evidence": {
     "checkpoint": 5966597137,
@@ -86,9 +95,9 @@
   "execution_mode": "interactive_only_owner_cancelled_autonomy",
   "owner_assistance_rule": "Use supported tools; request a minimal safe owner action only for a confirmed barrier; independently verify the result. Never bypass an explicit tool denial.",
   "prior_detailed_history": "PR80 checkpoints5966597137,5966731022,5967983142,5969904153,5970140310; earlier PR73 history retained in Git.",
-  "updated": "2026-10-03",
+  "updated": "2026-10-04",
   "g2a_context": {
-    "status": "IMPLEMENTED_LOCAL_TESTS_PASS_REMOTE_CI_PENDING",
+    "status": "REMOTE_CI_VERIFIED",
     "scope": "Matrix codec and deterministic self-test only; no Rust/model/Tor/network fixes",
     "candidate_1_commit": "6cc878f69802520025c2b91b89980d86a551993c",
     "candidate_1_probes": 16,
@@ -105,7 +114,34 @@
       "new_codec_tests_passed": 17
     },
     "local_evidence_archive": "PULQVA-G2A-contract-evidence.zip (conversation attachment; not mirrored into Git)",
-    "evidence_retention": "Local evidence is retained in the supplied archive. Exact remote CI matrix must be fetched and verified next before accepting G2A."
+    "evidence_retention": "Local evidence is retained in the supplied archive. Exact remote CI matrix must be fetched and verified next before accepting G2A.",
+    "remote_ci": {
+      "run": 37152930607,
+      "job": 111290338350,
+      "artifact": 11284622078,
+      "artifact_sha256": "611c45910a038a23aad262fd76a0b4c0695c690c6c783988dd481927f4c49349",
+      "probes_passed": 17,
+      "probes_failed": 0,
+      "generation_id": "0afec2d4-bfb9-40d9-8348-385f0634fb0f",
+      "actual_checkout": "85eaee75c0dcef7294ed5cb42370542e2224b610",
+      "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
+    }
   },
-  "next_phase": "T069-G2A-CI"
+  "next_phase": "T069-G2B-CI",
+  "g2b_context": {
+    "status": "PUBLISHED_NATIVE_CI_PENDING",
+    "scope": "Passive Tor readiness observations plus six deterministic native contracts; no new network action or policy change",
+    "probes": [
+      "RD-WIRE",
+      "RD-REPLY",
+      "RD-TRACE",
+      "RD-CAUSES",
+      "RD-CAP",
+      "RD-PRIVATE"
+    ],
+    "runtime_policy": "same measured libtest binary, fresh process per synthetic probe; live retries are not independent probes",
+    "decision": "decisions/T069-G2B-passive-readiness-2026-10-04.md",
+    "source_note": "Exact publication commit/run/job/artifact are recorded in the PR checkpoint after publication; do not fabricate self-referential commit identity here.",
+    "limits": "Native CI and artifact readback pending. No live Tor root cause, file acceptance or product progress is claimed."
+  }
 }
