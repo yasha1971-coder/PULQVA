@@ -11,8 +11,8 @@
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "e0692f308b2df1e02b87050bdc09f0d761c74607",
-    "NEXT.md": "99067adcdca293b2082998f03236b5cb20f1c884",
+    "PROJECT_STATE.json": "c2e4489b85cae8d440d997234d78ea383363f0c7",
+    "NEXT.md": "7d439087a2a3484acec91eaaa20d09c86f546068",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -28,12 +28,22 @@
     "crates/pulqva-privacy/src/arti_readiness/tests.rs": "be7180b01c6b06ef423dc253ff821961818d6c2e",
     "crates/pulqva-privacy/src/lib.rs": "037ff265939354e1a3da30900c52f1f21d3c5d86",
     "crates/pulqva-privacy/examples/real_ytdlp_tor_media.rs": "fa831e28731e1bb1a5cc77f14fd7c702c09f63b5",
-    ".github/workflows/rust-check.yml": "c8fa43dd2515a9155a775a675695be4ee7f92b92",
+    ".github/workflows/rust-check.yml": "87d7faaaef038dd69ae5fd116eb68f1abade24d0",
     "tools/ci/readiness_contract_matrix.py": "a29d825489f82c7fbe900edfb3fa546ac2878bc5",
     "decisions/T069-G2B-passive-readiness-2026-10-04.md": "fdb890fc4a8128599af6a2af4742e318a8e12bfc",
     "tools/ci/test_readiness_contract_matrix.py": "09f47b66819aa0d14c8e9cd81afe4c043cdc1fce",
     "recovery/evidence/g2b-37202811555.zip": "d11070e9f2e7e64d993d2694cd07e6499b3daf29",
-    "recovery/evidence/g2b1-admission-observation.json": "aad0378392a78977f93f6be109b86e2ca5cd2f46"
+    "recovery/evidence/g2b1-admission-observation.json": "aad0378392a78977f93f6be109b86e2ca5cd2f46",
+    "tools/ci/test_workflow_contract.py": "cc12580450f681c980c3f201bbc8ccce925b890a",
+    "tools/ci/legacy_live_guard.py": "a85afc51ed770b304dc3817c0c56309d49df7d3f",
+    "tools/ci/test_legacy_live_guard.py": "b1a28e3ec678eb7893df93b0758fa6189d8dd9e5",
+    "tools/ci/legacy_live_baseline.json": "0d24ee12256aae709862db8c046b4127e576f9c8",
+    "decisions/T069-G2C1-trigger-containment-2026-10-04.md": "937b6bf86dfdf63b057ee0148d2792bcf0658d24",
+    "recovery/evidence/g2b1-37205544440.zip": "12c7a5a21efb3ce4efcfe9b9ec0201f3f103dc88",
+    ".github/workflows/tor-readiness-check.yml": "d1a94396656b9e929e4b6156bcfa2b408a12c160",
+    ".github/workflows/ytdlp-tor-media-check.yml": "c5bd411d8fe62da0007bea4bec56ae9dd0ed4e2b",
+    ".github/workflows/ytdlp-tor-metadata-check.yml": "a5cc21b7a3242264d8c927b541d9a917f9705f5e",
+    ".github/workflows/commons-tor-discovery-check.yml": "29d8f110efeefae7a081584a972723c6f835142a"
   },
   "state_contract": {
     "active_task": "T069",
@@ -80,7 +90,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "Observe exact-head rust-check; independently verify native raw outputs/counts and runtime identity before accepting this correction. Stop on first deterministic defect. Do not start live Tor/model work.",
+  "next_action": "Observe the new exact-head rust-check containment artifact plus all four admission/jobs/status artifacts. Require no live job execution and preserved deterministic contracts. Then implement ONE usable admitted immutable media diagnostic in the existing path; do not widen the containment framework.",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",

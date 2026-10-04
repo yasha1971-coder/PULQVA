@@ -9,7 +9,7 @@ from discovery_receipt import CODE_STEPS, LIVE_STEPS
 class WorkflowContractTests(unittest.TestCase):
     def setUp(self):
         root = Path(__file__).resolve().parents[2]
-        self.text = (root / '.github/workflows/commons-tor-discovery-check.yml').read_text()
+        self.text = (root / '.github/workflows/commons-tor-discovery-check.yml').read_text().split('  live-discovery:', 1)[1]
 
     def test_expected_step_ids_and_preflight_order(self):
         ids = re.findall(r'^        id: (\w+)$', self.text, re.MULTILINE)

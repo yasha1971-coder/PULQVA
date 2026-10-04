@@ -12,10 +12,10 @@
   "next_subtask": "T069-G2",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
-  "scope_note": "G1 remains scoped-accepted. G2A codec verified. G2B CI produced six PASS records, independently checked, but collector admission was incomplete. This generation hardens exact-test execution and immutable-runtime evidence only; new native CI pending. No transport repair or complete E2E acceptance.",
+  "scope_note": "G2B1 exact-test collector accepted at its recorded native scope. G2C1 separates automatic contracts from legacy live work; local containment tests pass, remote CI pending. Legacy live remains NOT_TESTED/BLOCKED until compliant capture and positive admission exist. No transport fix or E2E acceptance.",
   "known_blockers": [
     "Real local-model output is not yet connected end-to-end to Tor discovery, user selection and a verified saved file.",
-    "G2A codec and a G2B native diagnostic collector exist. Exact-test admission hardening is pending new native CI; live model/readiness generation isolation and full real_server_smoke capture remain unverified.",
+    "G2A/G2B1 codec and native collector are scoped-verified; real model/readiness matrix capture and live isolation remain unimplemented.",
     "Four previously observed failed jobs remain open: Arti Windows compiler input atlprov.dll mismatch, Commons Linux ConnectOrTls, Commons Windows DestinationTimeout, media Linux DestinationTimeout. These are different boundaries, not one proven cause.",
     "Local model service CORS/auth isolation, native Windows model execution and held-out query semantics remain unverified.",
     "Production yt-dlp completion blocks in Child::wait; a test watchdog is not product-level cancellation or Tor-loss supervision.",
@@ -24,7 +24,7 @@
     "File verification/copy assumes exclusive output ownership; it is neither publisher authentication nor race-proof path handling.",
     "T066 cleanup/races, readiness deadline overshoot and Arti SDK-content pinning remain open.",
     "Autopilot authorization/ranking, user-facing choice, UI integration, self-contained Windows/Linux packages, clean-machine acceptance and package egress remain open.",
-    "Legacy automatic PR triggers still launch costly live jobs on unrelated evidence/documentation changes; proof-based CI admission is not implemented. Do not treat a skipped check or a later green badge as resolution of a prior fault.",
+    "G2C1 separates four automatic deterministic contract jobs from old live jobs; native CI behavior still pending. No positive live admission/capture is implemented. Those live jobs are explicitly NOT_TESTED, not fixed or accepted; other independent build/materialization jobs remain unchanged.",
     "G2B helper tests do not establish end-to-end observed/unobserved socket-trace equivalence. Native collector stdout was not retained in the original artifact; do not retroactively upgrade that evidence."
   ],
   "verification_context": {
@@ -60,21 +60,20 @@
     "observed_date": "2026-10-03"
   },
   "current_ci_observation": {
-    "source_head": "3bfdecde10e4abf2bdb03870bc645455576f8330",
-    "scope": "17 returned PR workflow summaries; detailed G2B artifact checked separately. Original failed causes not re-diagnosed.",
+    "source_head": "54136c31554af0192b1c10a78045009d610b70d0",
+    "scope": "17 completed prior-head PR workflow summaries, not the new generation; historical failure causes remain separate",
     "successful_workflows": 15,
     "failed_workflows": 2,
     "failed_workflows_detail": [
       {
         "name": "arti-sidecar-check",
-        "run": 37202811603
+        "run": 37205544512
       },
       {
         "name": "commons-tor-discovery-check",
-        "run": 37202811576
+        "run": 37205544339
       }
-    ],
-    "checkpoint": 5980242116
+    ]
   },
   "historical_model_evidence": {
     "checkpoint": 5966597137,
@@ -129,9 +128,9 @@
       "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
     }
   },
-  "next_phase": "T069-G2B1-CI",
+  "next_phase": "T069-G2C1-CI",
   "g2b_context": {
-    "status": "NATIVE_OBSERVED_ADMISSION_CORRECTION_PENDING",
+    "status": "NATIVE_SCOPED_VERIFIED_VIA_G2B1",
     "scope": "Passive Tor readiness observations plus six deterministic native contracts; no new network action or policy change",
     "probes": [
       "RD-WIRE",
@@ -144,7 +143,7 @@
     "runtime_policy": "same measured libtest binary, fresh process per synthetic probe; live retries are not independent probes",
     "decision": "decisions/T069-G2B-passive-readiness-2026-10-04.md",
     "source_note": "Exact publication commit/run/job/artifact are recorded in the PR checkpoint after publication; do not fabricate self-referential commit identity here.",
-    "limits": "G2B1 fixes collector admission only. New native gate pending. Historical helper-only observations are not retroactively strengthened. No live Tor root cause or file acceptance.",
+    "limits": "Historical G2B bytes remain unchanged; G2B1 adds verified collector admission. Neither proves live Tor root cause, complete socket equivalence or file E2E.",
     "native_ci": {
       "source_head": "3bfdecde10e4abf2bdb03870bc645455576f8330",
       "actual_checkout": "f4a8c0e16ddc5b5c5c569e42ac17f0ac2f4d278b",
@@ -158,12 +157,35 @@
     }
   },
   "g2b1_context": {
-    "status": "LOCAL_SYNTHETIC_PASS_NATIVE_PENDING",
+    "status": "NATIVE_SCOPED_VERIFIED",
     "goal": "Reject false PASS from absent/wrong/ignored exact test; persist criteria before probes; detect frozen object drift; keep complete failure evidence.",
     "local_generation": "f5e19e5c-bf66-4041-b2c2-9db1eeade51a",
     "local_tests_passed": 11,
     "evidence": "recovery/evidence/g2b1-admission-observation.json",
     "limitations": "Mocked subprocess tests in Python, not native Rust/Tor execution. No local rustc/cargo. Prior generations preserved unchanged.",
-    "next_action": "Observe exact-head rust-check; independently verify native raw outputs/counts and runtime identity before accepting this correction. Stop on first deterministic defect. Do not start live Tor/model work."
+    "next_action": "Do not rerun without a new hypothesis. Original native bytes retained; continue G2C1 containment then one usable live generation.",
+    "native_ci": {
+      "source_head": "54136c31554af0192b1c10a78045009d610b70d0",
+      "actual_checkout": "399527533b75271de1c1a3a5229baf6d12c18051",
+      "run": 37205544440,
+      "job": 111445857101,
+      "artifact": 11304208718,
+      "artifact_sha256": "af44f9a72d583aba381a9291a6d432ddf1c3845faaaecf71bdcfe2d9e4a10143",
+      "retained_path": "recovery/evidence/g2b1-37205544440.zip",
+      "probes_passed": 6,
+      "checkpoint": 5980466414,
+      "scope": "six exact named synthetic libtest probes; not live transport or complete E2E"
+    }
+  },
+  "g2c1_context": {
+    "status": "LOCAL_CONTAINMENT_PASS_REMOTE_PENDING",
+    "scope": "Four legacy live jobs gated off before sidecar preparation; automatic meaningful contracts on both OSes remain. This is temporary fail-closed containment, NOT a complete live-admission implementation.",
+    "source_base": "54136c31554af0192b1c10a78045009d610b70d0",
+    "local_generation": "b836a6b7-a013-474d-9966-b9a1b54ce79c",
+    "local_probes_passed": 11,
+    "related_workflow_tests_passed": 3,
+    "preflight_failure": "First preparation rejected before any probe: missing flags identity. Original invalid manifest and error preserved; only flags identity corrected in a separate source generation.",
+    "next_action": "Observe the new exact-head rust-check containment artifact plus all four admission/jobs/status artifacts. Require no live job execution and preserved deterministic contracts. Then implement ONE usable admitted immutable media diagnostic in the existing path; do not widen the containment framework.",
+    "limits": "No GitHub-hosted result yet for this change. No live probe, runtime pin change, scheduler, merge or release."
   }
 }

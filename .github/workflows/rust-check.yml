@@ -14,6 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify automatic versus live trigger containment
+        env:
+          PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/ci/test_legacy_live_guard.py "$RUNNER_TEMP/pulqva-live-trigger-contract"
+
+      - name: Retain trigger-containment matrix (not live evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-live-trigger-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulqva-live-trigger-contract/
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Verify native probe admission (synthetic; no Rust or Tor)
         run: python3 -m unittest discover -s tools/ci -p "test_readiness_contract_matrix.py" -v
 
