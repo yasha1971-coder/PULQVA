@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Run the bounded native readiness-diagnostics contract against one measured test binary."""
 from __future__ import annotations
+import copy
 import hashlib
+import re
 import json
 import os
 from pathlib import Path
@@ -99,6 +101,114 @@ def component(status: str, *, sha256: str | None = None, reason: str | None = No
         out["reason"] = reason
     return out
 
+MAX_PROBE_OUTPUT = 16 * 1024
+TEST_FLAGS = ["--exact", "--format=pretty", "--color=never", "--test-threads=1"]
+
+
+def execution_verdict(test: str, proc: subprocess.CompletedProcess) -> tuple[str, str | None]:
+    """Exit zero alone is NOT evidence that an exact libtest probe ran.
+
+    Pin to the documented pretty output of Rust 1.91. Format drift fails closed.
+    These are trusted synthetic libtests, not a parser for arbitrary program output.
+    """
+    if max(len(proc.stdout), len(proc.stderr)) > MAX_PROBE_OUTPUT:
+        return "ERROR", "probe_output_exceeds_limit"
+    try:
+        output = proc.stdout.decode("utf-8")
+        proc.stderr.decode("utf-8")
+    except UnicodeDecodeError:
+        return "ERROR", "probe_output_not_utf8"
+    if proc.returncode != 0:
+        return "FAIL", "probe_process_failed"
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    tests = [line for line in lines if line.startswith("test ") and not line.startswith("test result:")]
+    summaries = [line for line in lines if line.startswith("test result:")]
+    running = [line for line in lines if line.startswith("running ")]
+    summary = r"test result: ok\. 1 passed; 0 failed; 0 ignored; 0 measured; [0-9]+ filtered out; finished in [0-9]+(?:\.[0-9]+)?s"
+    if (running != ["running 1 test"] or tests != [f"test {test} ... ok"]
+            or len(summaries) != 1 or re.fullmatch(summary, summaries[0]) is None):
+        return "ERROR", "exact_test_execution_not_proven"
+    return "PASS", None
+
+
+def measured_identity(manifest: dict, binary: Path) -> dict:
+    """Read actual bytes again; never close by comparing the plan to itself."""
+    identity = copy.deepcopy(manifest["identity"])
+    paths = {
+        "runtime": binary,
+        "fixtures": ROOT / "crates/pulqva-privacy/src/arti_readiness/tests.rs",
+        "evaluator": Path(__file__),
+        "codec": Path(__file__).with_name("matrix_receipt.py"),
+    }
+    for name, path in paths.items():
+        try:
+            identity["components"][name] = component("captured", sha256=sha256_file(path))
+        except OSError:
+            identity["components"][name] = component("unavailable", reason="identity_read_failed")
+    return identity
+
+
+def collect(binary: Path, out: Path, manifest: dict) -> int:
+    recorder = MatrixRecorder(manifest)
+    # Persist criteria BEFORE executing a probe. Never overwrite another generation.
+    write_exclusive(out / "manifest.json", manifest)
+    results = {"fresh_process_per_probe": True,
+               "binary_sha256": manifest["identity"]["components"]["runtime"]["sha256"],
+               "probes": []}
+    env = dict(os.environ, RUST_TEST_NOCAPTURE="0")
+    try:
+        for spec in PROBES:
+            if measured_identity(manifest, binary) != manifest["identity"]:
+                recorder.fail_closed("frozen_identity_changed_before_probe")
+                break
+            started = time.monotonic_ns()
+            row = {"id": spec["id"], "test": spec["test"], "pid_isolated": True}
+            stop = False
+            try:
+                proc = subprocess.run([str(binary), spec["test"], *TEST_FLAGS],
+                                      cwd=ROOT, env=env, capture_output=True, timeout=30)
+                status, reason = execution_verdict(spec["test"], proc)
+                stdout, stderr = proc.stdout, proc.stderr
+                row["returncode"] = proc.returncode
+            except subprocess.TimeoutExpired as exc:
+                stdout, stderr = exc.stdout or b"", exc.stderr or b""
+                status, reason = "ERROR", "probe_process_timeout"
+                row["timeout"] = True
+            except OSError:
+                stdout, stderr = b"", b""
+                status, reason = "ERROR", "probe_process_start_failed"
+                stop = True
+            duration_ms = (time.monotonic_ns() - started) / 1_000_000
+            row.update(result=status, reason=reason,
+                       stdout_sha256=sha256_bytes(stdout), stderr_sha256=sha256_bytes(stderr),
+                       stdout_hex=stdout[:MAX_PROBE_OUTPUT].hex(),
+                       stderr_hex=stderr[:MAX_PROBE_OUTPUT].hex(),
+                       output_truncated=max(len(stdout), len(stderr)) > MAX_PROBE_OUTPUT)
+            results["probes"].append(row)
+            recorder.record(spec["id"], result=status, duration_ms=duration_ms,
+                            observed={"returncode": row.get("returncode"),
+                                      "execution_check": reason or "one_exact_test_passed",
+                                      "stdout_sha256": row["stdout_sha256"],
+                                      "stderr_sha256": row["stderr_sha256"]},
+                            evidence_refs=[f"test-results.json#{spec['id']}"], reason=reason)
+            if stop:
+                break
+    except (Exception, KeyboardInterrupt):
+        # Persist an explicitly unsafe/incomplete generation, never an accidental green.
+        recorder.fail_closed("collector_interrupted_or_failed")
+    receipt = recorder.close(measured_identity(manifest, binary), early_exit_reason="probe_not_executed")
+    seen = {row["id"] for row in results["probes"]}
+    for row in receipt["probes"]:
+        if row["id"] not in seen:
+            results["probes"].append({"id": row["id"], "result": "SKIP", "reason": row["reason"]})
+    write_exclusive(out / "test-results.json", results)
+    receipt["raw_evidence_sha256"] = sha256_file(out / "test-results.json")
+    write_exclusive(out / "matrix_receipt.json", receipt)
+    verdict = verify(manifest, receipt)
+    print("PULQVA_READINESS_CONTRACT_" + verdict)
+    return 0 if verdict == "PASS" else 1
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         raise SystemExit("expected output directory")
@@ -134,10 +244,13 @@ def main() -> int:
                 "binary": "pulqva_privacy libtest",
                 "mode": "fresh process per exact test",
                 "toolchain": "1.91.0",
+                "argv_flags": TEST_FLAGS, "RUST_TEST_NOCAPTURE": "0",
+                "exact_tests": [p["test"] for p in PROBES],
             }))),
             "fixtures": component("captured", sha256=sha256_file(
                 ROOT / "crates/pulqva-privacy/src/arti_readiness/tests.rs")),
             "evaluator": component("captured", sha256=sha256_file(Path(__file__))),
+            "codec": component("captured", sha256=sha256_file(Path(__file__).with_name("matrix_receipt.py"))),
         },
     }
     manifest = {
@@ -157,53 +270,13 @@ def main() -> int:
             "evidence_refs": ["test-results.json#fresh_process_per_probe"],
         },
         "probes": [
-            {k: value for k, value in spec.items() if k != "test"} | {"depends_on": []}
+            {k: value for k, value in spec.items() if k != "test"}
+            | {"depends_on": [], "expected": {"contract": spec["expected"],
+                 "test": spec["test"], "executed": 1, "passed": 1}}
             for spec in PROBES
         ],
     }
-    recorder = MatrixRecorder(manifest)
-    results = {"fresh_process_per_probe": True, "binary_sha256": sha256_file(binary), "probes": []}
-    for spec in PROBES:
-        started = time.monotonic_ns()
-        try:
-            proc = subprocess.run([str(binary), spec["test"], "--exact", "--nocapture"],
-                                  cwd=ROOT, capture_output=True, timeout=30)
-            duration_ms = (time.monotonic_ns() - started) / 1_000_000
-            stdout_sha = sha256_bytes(proc.stdout)
-            stderr_sha = sha256_bytes(proc.stderr)
-            row = {"id": spec["id"], "test": spec["test"], "pid_isolated": True,
-                   "returncode": proc.returncode, "stdout_sha256": stdout_sha,
-                   "stderr_sha256": stderr_sha}
-            results["probes"].append(row)
-            recorder.record(
-                spec["id"],
-                result="PASS" if proc.returncode == 0 else "FAIL",
-                duration_ms=duration_ms,
-                observed={"returncode": proc.returncode,
-                          "stdout_sha256": stdout_sha, "stderr_sha256": stderr_sha},
-                evidence_refs=[f"test-results.json#{spec['id']}"],
-            )
-        except subprocess.TimeoutExpired as exc:
-            duration_ms = (time.monotonic_ns() - started) / 1_000_000
-            stdout = exc.stdout or b""
-            stderr = exc.stderr or b""
-            results["probes"].append({
-                "id": spec["id"], "test": spec["test"], "pid_isolated": True,
-                "timeout": True, "stdout_sha256": sha256_bytes(stdout),
-                "stderr_sha256": sha256_bytes(stderr),
-            })
-            recorder.record(
-                spec["id"], result="ERROR", duration_ms=duration_ms,
-                observed={"timeout": True}, evidence_refs=[f"test-results.json#{spec['id']}"],
-                reason="probe_process_timeout",
-            )
-    receipt = recorder.close(identity, early_exit_reason="probe_not_executed")
-    write_exclusive(out / "manifest.json", manifest)
-    write_exclusive(out / "test-results.json", results)
-    write_exclusive(out / "matrix_receipt.json", receipt)
-    verdict = verify(manifest, receipt)
-    print("PULQVA_READINESS_CONTRACT_" + verdict)
-    return 0 if verdict == "PASS" else 1
+    return collect(binary, out, manifest)
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify native probe admission (synthetic; no Rust or Tor)
+        run: python3 -m unittest discover -s tools/ci -p "test_readiness_contract_matrix.py" -v
+
       - name: Install pinned Rust toolchain
         run: |
           rustup toolchain install 1.91.0 --profile minimal

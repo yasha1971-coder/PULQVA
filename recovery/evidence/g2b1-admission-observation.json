@@ -1,0 +1,26 @@
+{
+  "kind": "local observation summary; original archive retained separately, not raw CI or native evidence",
+  "generation_id": "f5e19e5c-bf66-4041-b2c2-9db1eeade51a",
+  "git_base": "3bfdecde10e4abf2bdb03870bc645455576f8330",
+  "components": {
+    "evaluator": {
+      "sha256": "196c1df28de02eb1f1f7abfd1fbe525214e00df851509cba386917ffd150be4b",
+      "status": "captured"
+    },
+    "fixtures": {
+      "sha256": "23ba1fb93b4bd919c139cac6a6f26673e9505b9784f5cefa4a2dad274bcaccd2",
+      "status": "captured"
+    },
+    "codec": {
+      "sha256": "c01b57c437afd73c66ff364a31fe194090d17a51f2314307c41b9ebb8f011d42",
+      "status": "captured"
+    }
+  },
+  "tests_passed": 11,
+  "tests_failed": 0,
+  "tests_error": 0,
+  "archive_name": "PULQVA-G2B1-admission-evidence.zip",
+  "archive_sha256": "b6a9b11018f28b71979007d7653c35a9e3e14cf10dc49f7224564e839c6c7184",
+  "scope": "Python mocked-subprocess admission checks; no native Rust/Tor run. Authoritative original manifest, receipt and results are in the supplied archive.",
+  "retention": "Off-repository archive; permanent independent storage not confirmed. New native CI remains pending."
+}

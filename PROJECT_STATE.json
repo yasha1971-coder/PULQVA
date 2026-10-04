@@ -12,10 +12,10 @@
   "next_subtask": "T069-G2",
   "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
-  "scope_note": "G1 is scoped-accepted. G2A finite evidence codec is verified in remote continuity CI. G2B passive readiness instrumentation is published in this source generation, but its exact-head native contract matrix is pending; no live Tor/model/file acceptance follows from publication.",
+  "scope_note": "G1 remains scoped-accepted. G2A codec verified. G2B CI produced six PASS records, independently checked, but collector admission was incomplete. This generation hardens exact-test execution and immutable-runtime evidence only; new native CI pending. No transport repair or complete E2E acceptance.",
   "known_blockers": [
     "Real local-model output is not yet connected end-to-end to Tor discovery, user selection and a verified saved file.",
-    "G2A matrix receipt codec is implemented with local tests; real_server_smoke/readiness event capture and actual runtime isolation are not wired to it. No new expensive matrix is authorized by codec success.",
+    "G2A codec and a G2B native diagnostic collector exist. Exact-test admission hardening is pending new native CI; live model/readiness generation isolation and full real_server_smoke capture remain unverified.",
     "Four previously observed failed jobs remain open: Arti Windows compiler input atlprov.dll mismatch, Commons Linux ConnectOrTls, Commons Windows DestinationTimeout, media Linux DestinationTimeout. These are different boundaries, not one proven cause.",
     "Local model service CORS/auth isolation, native Windows model execution and held-out query semantics remain unverified.",
     "Production yt-dlp completion blocks in Child::wait; a test watchdog is not product-level cancellation or Tor-loss supervision.",
@@ -23,7 +23,9 @@
     "Index/candidate equality is not search-session provenance; same-valued foreign selections are indistinguishable.",
     "File verification/copy assumes exclusive output ownership; it is neither publisher authentication nor race-proof path handling.",
     "T066 cleanup/races, readiness deadline overshoot and Arti SDK-content pinning remain open.",
-    "Autopilot authorization/ranking, user-facing choice, UI integration, self-contained Windows/Linux packages, clean-machine acceptance and package egress remain open."
+    "Autopilot authorization/ranking, user-facing choice, UI integration, self-contained Windows/Linux packages, clean-machine acceptance and package egress remain open.",
+    "Legacy automatic PR triggers still launch costly live jobs on unrelated evidence/documentation changes; proof-based CI admission is not implemented. Do not treat a skipped check or a later green badge as resolution of a prior fault.",
+    "G2B helper tests do not establish end-to-end observed/unobserved socket-trace equivalence. Native collector stdout was not retained in the original artifact; do not retroactively upgrade that evidence."
   ],
   "verification_context": {
     "kind": "Observed existing deterministic G1 native log; no new model or network execution",
@@ -58,21 +60,21 @@
     "observed_date": "2026-10-03"
   },
   "current_ci_observation": {
-    "source_head": "682c1b3338112946d13ca731abd6628f78535cf0",
-    "scope": "G2A exact-head observation before G2B publication; workflow summaries only outside the verified G2A continuity artifact.",
-    "successful_workflows": 14,
+    "source_head": "3bfdecde10e4abf2bdb03870bc645455576f8330",
+    "scope": "17 returned PR workflow summaries; detailed G2B artifact checked separately. Original failed causes not re-diagnosed.",
+    "successful_workflows": 15,
     "failed_workflows": 2,
     "failed_workflows_detail": [
       {
         "name": "arti-sidecar-check",
-        "run": 37152930571
+        "run": 37202811603
       },
       {
         "name": "commons-tor-discovery-check",
-        "run": 37152930591
+        "run": 37202811576
       }
     ],
-    "checkpoint": 5977450855
+    "checkpoint": 5980242116
   },
   "historical_model_evidence": {
     "checkpoint": 5966597137,
@@ -114,7 +116,7 @@
       "new_codec_tests_passed": 17
     },
     "local_evidence_archive": "PULQVA-G2A-contract-evidence.zip (conversation attachment; not mirrored into Git)",
-    "evidence_retention": "Local evidence is retained in the supplied archive. Exact remote CI matrix must be fetched and verified next before accepting G2A.",
+    "evidence_retention": "Remote G2A CI was independently verified; historical observation and exact retained evidence identities remain in Git. Local original archive is separate.",
     "remote_ci": {
       "run": 37152930607,
       "job": 111290338350,
@@ -127,9 +129,9 @@
       "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
     }
   },
-  "next_phase": "T069-G2B-CI",
+  "next_phase": "T069-G2B1-CI",
   "g2b_context": {
-    "status": "PUBLISHED_NATIVE_CI_PENDING",
+    "status": "NATIVE_OBSERVED_ADMISSION_CORRECTION_PENDING",
     "scope": "Passive Tor readiness observations plus six deterministic native contracts; no new network action or policy change",
     "probes": [
       "RD-WIRE",
@@ -142,6 +144,26 @@
     "runtime_policy": "same measured libtest binary, fresh process per synthetic probe; live retries are not independent probes",
     "decision": "decisions/T069-G2B-passive-readiness-2026-10-04.md",
     "source_note": "Exact publication commit/run/job/artifact are recorded in the PR checkpoint after publication; do not fabricate self-referential commit identity here.",
-    "limits": "Native CI and artifact readback pending. No live Tor root cause, file acceptance or product progress is claimed."
+    "limits": "G2B1 fixes collector admission only. New native gate pending. Historical helper-only observations are not retroactively strengthened. No live Tor root cause or file acceptance.",
+    "native_ci": {
+      "source_head": "3bfdecde10e4abf2bdb03870bc645455576f8330",
+      "actual_checkout": "f4a8c0e16ddc5b5c5c569e42ac17f0ac2f4d278b",
+      "run": 37202811555,
+      "job": 111437784537,
+      "artifact": 11302979178,
+      "artifact_sha256": "d168dd004552f523c8ffb98a436083aae8cb6352a289dc22c36bfa64358f5172",
+      "recorded_passes": 6,
+      "retained_members": "recovery/evidence/g2b-37202811555.zip",
+      "limit": "Six zero-returncode observations and source hashes verified; original collector lacked exact-execution count admission and retained stdout. Not complete socket-path equivalence or live Tor success."
+    }
+  },
+  "g2b1_context": {
+    "status": "LOCAL_SYNTHETIC_PASS_NATIVE_PENDING",
+    "goal": "Reject false PASS from absent/wrong/ignored exact test; persist criteria before probes; detect frozen object drift; keep complete failure evidence.",
+    "local_generation": "f5e19e5c-bf66-4041-b2c2-9db1eeade51a",
+    "local_tests_passed": 11,
+    "evidence": "recovery/evidence/g2b1-admission-observation.json",
+    "limitations": "Mocked subprocess tests in Python, not native Rust/Tor execution. No local rustc/cargo. Prior generations preserved unchanged.",
+    "next_action": "Observe exact-head rust-check; independently verify native raw outputs/counts and runtime identity before accepting this correction. Stop on first deterministic defect. Do not start live Tor/model work."
   }
 }

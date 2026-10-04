@@ -53,3 +53,46 @@ Post-test review is PENDING until the native gate completes. If the gate is gree
 the passive capture unless the observed evidence contradicts the fixed invariants. If it
 fails, diagnose one concrete failure before any correction. Historical DestinationTimeout,
 Commons ConnectOrTls and the Windows SDK pin mismatch remain separate open observations.
+
+
+## Post-test audit and one corrective generation — 2026-10-04
+
+Live source3bfdecde and completed rust-check37202811555 were independently inspected.
+Artifact11302979178 ZIP hash matched; separate manifest/receipt/results report six
+PASS records; fixture/evaluator digests match committed source. Exact JSON members
+are retained in recovery/evidence/g2b-37202811555.zip. No inference/network test repeated.
+
+Audit found an admission defect: returncode0 was sufficient even without evidence
+that exactly the named test ran. Manifest persistence followed the probes, and final
+identity comparison reused planned values. Original stdout bytes were absent.
+The historical result remains an observation, not upgraded acceptance.
+
+Current primary-source comparison:
+- https://doc.rust-lang.org/rustc/tests/ documents exact-name filtering, --list and
+  pretty output. Listing is not execution. Require named result AND one passed test,
+  no ignored test, no duplicate summaries, exit0, valid bounded output.
+- https://doc.rust-lang.org/book/ch11-02-running-tests.html warns about shared state.
+  Retain fresh processes/owned synthetic fixtures; remeasure runtime/evaluator/fixtures
+  and the existing codec before each probe and at close. No live isolation claim.
+- https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow
+  and /en/actions/how-tos/manage-workflow-runs/skip-workflow-runs show why blanket
+  PR path/commit skipping is not a substitute for verified acceptance. Legacy live
+  trigger admission is a separate required correction; not silently changed here.
+
+Decision: one correction to the existing native collector. Persist the manifest before
+probes, retain bounded raw synthetic output plus hashes, require exact named execution,
+remeasure actual frozen files and preserve ERROR/SKIP after interruption/start failure.
+No new platform, library, production Rust, Tor policy, model, pins or kernel changes.
+
+Eleven predeclared local negative/positive tests passed against frozen collector/test
+files (observation summary in recovery/evidence/g2b1-admission-observation.json; original generation in supplied PULQVA-G2B1-admission-evidence.zip).
+These tests use mocked subprocesses, not native Rust. They cover zero/wrong/ignored/
+duplicate tests, nonzero exit, bad encoding/oversize, manifest-before-run, raw hashes,
+runtime drift, spawn failure, independent continuation after timeout and no-overwrite.
+New native CI and its raw artifact must still be observed before acceptance.
+
+Limits: pretty-output validation is pinned-format checking, not an authenticity proof
+against a malicious test binary. Retention is bounded; subprocess capture itself is
+not a hard process-memory sandbox. Abrupt host termination cannot guarantee a final
+receipt; absence remains non-accepting. Helper tests do not prove the entire socket
+path unchanged. The audit does not close the live transport defects.

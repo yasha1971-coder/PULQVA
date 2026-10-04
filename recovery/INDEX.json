@@ -11,8 +11,8 @@
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "c4b43771927e86ad2ea3e3dcb11eb9c538fa7240",
-    "NEXT.md": "36a46d864b9381dc9fc611badb3166f123c71155",
+    "PROJECT_STATE.json": "e0692f308b2df1e02b87050bdc09f0d761c74607",
+    "NEXT.md": "99067adcdca293b2082998f03236b5cb20f1c884",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -28,9 +28,12 @@
     "crates/pulqva-privacy/src/arti_readiness/tests.rs": "be7180b01c6b06ef423dc253ff821961818d6c2e",
     "crates/pulqva-privacy/src/lib.rs": "037ff265939354e1a3da30900c52f1f21d3c5d86",
     "crates/pulqva-privacy/examples/real_ytdlp_tor_media.rs": "fa831e28731e1bb1a5cc77f14fd7c702c09f63b5",
-    ".github/workflows/rust-check.yml": "470955146db26110783fa99a1de91998ed3cd594",
-    "tools/ci/readiness_contract_matrix.py": "93b037ba14693c350aac6cccc393c8b33e0acedf",
-    "decisions/T069-G2B-passive-readiness-2026-10-04.md": "3f6ebbbf6a5197f0d5a792a62a6c4ba29e7643b2"
+    ".github/workflows/rust-check.yml": "c8fa43dd2515a9155a775a675695be4ee7f92b92",
+    "tools/ci/readiness_contract_matrix.py": "a29d825489f82c7fbe900edfb3fa546ac2878bc5",
+    "decisions/T069-G2B-passive-readiness-2026-10-04.md": "fdb890fc4a8128599af6a2af4742e318a8e12bfc",
+    "tools/ci/test_readiness_contract_matrix.py": "09f47b66819aa0d14c8e9cd81afe4c043cdc1fce",
+    "recovery/evidence/g2b-37202811555.zip": "d11070e9f2e7e64d993d2694cd07e6499b3daf29",
+    "recovery/evidence/g2b1-admission-observation.json": "aad0378392a78977f93f6be109b86e2ca5cd2f46"
   },
   "state_contract": {
     "active_task": "T069",
@@ -77,7 +80,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "Observe T069-G2B exact-head rust-check and its pulqva-readiness-contract artifact; verify all six native probes before any live readiness generation.",
+  "next_action": "Observe exact-head rust-check; independently verify native raw outputs/counts and runtime identity before accepting this correction. Stop on first deterministic defect. Do not start live Tor/model work.",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",
