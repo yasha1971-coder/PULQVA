@@ -126,7 +126,16 @@
       "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
     }
   },
-  "next_phase": "T069-G2C2-OBSERVE",
+  "next_phase": "T069-G2D-A-PUBLISH",
+  "g2d_readback_context": {
+    "status": "WIP_LOCAL_UNIT_TESTED_NOT_HOSTED",
+    "source_base": "4a3f9ea00d2be5f4dafb1ddfc3b15eb3e544cea2",
+    "subtask": "T069-G2D-A",
+    "scope": "Bounded independent readback of existing retained Commons fixture; no new downloader or workflow admission",
+    "local_tests": {"passed": 9, "failed": 0, "kind": "ordinary unittest; not a compliant live matrix generation"},
+    "limitations": "Not connected to live capture. Requires owned parent namespace. No race-proof arbitrary-path or publisher authentication claim. No Cargo toolchain available locally.",
+    "next_action": "Publish atomic readback helper/test checkpoint on PR80 after live HEAD reconciliation; then observe deterministic gate. Wire retained profile only in a separate phase."
+  },
   "g2b_context": {
     "status": "NATIVE_SCOPED_VERIFIED_VIA_G2B1",
     "scope": "Passive Tor readiness observations plus six deterministic native contracts; no new network action or policy change",

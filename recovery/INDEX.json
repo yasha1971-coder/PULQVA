@@ -11,8 +11,8 @@
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "14ffff5fd933d6608cb90652e3f01493a85d3e5a",
-    "NEXT.md": "7995f8c7f5a8134da6f787edc4149b2803291dba",
+    "PROJECT_STATE.json": "d7e7310b1d6fd6b46fad0984740861ef070daea1",
+    "NEXT.md": "f86e1d7bffce79705dc475ad9d625a9b22153f9e",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -55,7 +55,8 @@
     "recovery/evidence/g2c1-37208088561/manifest.json": "70ec4c350e0fd8011f96a7b1de6895c75f9bf0ef",
     "recovery/evidence/g2c1-37208088561/live-status-readiness.json": "513552e9cfc8b5acd3011eedf83d671d36c1df40",
     "recovery/evidence/g2c1-37208088561/live-status-commons.json": "7fb052729947844328cb31188bbe7289a3e40915",
-    "tools/ci/media_evidence.py": "f5a5afec0e43f890e941967569e56f3e9f97d926",
+    "tools/ci/media_evidence.py": "9288508cf4717e9d9588c3b3066f07486bdd33b4",
+    "tools/ci/test_retained_commons.py": "9dff687c0e0f006a2cf140ebdc645bdc5ec2a669",
     "tools/ci/test_media_evidence.py": "b7a2be9e9d5c3b023d8ba3b7cc4ffaf69cfaa77e",
     "decisions/T069-G2C2-media-admission-2026-10-04.md": "2664b726254018b272c52dbc509bcb0f243b214f",
     "recovery/evidence/g2c2-local-observation.json": "fdf85f10c29ab1a48eb0524ecdb1b893c6eecc45"
@@ -105,7 +106,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "T069-G2C2: observe new hosted controls; then one separately admitted immutable existing media generation at exact source.",
+  "next_action": "T069-G2D-A: publish/observe retained Commons readback helper; workflow wiring and live acceptance remain separate and NOT_TESTED.",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",

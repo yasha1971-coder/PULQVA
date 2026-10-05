@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import os
 from pathlib import Path
 import platform
 import re
 import selectors
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -28,6 +30,76 @@ WORKFLOW = 'ytdlp-tor-media-check'
 MARKER = b'PULQVA_YTDLP_TOR_MEDIA_OK'
 MAX_OUTPUT = 64 * 1024
 OUTER_TIMEOUT = 330  # Existing inner 90s readiness + 180s media, then cleanup allowance.
+
+
+def verify_retained_commons(directory: Path, source: str) -> dict:
+    """Read back the existing example's fixed output; never download or follow paths.
+
+    Caller must establish successful child exit, cleanup, frozen identities and
+    admission separately. This helper alone cannot mint live acceptance. Requires
+    exclusive parent ownership; O_NOFOLLOW does not make parent races safe.
+    """
+    require(re.fullmatch('[0-9a-f]{40}', source) is not None, 'retained_source_format')
+    require(stat.S_ISDIR(directory.lstat().st_mode), 'retained_directory')
+
+    def read_fixed(name: str, cap: int) -> bytes:
+        path = directory / name
+        require(stat.S_ISREG(path.lstat().st_mode), 'retained_regular_file')
+        flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+        fd = os.open(path, flags)
+        with os.fdopen(fd, 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            require(stat.S_ISREG(before.st_mode) and 0 < before.st_size <= cap, 'retained_size_bound')
+            data = stream.read(cap + 1)
+            after = os.fstat(stream.fileno())
+            require(len(data) == before.st_size == after.st_size and len(data) <= cap
+                    and before.st_mtime_ns == after.st_mtime_ns, 'retained_changed_during_read')
+            return data
+
+    def unique(pairs):
+        obj = {}
+        for key, value in pairs:
+            require(key not in obj, 'retained_duplicate_key')
+            obj[key] = value
+        return obj
+
+    receipt = json.loads(read_fixed('receipt.json', 65_536), object_pairs_hook=unique,
+                         parse_constant=lambda _: require(False, 'retained_nonfinite'))
+    require(type(receipt) is dict and receipt.get('schema') == 2
+            and receipt.get('scope') == 'linux-live-request-choice-file'
+            and receipt.get('source_sha') == source and receipt.get('request') == 'countdown',
+            'retained_identity')
+    for key in ('core_retrieval_used', 'file_downloaded', 'cancelled_search_rejected', 'stale_results_cleared'):
+        require(receipt.get(key) is True, 'retained_predicates')
+    require(receipt.get('publisher_authenticated') is False
+            and receipt.get('windows_e2e_verified') is False, 'retained_scope')
+    choices = receipt.get('choices')
+    require(type(choices) is list and 2 <= len(choices) <= 20
+            and type(receipt.get('choice_count')) is int and receipt['choice_count'] == len(choices)
+            and type(receipt.get('selected_index')) is int and receipt['selected_index'] == 1,
+            'retained_choice_count')
+    for index, row in enumerate(choices):
+        require(type(row) is dict and type(row.get('index')) is int and row['index'] == index,
+                'retained_choice_index')
+    selected, file = choices[1], receipt.get('file')
+    require(type(file) is dict and file.get('path') == 'selected.webm'
+            and type(file.get('selected_index')) is int and file['selected_index'] == 1
+            and type(selected.get('title')) is str and bool(selected['title'])
+            and file.get('title') == selected['title']
+            and type(selected.get('locator')) is str and bool(selected['locator'])
+            and receipt.get('selected_locator') == selected['locator'], 'retained_selection')
+    size = selected.get('declared_size')
+    require(type(size) is int and 0 < size <= 8 * 1024 * 1024
+            and type(file.get('byte_size')) is int and file['byte_size'] == size, 'retained_declared_size')
+    for value, width in ((selected.get('declared_sha1'), 40), (file.get('sha1'), 40), (file.get('sha256'), 64)):
+        require(type(value) is str and re.fullmatch('[0-9a-f]{' + str(width) + '}', value) is not None,
+                'retained_digest_format')
+    data = read_fixed('selected.webm', size)
+    sha1, sha256 = hashlib.sha1(data).hexdigest(), hashlib.sha256(data).hexdigest()
+    require(len(data) == size and sha1 == selected['declared_sha1'] == file['sha1']
+            and sha256 == file['sha256'], 'retained_content_mismatch')
+    return dict(byte_size=size, sha1=sha1, sha256=sha256, selected_index=1,
+                scope='fixed Commons output readback only; not live admission')
 
 
 def sha(path: Path) -> str:

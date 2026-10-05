@@ -7,7 +7,20 @@ Global verified anchor, Kernel, transport/model/sidecar pins stay unchanged.
 No merge/release/payment or outreach. Scheduler was observed disabled; cause unknown;
 this interactive phase does not reactivate it. Authorization does not prove execution.
 
-## ONE NEXT ACTION: T069-G2 / G2C2-OBSERVE
+## ONE NEXT ACTION: T069-G2D-A-PUBLISH
+
+Local WIP adds verify_retained_commons to the EXISTING media evidence adapter.
+Nine ordinary deterministic unit tests passed; no compliant matrix or live test
+is claimed. No workflow/admission/profile changes yet; helper cannot mint live PASS.
+Publish this atomic helper/test checkpoint after reconciling live PR80 HEAD, then
+observe hosted deterministic acceptance before a separate retained-profile wiring.
+Requires exclusive parent ownership; symlink rejection is not general race safety.
+
+Reconciliation: existing run37229503485 at4a3f9ea completed SUCCESS; raw artifact
+bytes were not reverified in this phase. Its source checks size and DELETES media.
+Checkpoints5984042835 and5984310487 supersede the old pending queue below, not scope.
+
+## Historical G2C2 queue (superseded; DO NOT rerun)
 
 Observe the new exact-head deterministic gate for G2C2. Do not repeat accepted
 G2C1/authority observations: checkpoint5981327146 already closed that phase.
