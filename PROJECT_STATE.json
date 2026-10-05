@@ -126,7 +126,7 @@
       "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
     }
   },
-  "next_phase": "T069-G2D-RETAINED-CAPTURE-WIRE",
+  "next_phase": "T069-G2D-MATRIX-RECOVERY-OBSERVE",
   "g2d_readback_context": {
     "status": "CAPTURE_ADAPTER_LOCAL_SYNTHETIC_VERIFIED_HOSTED_PENDING",
     "source_base": "4a3f9ea00d2be5f4dafb1ddfc3b15eb3e544cea2",
@@ -276,5 +276,19 @@
     "actual_checkout": "720cb437520f9117db69fd6d309a8c40d7ba08a7",
     "run": 37306081790,
     "checkpoint": 5995170990
+  },
+  "g2d_matrix_recovery": {
+    "status": "LOCAL_MATRIX_PASS_HOSTED_PENDING",
+    "source_parent": "3a8c84a0e30a5a73b5148125cee917801ed3e7c2",
+    "correction": "Four explicit retained-file test hypotheses; no fallback or validator weakening",
+    "local_probes_passed": 24,
+    "failed_rust_run": 37315988559,
+    "separate_windows_ytdlp_failure": {
+      "run": 37315988368,
+      "job": 111782742399,
+      "error": "curl35 CRYPT_E_REVOCATION_OFFLINE"
+    },
+    "scope": "Synthetic matrix only; no live Tor/E2E launch",
+    "next_action": "Observe corrected-head CI; preserve first failure. Retained workflow wiring remains pending."
   }
 }

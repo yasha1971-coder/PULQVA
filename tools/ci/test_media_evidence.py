@@ -124,6 +124,7 @@ class MediaEvidenceTests(unittest.TestCase):
 
     @POSIX
     def test_retained_profile_requires_readback_and_keeps_selected_bytes(self):
+        """Matching selected bytes pass independent readback and remain after closeout."""
         result,out=self.retained_capture()
         self.assertEqual(result,0)
         self.assertEqual((out/'retained-file/selected.webm').read_bytes(),b'abc')
@@ -133,18 +134,21 @@ class MediaEvidenceTests(unittest.TestCase):
 
     @POSIX
     def test_retained_success_marker_cannot_accept_same_size_corruption(self):
+        """An exit-zero success marker cannot accept altered bytes of identical size."""
         result,out=self.retained_capture(corrupt=True)
         self.assertEqual(result,1)
         self.assertFalse(strict_load(out/'matrix_receipt.json')['retained_verified_file'])
 
     @POSIX
     def test_retained_success_marker_cannot_accept_missing_file(self):
+        """An exit-zero success marker cannot accept a missing selected file."""
         result,out=self.retained_capture(missing=True)
         self.assertEqual(result,1)
         self.assertFalse(strict_load(out/'matrix_receipt.json')['retained_verified_file'])
 
     @POSIX
     def test_retained_closeout_rejects_file_changed_after_capture(self):
+        """Changing retained bytes after capture invalidates final acceptance."""
         result,out=self.retained_capture()
         self.assertEqual(result,0)
         (out/'retained-file/selected.webm').write_bytes(b'abd')
