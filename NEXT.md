@@ -1,20 +1,21 @@
 # NEXT
 
-## T069-G2 — Windows compiler recovery PREPARE
+## T069-G2 — Windows compiler recovery OBSERVE
 
-PR80 branch feat/T069-intent-contract, source base f2c7350b6d6684c74f2212e067edf52644127dc5.
-Latest provenance checkpoint5993164002 supersedes old G2D publish queue.
+PR80 feat/T069-intent-contract; parent4349f7a2bac493fcbdf70db086487f47aec169ef.
+Existing arti-sidecar-check now parses both scripts on Windows BEFORE setup,
+invokes bounded isolated18.10.1 restoration and preserves its receipt even on failure.
+Compiler64-file gate, SDK/Rust/Arti/executable pins and Linux build unchanged.
+Only automatic PR build wave admitted; no manual dispatch/rerun or live Tor.
 
-Prepared scripts/restore_arti_windows_compiler.ps1; NOT connected to workflow.
-Fixed official18.10.1 installer, valid Microsoft Authenticode signer required,
-isolated fresh path,120s download/1200s installer bound, exact installed version,
-existing64 compiler hashes before exporting compiler environment. SDK/Rust/Arti
-and executable pins unchanged. Receipt records failures and measured installer digest;
-that digest is not a preauthenticated content pin. BuildTools equivalence is unproved.
-No local PowerShell runtime: parsing, installer execution and Windows acceptance NOT_TESTED.
+ONE NEXT ACTION: observe this new exact-head CI: Windows parser, signed installer,
+exact installed version,64 hashes, unchanged final arti.exe SHA256. Missing receipt
+or skipped/failing step cannot establish success. Preserve first concrete failure;
+no hot fix/retry in this generation. PowerShell not available locally: hosted
+parse/runtime/build acceptance PENDING. Local YAML structure and continuity checks
+only; not compliant runtime matrix or product acceptance.
 
-ONE NEXT ACTION: review/parse candidate on Windows, then wire bounded recovery
-and evidence upload into existing arti-sidecar-check workflow as one atomic phase.
-Do not rerun unchanged failing build. Retained-file wiring paused pending red-boundary
-reconciliation; G2D9 tests remain local-only. No live Tor, merge/release or scheduler change.
-Global verified anchor unchanged. Separate no-jobs workflow37292162029 remains unexplained.
+Old run37303285675 Windows111740885918 again failed compiler gate before build;
+Linux111740886155 succeeded. G2D retained-file wiring remains paused,9 tests
+local-only; full intent->choice->retained-file,UI/packages NOT_TESTED.
+No merge/release/scheduler change; global verified anchor unchanged.

@@ -33,10 +33,33 @@ jobs:
           rustup toolchain install 1.91.0 --profile minimal
           rustup default 1.91.0
 
-      - name: Select and authenticate Windows native compiler
+      - name: Parse Windows compiler recovery scripts before setup
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/arti_windows_compiler.ps1
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($path in @('scripts/restore_arti_windows_compiler.ps1', 'scripts/arti_windows_compiler.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD $path), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -ne 0) { throw ($errors | Out-String) }
+            Write-Output "PULQVA_COMPILER_SCRIPT_PARSE_PASS $path"
+          }
+
+      - name: Restore and authenticate pinned Windows native compiler
+        if: runner.os == 'Windows'
+        timeout-minutes: 25
+        shell: pwsh
+        run: ./scripts/restore_arti_windows_compiler.ps1
+
+      - name: Preserve compiler restoration receipt even on failure
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: arti-windows-compiler-restoration
+          path: ${{ runner.temp }}/pulqva-vs18101-recovery/restoration_receipt.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Build exact Arti identity candidate without running Tor
         shell: bash
