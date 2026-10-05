@@ -10,7 +10,7 @@
   "next_task": "T069",
   "last_completed_subtask": "T069-G1",
   "next_subtask": "T069-G2",
-  "ci": "pending",
+  "ci": "blocked",
   "architecture_status": "kernel_frozen_implementation_open",
   "scope_note": "G2C1 containment and authority closeout3b212 are scoped-verified. G2C2 positive Linux media admission/capture is implemented and locally synthetic-tested; hosted acceptance and real execution are PENDING. No model-to-file or release acceptance.",
   "known_blockers": [
@@ -25,7 +25,8 @@
     "T066 cleanup/races, readiness deadline overshoot and Arti SDK-content pinning remain open.",
     "Autopilot authorization/ranking, user-facing choice, UI integration, self-contained Windows/Linux packages, clean-machine acceptance and package egress remain open.",
     "Automatic contracts remain on both OSes. Only explicit exact-source attempt1 Linux media may use the newly implemented same-run native prerequisite/capture path after its deterministic gate. Hosted G2C2 behavior and real media execution remain NOT_TESTED; other three legacy gates stay closed. No historical transport failure is repaired.",
-    "G2B helper tests do not establish end-to-end observed/unobserved socket-trace equivalence. Native collector stdout was not retained in the original artifact; do not retroactively upgrade that evidence."
+    "G2B helper tests do not establish end-to-end observed/unobserved socket-trace equivalence. Native collector stdout was not retained in the original artifact; do not retroactively upgrade that evidence.",
+    "Pinned FFmpeg daily release2026-09-20 returns404. September monthly replacement archive bytes are verified for both OSes, but not adopted or compatibility-tested."
   ],
   "verification_context": {
     "kind": "Observed existing deterministic G1 native log; no new model or network execution",
@@ -219,7 +220,7 @@
     "checkpoint": 5981185094,
     "automation_id": "6abf44bc84348191aab3e3e2c4540f94",
     "authorized_date": "2026-10-04",
-    "owner_instruction": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438 \u043c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e\u0435 \u043a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0448\u0430\u0433\u043e\u0432 \u043f\u043e\u043a\u0430 \u044f \u043d\u0435 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u044e \u0441\u043e\u0432\u0435\u0440\u0448\u0435\u043d\u0441\u0442\u0432\u0443\u0439 \u0438 \u0441\u043e\u0437\u0434\u0430\u0432\u0430\u0439 \u043f\u043e \u043f\u043b\u0430\u043d\u0443 \u043a \u0446\u0435\u043b\u0438",
+    "owner_instruction": "Запусти максимальное количество шагов пока я не остановлю совершенствуй и создавай по плану к цели",
     "cadence_minutes": 60,
     "max_mutating_tasks_per_cycle": 1,
     "max_live_generations_per_cycle": 1,
@@ -290,5 +291,59 @@
     },
     "scope": "Synthetic matrix only; no live Tor/E2E launch",
     "next_action": "Observe corrected-head CI; preserve first failure. Retained workflow wiring remains pending."
+  },
+  "ffmpeg_source_recovery": {
+    "schema": 1,
+    "status": "ARCHIVE_BYTES_VERIFIED_COMPATIBILITY_NOT_TESTED",
+    "source_head": "5fde8951a17f805aebb0260e609b3f615a2ed061",
+    "upstream_release": "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-30-13-08",
+    "release_tag": "autobuild-2026-09-30-13-08",
+    "release_id": 400057568,
+    "published_at": "2026-09-30T13:09:24Z",
+    "version": "n9.0.2-17-g2a571b6068",
+    "retention_basis": "Last build of month; upstream retention policy two years; archive bytes still require independent verification",
+    "artifacts": [
+      {
+        "id": 600951759,
+        "asset": "ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz",
+        "size_bytes": 151017172,
+        "sha256": "68ee646831adaae2495618346f3bba94ff207ff83bbd34d643e7004730d66269",
+        "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz",
+        "members": [
+          {
+            "name": "ffmpeg",
+            "size": 172692552,
+            "sha256": "0d709a0bed1a43f24cd2c420878c63afea4580671b6949ad19ed124572f3bc3d"
+          },
+          {
+            "name": "ffprobe",
+            "size": 172467208,
+            "sha256": "a5bd5e9f8d74ab2c6d7d9e2e2738ff6d67bf9613e7143e143ba8ebe9b06385fb"
+          }
+        ]
+      },
+      {
+        "id": 600950768,
+        "asset": "ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+        "size_bytes": 194034585,
+        "sha256": "a0e45723c72141975f51d8666302e614711745f3102b704ca3f82c897a58d278",
+        "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+        "members": [
+          {
+            "name": "ffmpeg.exe",
+            "size": 165155840,
+            "sha256": "513368c81583572ce1d09d5c7ff827feed1a63db352412a5001f4da3a1583d98"
+          },
+          {
+            "name": "ffprobe.exe",
+            "size": 164954624,
+            "sha256": "0fd8f3bae96cc707993bcd8c56c13f8cd73962d37dbcaac0dad4fe3a0ce1f68f"
+          }
+        ]
+      }
+    ],
+    "observed_at": "2026-10-05T23:29:48Z",
+    "digest_origin": "GitHub release asset digest, independently matched against downloaded full bytes",
+    "scope": "Archive identity and standard-library archive member hashing only; no executable launch, repinning or product acceptance"
   }
 }

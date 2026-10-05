@@ -11,8 +11,8 @@
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "719ae84dfff47262709e891da43e14d1bfcd4f04",
-    "NEXT.md": "32634aca8205cce9619bb450669d0cf547060793",
+    "PROJECT_STATE.json": "fbed400ac04d73ed8cea2bfa2afbf8d02e87e9be",
+    "NEXT.md": "001f3ffac0bb5c2f8b936f9099733429513573c1",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -62,7 +62,8 @@
     "recovery/evidence/g2c2-local-observation.json": "fdf85f10c29ab1a48eb0524ecdb1b893c6eecc45",
     "scripts/arti_windows_compiler.ps1": "2ce39476eb4e368a4c02049b55059f823fa2d1f5",
     "scripts/restore_arti_windows_compiler.ps1": "b90defb4b6eb2f5ff66491798b5ce563d9049225",
-    ".github/workflows/arti-sidecar-check.yml": "ddb23d66471e040bf855a939a034da51e69232cc"
+    ".github/workflows/arti-sidecar-check.yml": "ddb23d66471e040bf855a939a034da51e69232cc",
+    "recovery/evidence/ffmpeg-source-candidate.json": "a349f81ec0d9af571fa6c17be94f179b9e815b01"
   },
   "state_contract": {
     "active_task": "T069",
@@ -109,7 +110,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "T069-G2D observe corrected matrix automatic CI; retained workflow wiring remains pending",
+  "next_action": "T069-G2 migrate verified monthly FFmpeg source and observe one existing two-OS compatibility/remux wave",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",
