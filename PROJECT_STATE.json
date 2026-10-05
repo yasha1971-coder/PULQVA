@@ -126,13 +126,17 @@
       "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
     }
   },
-  "next_phase": "T069-G2D-A-PUBLISH",
+  "next_phase": "T069-WINDOWS-COMPILER-RECOVERY-SOURCE-GATE",
   "g2d_readback_context": {
     "status": "WIP_LOCAL_UNIT_TESTED_NOT_HOSTED",
     "source_base": "4a3f9ea00d2be5f4dafb1ddfc3b15eb3e544cea2",
     "subtask": "T069-G2D-A",
     "scope": "Bounded independent readback of existing retained Commons fixture; no new downloader or workflow admission",
-    "local_tests": {"passed": 9, "failed": 0, "kind": "ordinary unittest; not a compliant live matrix generation"},
+    "local_tests": {
+      "passed": 9,
+      "failed": 0,
+      "kind": "ordinary unittest; not a compliant live matrix generation"
+    },
     "limitations": "Not connected to live capture. Requires owned parent namespace. No race-proof arbitrary-path or publisher authentication claim. No Cargo toolchain available locally.",
     "next_action": "Publish atomic readback helper/test checkpoint on PR80 after live HEAD reconciliation; then observe deterministic gate. Wire retained profile only in a separate phase."
   },
@@ -259,5 +263,13 @@
     "updated_at": "2026-10-04T16:17:42.412894Z",
     "cause": "not established by available logs",
     "note": "Observation is not owner revocation or evidence of successful scheduled writes. This interactive turn does not reactivate the scheduler."
+  },
+  "windows_compiler_recovery": {
+    "status": "WIP_PREPARED_NOT_EXECUTED",
+    "source_base": "f2c7350b6d6684c74f2212e067edf52644127dc5",
+    "provenance_checkpoint": 5993164002,
+    "scope": "Build-only exact18.10.1 isolated restoration candidate; unchanged64-file gate",
+    "limitations": "No local PowerShell runtime. Not parsed/executed on Windows; no installer or new build acceptance. Workflow unchanged.",
+    "next_action": "Review/parse candidate on Windows, then wire bounded recovery and evidence upload into existing build workflow in one subsequent atomic phase."
   }
 }
