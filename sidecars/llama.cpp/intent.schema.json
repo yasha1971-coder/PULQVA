@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PULQVA local interpretation",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "query",
+        "choice_mode"
+      ],
+      "properties": {
+        "kind": {
+          "const": "intent"
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "choice_mode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "autopilot"
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "reason"
+      ],
+      "properties": {
+        "kind": {
+          "const": "reject"
+        },
+        "reason": {
+          "const": "semantic_authority"
+        }
+      }
+    }
+  ]
+}

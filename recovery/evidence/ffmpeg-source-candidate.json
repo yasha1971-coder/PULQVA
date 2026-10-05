@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "status": "ARCHIVE_BYTES_VERIFIED_COMPATIBILITY_NOT_TESTED",
+  "source_head": "5fde8951a17f805aebb0260e609b3f615a2ed061",
+  "upstream_release": "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-30-13-08",
+  "release_tag": "autobuild-2026-09-30-13-08",
+  "release_id": 400057568,
+  "published_at": "2026-09-30T13:09:24Z",
+  "version": "n9.0.2-17-g2a571b6068",
+  "retention_basis": "Last build of month; upstream retention policy two years; archive bytes still require independent verification",
+  "artifacts": [
+    {
+      "id": 600951759,
+      "asset": "ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz",
+      "size_bytes": 151017172,
+      "sha256": "68ee646831adaae2495618346f3bba94ff207ff83bbd34d643e7004730d66269",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz",
+      "members": [
+        {
+          "name": "ffmpeg",
+          "size": 172692552,
+          "sha256": "0d709a0bed1a43f24cd2c420878c63afea4580671b6949ad19ed124572f3bc3d"
+        },
+        {
+          "name": "ffprobe",
+          "size": 172467208,
+          "sha256": "a5bd5e9f8d74ab2c6d7d9e2e2738ff6d67bf9613e7143e143ba8ebe9b06385fb"
+        }
+      ]
+    },
+    {
+      "id": 600950768,
+      "asset": "ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+      "size_bytes": 194034585,
+      "sha256": "a0e45723c72141975f51d8666302e614711745f3102b704ca3f82c897a58d278",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+      "members": [
+        {
+          "name": "ffmpeg.exe",
+          "size": 165155840,
+          "sha256": "513368c81583572ce1d09d5c7ff827feed1a63db352412a5001f4da3a1583d98"
+        },
+        {
+          "name": "ffprobe.exe",
+          "size": 164954624,
+          "sha256": "0fd8f3bae96cc707993bcd8c56c13f8cd73962d37dbcaac0dad4fe3a0ce1f68f"
+        }
+      ]
+    }
+  ],
+  "observed_at": "2026-10-05T23:29:48Z",
+  "digest_origin": "GitHub release asset digest, independently matched against downloaded full bytes",
+  "scope": "Archive identity and standard-library archive member hashing only; no executable launch, repinning or product acceptance"
+}

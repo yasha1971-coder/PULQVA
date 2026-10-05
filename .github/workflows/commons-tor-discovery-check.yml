@@ -1,32 +1,74 @@
 name: commons-tor-discovery-check
+run-name: "Contracts only; live NOT TESTED (${{ github.event_name }})"
+
 on:
   pull_request:
-    paths:
-      - 'crates/pulqva-discovery/**'
-      - 'crates/pulqva-core/**'
-      - 'crates/pulqva-privacy/**'
-      - 'sidecars/arti/**'
-      - 'sidecars/yt-dlp/**'
-      - 'tools/ci/**'
-      - 'Cargo.lock'
-      - 'Cargo.toml'
-      - '.github/workflows/commons-tor-discovery-check.yml'
   push:
     branches: [main]
-    paths:
-      - 'crates/pulqva-discovery/**'
-      - 'crates/pulqva-core/**'
-      - 'crates/pulqva-privacy/**'
-      - 'sidecars/arti/**'
-      - 'sidecars/yt-dlp/**'
-      - 'tools/ci/**'
-      - 'Cargo.lock'
-      - 'Cargo.toml'
-      - '.github/workflows/commons-tor-discovery-check.yml'
+  workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
+  admission:
+    name: Live admission (NOT TESTED)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      admitted: ${{ steps.admission.outputs.admitted }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Refuse unadmitted legacy live execution
+        id: admission
+        env:
+          PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/ci/legacy_live_guard.py commons-tor-discovery-check "$RUNNER_TEMP/live-admission"
+      - name: Retain explicit live scope (not matrix evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-admission-commons-tor-discovery-check-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/live-admission/live-status.json
+          if-no-files-found: error
+          retention-days: 30
+
+  contracts:
+    name: Deterministic contracts (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test evidence controls before Rust or external work
+        run: python -m unittest discover -s tools/ci -p "test_*.py" -v
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Run existing deterministic contracts (no live Tor)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo +1.91.0 check --workspace --all-targets --locked --keep-going
+          cargo +1.91.0 test --workspace --all-targets --locked --no-run
+          cargo +1.91.0 test --locked -p pulqva-privacy --lib -- --nocapture
+          cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery -- --nocapture
+          cargo +1.91.0 test --locked -p pulqva-discovery --example real_commons_file -- --nocapture
+
   live-discovery:
+    needs: [admission, contracts]
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.admission.outputs.admitted == 'true' }}
     strategy:
       fail-fast: false
       matrix:

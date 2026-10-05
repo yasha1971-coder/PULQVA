@@ -1,15 +1,66 @@
 name: ytdlp-tor-metadata-check
+run-name: "Contracts only; live NOT TESTED (${{ github.event_name }})"
 
 on:
   pull_request:
   push:
-    branches: ["main"]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  admission:
+    name: Live admission (NOT TESTED)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      admitted: ${{ steps.admission.outputs.admitted }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Refuse unadmitted legacy live execution
+        id: admission
+        env:
+          PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/ci/legacy_live_guard.py ytdlp-tor-metadata-check "$RUNNER_TEMP/live-admission"
+      - name: Retain explicit live scope (not matrix evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-admission-ytdlp-tor-metadata-check-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/live-admission/live-status.json
+          if-no-files-found: error
+          retention-days: 30
+
+  contracts:
+    name: Deterministic contracts (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Run existing deterministic contracts (no live Tor)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo +1.91.0 test --locked -p pulqva-privacy --lib ytdlp_
+          cargo +1.91.0 test --locked -p pulqva-privacy --example real_ytdlp_tor_metadata
+
   metadata:
+    needs: [admission, contracts]
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.admission.outputs.admitted == 'true' }}
     strategy:
       fail-fast: false
       matrix:

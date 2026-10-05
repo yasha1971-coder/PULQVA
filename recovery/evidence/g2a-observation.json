@@ -1,0 +1,97 @@
+{
+  "kind": "local observation summary, NOT raw model/Tor/native evidence",
+  "candidate_1_commit": "6cc878f69802520025c2b91b89980d86a551993c",
+  "generations": [
+    {
+      "generation_id": "07238b43-5e8d-409a-96c9-f537f4cf0cfb",
+      "probes": 16,
+      "overall": "PASS",
+      "source_base": "65f5f2d708c058d2bb98c612cc994f2d1f6afc9d",
+      "identity_components": {
+        "evaluator": {
+          "sha256": "c01b57c437afd73c66ff364a31fe194090d17a51f2314307c41b9ebb8f011d42",
+          "status": "captured"
+        },
+        "fixtures": {
+          "sha256": "b452d2bac8de11aff058fd96478b52ae443144ea98d713e9aadfd0402f878568",
+          "status": "captured"
+        },
+        "flags": {
+          "sha256": "257ba701e7e822e0ecf30d5b7a3c75df34ec5db13e0a69b706dc478560d54ce2",
+          "status": "captured"
+        },
+        "model": {
+          "reason": "codec unit tests; no model runtime",
+          "sha256": null,
+          "status": "not_applicable"
+        },
+        "prompt": {
+          "reason": "codec unit tests; no model runtime",
+          "sha256": null,
+          "status": "not_applicable"
+        },
+        "runtime": {
+          "sha256": "17b78e0a93175e86f9ac03141924fd7a7f0c0c52e66b34bfa0de20ffef989df1",
+          "status": "captured"
+        },
+        "schema": {
+          "reason": "codec unit tests; no model runtime",
+          "sha256": null,
+          "status": "not_applicable"
+        }
+      },
+      "manifest_sha256": "45b618b8031c6656e39fff22798e6af161cb5dfc67152447c26fa3452620332e",
+      "receipt_sha256": "843fe2146a45140d4e7ab1fdb6b7ffbf0b498d33fb3b146d6718ab074b0cd13a"
+    },
+    {
+      "generation_id": "835e77ed-df8e-4efd-b930-67cb6919f27d",
+      "probes": 17,
+      "overall": "PASS",
+      "source_base": "65f5f2d708c058d2bb98c612cc994f2d1f6afc9d",
+      "identity_components": {
+        "evaluator": {
+          "sha256": "c01b57c437afd73c66ff364a31fe194090d17a51f2314307c41b9ebb8f011d42",
+          "status": "captured"
+        },
+        "fixtures": {
+          "sha256": "94718d0d4d2378ed9edee374ca666af7548d97e45c7e9031a3eb176c4041a860",
+          "status": "captured"
+        },
+        "flags": {
+          "sha256": "257ba701e7e822e0ecf30d5b7a3c75df34ec5db13e0a69b706dc478560d54ce2",
+          "status": "captured"
+        },
+        "model": {
+          "reason": "codec unit tests; no model runtime",
+          "sha256": null,
+          "status": "not_applicable"
+        },
+        "prompt": {
+          "reason": "codec unit tests; no model runtime",
+          "sha256": null,
+          "status": "not_applicable"
+        },
+        "runtime": {
+          "sha256": "17b78e0a93175e86f9ac03141924fd7a7f0c0c52e66b34bfa0de20ffef989df1",
+          "status": "captured"
+        },
+        "schema": {
+          "reason": "codec unit tests; no model runtime",
+          "sha256": null,
+          "status": "not_applicable"
+        }
+      },
+      "manifest_sha256": "9fed61bf6defb6f1a10dc5e08cf30e40a4f2156018442812d0f7066d056a232d",
+      "receipt_sha256": "10a671793f367483484d935525898372b383523b636317029cdbd1ac54021ae7"
+    }
+  ],
+  "regression": {
+    "command": "python -m unittest discover -s tools/ci -p test_*.py -v",
+    "tests": 54,
+    "errors": 1,
+    "error": "unchanged test_tagged_runner.py import failed at happy-case assertion; cause not established; no all-green claim or additional rerun",
+    "new_codec_tests_passed": 17
+  },
+  "raw_local_archive_sha256": "a01e2892b4b0d8dae021106c3f14c01bd38f061f77bbe7678b24459f8bfc2f10",
+  "retention": "Original manifests/receipts/raw unit outcomes are in the conversation archive. Remote CI for the pending source commit is not yet observed; do not use this summary as that result."
+}

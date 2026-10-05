@@ -578,6 +578,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "pulqva-intent-http"
+version = "0.0.0"
+dependencies = [
+ "pulqva-core",
+ "pulqva-intent-json",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "pulqva-intent-process"
+version = "0.0.0"
+dependencies = [
+ "pulqva-core",
+ "pulqva-intent-json",
+]
+
+[[package]]
+name = "pulqva-intent-server"
+version = "0.0.0"
+dependencies = [
+ "pulqva-core",
+ "pulqva-intent-http",
+ "serde_json",
+]
+
+[[package]]
 name = "pulqva-privacy"
 version = "0.0.0"
 

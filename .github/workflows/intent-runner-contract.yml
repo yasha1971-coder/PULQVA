@@ -1,0 +1,23 @@
+name: intent-runner-contract
+
+on:
+  pull_request:
+    paths:
+      - "eval/intent/**"
+      - "tools/ci/test_tagged_runner.py"
+      - ".github/workflows/intent-runner-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Python contract tools
+        run: |
+          python3 -m py_compile eval/intent/run_candidate.py tools/ci/test_tagged_runner.py
+      - name: Run tagged runner without model or network
+        run: python3 tools/ci/test_tagged_runner.py

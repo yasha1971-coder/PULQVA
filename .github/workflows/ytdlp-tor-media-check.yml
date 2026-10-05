@@ -1,25 +1,125 @@
 name: ytdlp-tor-media-check
+run-name: "${{ github.event_name == 'workflow_dispatch' && 'Admitted media requested' || 'Contracts only; live NOT TESTED' }} (${{ github.event_name }})"
 
 on:
   pull_request:
   push:
-    branches: ["main"]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact full source SHA; must equal the selected dispatch ref
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: media-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
 jobs:
-  media:
+  admission:
+    name: Media admission (not live evidence)
+    needs: contracts
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      admitted: ${{ steps.admission.outputs.admitted }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Read same-run native prerequisite
+        if: ${{ github.event_name == 'workflow_dispatch' && needs.contracts.result == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: media-native-prerequisite-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/media-prerequisite
+      - name: Admit only exact-source tested media request
+        id: admission
+        if: always()
+        env:
+          PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PULQVA_REQUESTED_SOURCE: ${{ inputs.source_sha }}
+          PULQVA_CONTRACTS_RESULT: ${{ needs.contracts.result }}
+          PULQVA_MEDIA_PREREQUISITE: ${{ runner.temp }}/media-prerequisite
+        run: python3 tools/ci/legacy_live_guard.py ytdlp-tor-media-check "$RUNNER_TEMP/live-admission"
+      - name: Retain explicit admission scope
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-admission-ytdlp-tor-media-check-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/live-admission/live-status.json
+          if-no-files-found: error
+          retention-days: 90
+
+  contracts:
+    name: Deterministic contracts (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test positive admission and bounded capture without Tor
+        run: python -m unittest discover -s tools/ci -p 'test_media_evidence.py' -v
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Run existing deterministic contracts (no live Tor)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo +1.91.0 test --locked -p pulqva-privacy --example real_ytdlp_tor_media
+      - name: Native prerequisite for this explicit generation
+        if: ${{ github.event_name == 'workflow_dispatch' && runner.os == 'Linux' }}
+        env:
+          PULQVA_SOURCE_SHA: ${{ github.sha }}
+        run: python3 tools/ci/readiness_contract_matrix.py "$RUNNER_TEMP/media-native-prerequisite"
+      - name: Retain same-run native prerequisite
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && runner.os == 'Linux' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: media-native-prerequisite-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/media-native-prerequisite/
+          if-no-files-found: error
+          retention-days: 90
 
+  media:
+    needs: [admission, contracts]
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.admission.outputs.admitted == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PULQVA_SOURCE_SHA: ${{ github.sha }}
+      PULQVA_REQUESTED_SOURCE: ${{ inputs.source_sha }}
+      PULQVA_CONTRACTS_RESULT: ${{ needs.contracts.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: media-native-prerequisite-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/media-prerequisite
       - name: Install pinned Rust toolchain
         shell: bash
         run: |
@@ -91,21 +191,28 @@ jobs:
 
           echo "YTDLP_BIN=$EXEC_BIN" >> "$GITHUB_ENV"
 
-      - name: Prove one bounded real media download through Tor
+      - name: Prebuild existing fixture before freezing evidence
+        run: cargo +1.91.0 build --locked -p pulqva-privacy --example real_ytdlp_tor_media
+      - name: Capture one immutable existing Tor media fixture
         shell: bash
         run: |
           set -euo pipefail
-
-          OUTPUT="$(cargo +1.91.0 run \
-            --quiet \
-            --locked \
-            -p pulqva-privacy \
-            --example real_ytdlp_tor_media \
-            -- "$ARTI_BIN" "$YTDLP_BIN" --diagnostics)"
-          echo "$OUTPUT"
-
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            echo "$OUTPUT" | grep -E 'PULQVA_YTDLP_TOR_MEDIA(_WINDOWS_FAIL_CLOSED)?_OK'
-          else
-            echo "$OUTPUT" | grep -F 'PULQVA_YTDLP_TOR_MEDIA_OK'
-          fi
+          python3 tools/ci/media_evidence.py capture \
+            "$RUNNER_TEMP/media-evidence" "$RUNNER_TEMP/media-prerequisite" \
+            "$GITHUB_WORKSPACE/target/debug/examples/real_ytdlp_tor_media" "$ARTI_BIN" "$YTDLP_BIN"
+      - name: Close actual evidence or mark preparation NOT TESTED
+        if: always()
+        env:
+          PULQVA_JOB_STATUS: ${{ job.status }}
+        run: python3 tools/ci/media_evidence.py finalize "$RUNNER_TEMP/media-evidence" "$PULQVA_JOB_STATUS"
+      - name: Retain bounded public evidence (no Tor state or cache)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-media-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/media-evidence/*.json
+            ${{ runner.temp }}/media-evidence/stdout.bin
+            ${{ runner.temp }}/media-evidence/stderr.bin
+          if-no-files-found: error
+          retention-days: 90

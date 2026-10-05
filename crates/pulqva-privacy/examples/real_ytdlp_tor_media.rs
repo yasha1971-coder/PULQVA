@@ -3,7 +3,8 @@ mod media_socks_diagnostic;
 use pulqva_privacy::{
     ArtiRuntimePlan, TorReadinessError, TorSocksEndpoint, YtDlpLaunchPlan,
     YtDlpMediaRequestPlan, YtDlpMediaSourceUrl, launch_prepared_arti,
-    prepare_arti_runtime, verify_tor_readiness,
+    prepare_arti_runtime, verify_tor_readiness, verify_tor_readiness_observed,
+    TorReadinessTrace,
 };
 use std::{
     env,
@@ -56,7 +57,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     let prepared = prepare_arti_runtime(plan)?;
     let mut running_arti = launch_prepared_arti(prepared)?;
 
-    let ready = match verify_tor_readiness(&mut running_arti, TOR_READY_TIMEOUT) {
+    // Diagnostics are opt-in and passive: they observe the exact readiness verifier
+    // used by the default path and never create an additional socket/probe.
+    let diagnostics = env::args_os().nth(3).is_some_and(|arg| arg == "--diagnostics");
+    let readiness = if diagnostics {
+        let (result, trace) = verify_tor_readiness_observed(&mut running_arti, TOR_READY_TIMEOUT);
+        report_readiness_trace(&trace);
+        result
+    } else {
+        verify_tor_readiness(&mut running_arti, TOR_READY_TIMEOUT)
+    };
+
+    let ready = match readiness {
         Ok(ready) => ready,
         Err(TorReadinessError::Timeout(_)) if cfg!(windows) => {
             let _ = running_arti.stop_and_wait();
@@ -82,8 +94,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("media proof constructed a metadata-only request".into());
     }
 
-    // Diagnostics are opt-in and confined to this fixed public CI fixture.
-    let diagnostics = env::args_os().nth(3).is_some_and(|arg| arg == "--diagnostics");
     // One shared budget across all attempts, never renewed by a retry.
     let deadline = Instant::now() + YTDLP_TIMEOUT;
     let mut attempt = 0;
@@ -164,6 +174,18 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("PULQVA_YTDLP_TOR_MEDIA_OK");
     Ok(())
+}
+
+fn report_readiness_trace(trace: &TorReadinessTrace) {
+    for (index, observation) in trace.observations().iter().enumerate() {
+        eprintln!(
+            "PULQVA_TOR_READINESS_TRACE index={} family={:?} stage={:?} operation={:?} io_kind={:?} socks_reply={:?} socks_reply_class={:?} duration_ms={}",
+            index, observation.family(), observation.stage(), observation.operation(),
+            observation.io_kind(), observation.socks_reply(), observation.socks_reply_class(),
+            observation.duration_ms(),
+        );
+    }
+    eprintln!("PULQVA_TOR_READINESS_TRACE omitted={}", trace.omitted());
 }
 
 // Drain the pipe continuously, but retain at most 8 KiB in memory. No disk log.

@@ -5,13 +5,15 @@
 
 mod candidate;
 mod intent;
+mod interpreted_intent;
 mod journey;
 
 pub use candidate::{SearchCandidate, SearchCandidateError};
 pub use intent::{SearchIntent, SearchIntentError};
+pub use interpreted_intent::{ChoiceMode, Interpretation, InterpretationRejected, InterpretedIntent, InterpretedIntentError, RejectReason, MAX_INTERPRETED_QUERY_BYTES};
 pub use journey::{
-    CandidateRetrieval, CandidateSearch, ChoiceSet, FileReceipt, JourneyError,
-    SelectedCandidate, request_choices, retrieve_choice,
+    CandidateRetrieval, CandidateSearch, ChoiceSet, FileReceipt, InterpretedChoices, JourneyError,
+    SelectedCandidate, request_choices, request_interpreted_choices, retrieve_choice,
 };
 
 pub const CORE_CRATE_READY: bool = true;

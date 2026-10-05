@@ -1,9 +1,14 @@
 # Build-only selection. This is not a hermetic SDK or a product runtime change.
+param([string]$InstallationPath = '')
 $ErrorActionPreference = 'Stop'
 $pin = Get-Content -LiteralPath 'sidecars/arti/WINDOWS_COMPILER.json' -Raw | ConvertFrom-Json
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$roots = @(& $vswhere -all -products '*' -property installationPath)
-if ($LASTEXITCODE -ne 0) { throw 'VS discovery failed' }
+if ($InstallationPath) {
+    $roots = @($InstallationPath)
+} else {
+    $roots = @(& $vswhere -all -products '*' -property installationPath)
+    if ($LASTEXITCODE -ne 0) { throw 'VS discovery failed' }
+}
 $matches = @($roots | ForEach-Object {
     $candidate = Join-Path $_ "VC\Tools\MSVC\$($pin.toolset)"
     if (Test-Path -LiteralPath $candidate) { $candidate }
