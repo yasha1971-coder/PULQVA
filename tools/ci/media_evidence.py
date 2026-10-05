@@ -242,14 +242,19 @@ def identities(root: Path, paths: dict[str, Path]) -> dict:
 
 
 def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti: Path, ytdlp: Path,
-                env: dict) -> int:
+                env: dict, *, retained: bool = False) -> int:
     # Deliberately cannot be called to bypass admission via a ready-made status file.
     admission = admit(env, root, prerequisite)
+    marker = b'PULQVA_COMMONS_FILE_E2E_OK' if retained else MARKER
+    probe = 'RETAINED-FILE' if retained else 'MEDIA-FIXTURE'
+    boundary = 'T069-G2D-retained-public-file' if retained else BOUNDARY
+    fixture = ('crates/pulqva-discovery/examples/real_commons_file.rs' if retained
+               else 'crates/pulqva-privacy/examples/real_ytdlp_tor_media.rs')
     require(platform.system() == 'Linux', 'linux_only')
     paths = {'runtime': binary.resolve(strict=True), 'arti': arti.resolve(strict=True),
              'ytdlp': ytdlp.resolve(strict=True), 'evaluator': Path(__file__).resolve(),
              'codec': root/'tools/ci/matrix_receipt.py',
-             'fixtures': root/'crates/pulqva-privacy/examples/real_ytdlp_tor_media.rs',
+             'fixtures': root/fixture,
              'native_collector': root/'tools/ci/readiness_contract_matrix.py',
              'workflow': root/'.github/workflows/ytdlp-tor-media-check.yml',
              'arti_pin': root/'sidecars/arti/VERSION', 'ytdlp_pin': root/'sidecars/yt-dlp/SHA256SUMS',
@@ -261,7 +266,8 @@ def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti
     require(paths['arti_pin'].read_text().strip() == '2.6.0', 'arti_version_pin')
     for name in ('model', 'prompt', 'schema'):
         components[name] = dict(status='not_applicable', sha256=None, reason='fixed public media fixture; no local model')
-    components['flags'] = captured(digest(dict(argv=['native_fixture', 'pinned_arti', 'pinned_ytdlp', '--diagnostics'],
+    components['flags'] = captured(digest(dict(argv=['native_fixture', 'pinned_arti', 'pinned_ytdlp',
+                                                    'new-retained-directory' if retained else '--diagnostics'],
                                               inner_budgets='unchanged Rust fixture', outer_timeout=OUTER_TIMEOUT,
                                               output_cap_per_stream=MAX_OUTPUT, calls=1, env='isolated_home_temp_minimal')))
     components['prerequisite'] = captured(admission['prerequisite_manifest_sha256'])
@@ -273,15 +279,20 @@ def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti
     temp.mkdir(mode=0o700); home.mkdir(mode=0o700)
     child_env = dict(PATH='/usr/bin:/bin', LANG='C.UTF-8', HOME=str(home.resolve()),
                      TMPDIR=str(temp.resolve()), TMP=str(temp.resolve()), TEMP=str(temp.resolve()))
-    plan = dict(protocol='pulqva-evidence-boundary-v1', boundary=BOUNDARY,
-                generation_id=admission['generation_id'], identity=identity,
+    if retained:
+        child_env['PULQVA_SOURCE_SHA'] = admission['source_sha']
+    retained_dir = output/'retained-file'
+    argv = [str(paths['runtime']), str(paths['arti']), str(paths['ytdlp']),
+            str(retained_dir.resolve()) if retained else '--diagnostics']
+    plan = dict(protocol='pulqva-evidence-boundary-v1', boundary=boundary,
+                generation_id=admission['generation_id'] + ('-retained' if retained else ''), identity=identity,
                 environment=dict(os=platform.system(), arch=platform.machine(), toolchain='Rust 1.91.0; '+sys.version),
                 isolation=dict(status='verified', strategy='One trusted public fixture, exclusive temp/home; one owned POSIX process group. No cross-probe state.',
                                evidence_refs=['launch.json', 'test-results.json#cleanup']),
-                probes=[dict(id='MEDIA-FIXTURE', hypothesis='The existing Tor-gated fixed-public media fixture reaches its original success marker within its unchanged internal budgets.',
+                probes=[dict(id=probe, hypothesis=('The existing Commons core request/choice/retrieval fixture retains bytes matching selected metadata and independent readback.' if retained else 'The existing Tor-gated fixed-public media fixture reaches its original success marker within its unchanged internal budgets.'),
                              invariant_set=['one invocation; no repairs or rebuilds', 'same source/sidecar/config identities',
                                             'Tor-only route; existing dependent retries unchanged', 'no user input or inherited credentials'],
-                             expected=dict(marker=MARKER.decode(), returncode=0), depends_on=[])])
+                             expected=dict(marker=marker.decode(), returncode=0, **({'independent_readback': True} if retained else {})), depends_on=[])])
     validate_manifest(plan)
     write_exclusive(output/'admission.json', admission)
     write_exclusive(output/'launch.json', dict(owned_namespace=True, process_group=True, calls=1,
@@ -293,13 +304,20 @@ def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti
     try:
         require(identities(root, paths) == {name: components[name] for name in paths}, 'prelaunch_identity_changed')
         require(admit(env, root, prerequisite) == admission, 'prelaunch_admission_changed')
-        raw = bounded_process([str(paths['runtime']), str(paths['arti']), str(paths['ytdlp']), '--diagnostics'],
-                              output, child_env)
+        raw = bounded_process(argv, output, child_env)
         passed = (raw['reason'] is None and raw['returncode'] == 0
-                  and raw['stdout'].splitlines().count(MARKER) == 1
+                  and raw['stdout'].splitlines().count(marker) == 1
                   and b'WINDOWS_FAIL_CLOSED' not in raw['stdout'])
+        readback = None
+        if retained and passed:
+            try:
+                readback = verify_retained_commons(retained_dir, admission['source_sha'])
+            except (ValueError, OSError, KeyError, TypeError):
+                passed = False
+                raw['reason'] = 'retained_readback_failed'
+        raw['retained_readback'] = readback
         result = 'ERROR' if raw['reason'] else 'PASS' if passed else 'FAIL'
-        recorder.record('MEDIA-FIXTURE', result=result, duration_ms=raw['duration_ms'],
+        recorder.record(probe, result=result, duration_ms=raw['duration_ms'],
                         observed=dict(returncode=raw['returncode'], exact_marker=passed, cleanup=raw['cleanup']),
                         evidence_refs=['test-results.json', 'stdout.bin', 'stderr.bin'], reason=raw['reason'])
         final = copy.deepcopy(identity)
@@ -318,10 +336,11 @@ def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti
         raw[name+'_bytes'] = len(data)
     write_exclusive(output/'test-results.json', raw)
     receipt['raw_evidence_sha256'] = sha(output/'test-results.json')
-    receipt['limitations'] += ['Fixed fixture removes downloaded output; this is NOT a retained content-verified file.',
+    receipt['limitations'] += [('Fixed public request/choice/file only; no model/UI/Windows acceptance; requires owned parent paths.' if retained else 'Fixed fixture removes downloaded output; this is NOT a retained content-verified file.'),
                                'Tor retries are dependent observations inside ONE probe, not independent experiments.',
                                'Host termination may prevent closeout; missing receipt never means PASS.',
                                'No OS-wide egress, hostile-process isolation, provider authenticity or Windows-model claim.']
+    receipt['retained_verified_file'] = bool(retained and raw.get('retained_readback') and verify(plan, receipt) == 'PASS')
     write_exclusive(output/'matrix_receipt.json', receipt)
     verdict = verify(plan, receipt)
     print('PULQVA_MEDIA_CAPTURE_'+verdict)
@@ -340,11 +359,19 @@ def finalize(output: Path, job_status: str) -> int:
         raw = strict_load(output/'test-results.json')
         for name in ('stdout', 'stderr'):
             require(raw[name+'_sha256'] == sha(output/(name+'.bin')), 'output_digest')
+        if result == 'PASS' and plan['boundary'] == 'T069-G2D-retained-public-file':
+            try:
+                readback = verify_retained_commons(output/'retained-file', plan['identity']['source_sha'])
+                require(readback == raw.get('retained_readback') and receipt.get('retained_verified_file') is True,
+                        'retained_closeout_changed')
+            except (ValueError, OSError, KeyError, TypeError):
+                result = 'ERROR'
         if job_status != 'success' and result == 'PASS':
             result = 'ERROR'
     else:
         result = 'NOT_TESTED'
-    write_exclusive(target, dict(scope=BOUNDARY, result=result, retained_verified_file=False,
+    write_exclusive(target, dict(scope=plan['boundary'] if (output/'matrix_receipt.json').is_file() else BOUNDARY, result=result,
+                                 retained_verified_file=bool(result == 'PASS' and receipt.get('retained_verified_file')) if (output/'matrix_receipt.json').is_file() else False,
                                  reason='see immutable receipt' if result != 'NOT_TESTED' else 'preparation_or_capture_not_completed'))
     return 0 if result == 'PASS' else 1
 
@@ -353,9 +380,9 @@ def main() -> int:
     try:
         if len(sys.argv) == 4 and sys.argv[1] == 'finalize':
             return finalize(Path(sys.argv[2]), sys.argv[3])
-        require(len(sys.argv) == 7 and sys.argv[1] == 'capture', 'usage')
+        require(len(sys.argv) == 7 and sys.argv[1] in ('capture', 'capture-retained'), 'usage')
         return run_fixture(ROOT, Path(sys.argv[2]), Path(sys.argv[3]),
-                           Path(sys.argv[4]), Path(sys.argv[5]), Path(sys.argv[6]), dict(os.environ))
+                           Path(sys.argv[4]), Path(sys.argv[5]), Path(sys.argv[6]), dict(os.environ), retained=sys.argv[1] == 'capture-retained')
     except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
         print('PULQVA_MEDIA_CAPTURE_BLOCKED')  # Never include raw paths or arbitrary input.
         return 2

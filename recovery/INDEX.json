@@ -11,8 +11,8 @@
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "8a22a194d16dd92d06105424c75921137dce1e2c",
-    "NEXT.md": "fb2f17a593bbf4d6fb68b7a4cb8c5b5d52d05b1e",
+    "PROJECT_STATE.json": "ddda4a29530b0eee65c13798995e03db738a1e2c",
+    "NEXT.md": "b3b5e25134b40c5fbc8e4d07c743931494d62d8c",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -55,9 +55,9 @@
     "recovery/evidence/g2c1-37208088561/manifest.json": "70ec4c350e0fd8011f96a7b1de6895c75f9bf0ef",
     "recovery/evidence/g2c1-37208088561/live-status-readiness.json": "513552e9cfc8b5acd3011eedf83d671d36c1df40",
     "recovery/evidence/g2c1-37208088561/live-status-commons.json": "7fb052729947844328cb31188bbe7289a3e40915",
-    "tools/ci/media_evidence.py": "9288508cf4717e9d9588c3b3066f07486bdd33b4",
+    "tools/ci/media_evidence.py": "16ec35eb27ae9647ff98cdcfb1c8fa38d6f1cabd",
     "tools/ci/test_retained_commons.py": "9dff687c0e0f006a2cf140ebdc645bdc5ec2a669",
-    "tools/ci/test_media_evidence.py": "b7a2be9e9d5c3b023d8ba3b7cc4ffaf69cfaa77e",
+    "tools/ci/test_media_evidence.py": "8bbe68f61cb765d7dbd3a40fe626c1936042d074",
     "decisions/T069-G2C2-media-admission-2026-10-04.md": "2664b726254018b272c52dbc509bcb0f243b214f",
     "recovery/evidence/g2c2-local-observation.json": "fdf85f10c29ab1a48eb0524ecdb1b893c6eecc45",
     "scripts/arti_windows_compiler.ps1": "2ce39476eb4e368a4c02049b55059f823fa2d1f5",
@@ -109,7 +109,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "T069-G2: observe exact new-head compiler restoration CI; no repeat or hot repair.",
+  "next_action": "T069-G2D observe adapter deterministic gate, then wire existing retained fixture workflow in separate phase",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",

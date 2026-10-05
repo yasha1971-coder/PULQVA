@@ -1,21 +1,12 @@
 # NEXT
 
-## T069-G2 — Windows compiler recovery OBSERVE
+## T069-G2D retained capture adapter PREPARED
 
-PR80 feat/T069-intent-contract; parent4349f7a2bac493fcbdf70db086487f47aec169ef.
-Existing arti-sidecar-check now parses both scripts on Windows BEFORE setup,
-invokes bounded isolated18.10.1 restoration and preserves its receipt even on failure.
-Compiler64-file gate, SDK/Rust/Arti/executable pins and Linux build unchanged.
-Only automatic PR build wave admitted; no manual dispatch/rerun or live Tor.
+PR80 feat/T069-intent-contract; parent fd3bf0390ba3c32f7fda7cde67ebfa6f34358a66.
+Existing media_evidence now supports capture-retained for the unchanged real_commons_file example. Same admission/prerequisite, isolated env/namespace, predeclared matrix and bounded one process apply. PASS requires exact marker, child exit, cleanup, independent receipt/selection/size/SHA1/SHA256 readback and frozen identity. Finalization repeats readback to reject changes after capture. Existing fixed-media default unchanged.
 
-ONE NEXT ACTION: observe this new exact-head CI: Windows parser, signed installer,
-exact installed version,64 hashes, unchanged final arti.exe SHA256. Missing receipt
-or skipped/failing step cannot establish success. Preserve first concrete failure;
-no hot fix/retry in this generation. PowerShell not available locally: hosted
-parse/runtime/build acceptance PENDING. Local YAML structure and continuity checks
-only; not compliant runtime matrix or product acceptance.
+Local24 capture controls plus9 readback controls PASS; synthetic only, not live evidence. Initial three new test setup errors rejected stale manifest hashes; only synthetic setup regenerated its digest before accepted controls. No live generation or workflow launch occurred. Workflow integration is NOT_TESTED/PENDING, not already connected.
 
-Old run37303285675 Windows111740885918 again failed compiler gate before build;
-Linux111740886155 succeeded. G2D retained-file wiring remains paused,9 tests
-local-only; full intent->choice->retained-file,UI/packages NOT_TESTED.
-No merge/release/scheduler change; global verified anchor unchanged.
+Compiler recovery run37306081790 Windows/Linux PASS; all64 files verified; built arti.exe matches unchanged pin. Actual PR merge checkout720cb437520f9117db69fd6d309a8c40d7ba08a7; checkpoint5995170990. No global E2E upgrade.
+
+ONE NEXT ACTION: observe new-head deterministic gate then wire existing media workflow to prebuild real_commons_file, invoke capture-retained and retain only selected.webm/receipt.json. Keep explicit exact-source attempt1 prerequisite/admission; automatic jobs must not launch Tor. Full model-to-file/UI/packages/Windows E2E remain NOT_TESTED. No merge/release/scheduler changes.

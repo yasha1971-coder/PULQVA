@@ -91,6 +91,66 @@ class MediaEvidenceTests(unittest.TestCase):
     def capture(self, out=None):
         return media.run_fixture(self.root,out or self.base/'output',self.prereq,self.binary,self.arti,self.ytdlp,self.env)
 
+    def retained_capture(self, corrupt=False, missing=False):
+        """Synthetic child and owned output; no external process/network request."""
+        fixture = self.root/'crates/pulqva-discovery/examples/real_commons_file.rs'
+        fixture.parent.mkdir(parents=True); fixture.write_bytes((ROOT/'crates/pulqva-discovery/examples/real_commons_file.rs').read_bytes())
+        subprocess.run(['git','add','.'],cwd=self.root,check=True)
+        subprocess.run(['git','-c','user.name=Fixture','-c','user.email=fixture@example.invalid',
+                        '-c','commit.gpgsign=false','commit','-qm','retained synthetic fixture'],cwd=self.root,check=True)
+        self.source=media.checkout(self.root)
+        for key in ('GITHUB_SHA','PULQVA_SOURCE_SHA','PULQVA_REQUESTED_SOURCE'): self.env[key]=self.source
+        for obj in (self.plan['identity'], self.receipt['identity']):
+            obj['source_sha']=obj['checkout_sha']=self.source
+        self.receipt['manifest_sha256']=digest(self.plan)
+        self.save_prereq()
+        out=self.base/'retained-output'
+        def child(argv,cwd,env):
+            self.assertEqual(env['PULQVA_SOURCE_SHA'], self.source)
+            directory=Path(argv[3]); self.assertFalse(directory.exists()); directory.mkdir()
+            h1=hashlib.sha1(b'abc').hexdigest()
+            receipt=dict(schema=2,scope='linux-live-request-choice-file',source_sha=self.source,
+                request='countdown',choice_count=2,selected_index=1,selected_locator='public-fixture',
+                choices=[dict(index=0),dict(index=1,title='fixture',locator='public-fixture',declared_size=3,declared_sha1=h1)],
+                file=dict(path='selected.webm',byte_size=3,selected_index=1,title='fixture',sha1=h1,sha256=hashlib.sha256(b'abc').hexdigest()),
+                core_retrieval_used=True,file_downloaded=True,cancelled_search_rejected=True,stale_results_cleared=True,
+                publisher_authenticated=False,windows_e2e_verified=False)
+            (directory/'receipt.json').write_text(json.dumps(receipt))
+            if not missing: (directory/'selected.webm').write_bytes(b'abd' if corrupt else b'abc')
+            return dict(stdout=b'PULQVA_COMMONS_FILE_E2E_OK\n',stderr=b'',reason=None,cleanup=True,returncode=0,duration_ms=1.0)
+        with patch.object(media,'bounded_process',side_effect=child):
+            result=media.run_fixture(self.root,out,self.prereq,self.binary,self.arti,self.ytdlp,self.env,retained=True)
+        return result,out
+
+    @POSIX
+    def test_retained_profile_requires_readback_and_keeps_selected_bytes(self):
+        result,out=self.retained_capture()
+        self.assertEqual(result,0)
+        self.assertEqual((out/'retained-file/selected.webm').read_bytes(),b'abc')
+        self.assertTrue(strict_load(out/'matrix_receipt.json')['retained_verified_file'])
+        self.assertEqual(media.finalize(out,'success'),0)
+        self.assertTrue(strict_load(out/'live-status.json')['retained_verified_file'])
+
+    @POSIX
+    def test_retained_success_marker_cannot_accept_same_size_corruption(self):
+        result,out=self.retained_capture(corrupt=True)
+        self.assertEqual(result,1)
+        self.assertFalse(strict_load(out/'matrix_receipt.json')['retained_verified_file'])
+
+    @POSIX
+    def test_retained_success_marker_cannot_accept_missing_file(self):
+        result,out=self.retained_capture(missing=True)
+        self.assertEqual(result,1)
+        self.assertFalse(strict_load(out/'matrix_receipt.json')['retained_verified_file'])
+
+    @POSIX
+    def test_retained_closeout_rejects_file_changed_after_capture(self):
+        result,out=self.retained_capture()
+        self.assertEqual(result,0)
+        (out/'retained-file/selected.webm').write_bytes(b'abd')
+        self.assertEqual(media.finalize(out,'success'),1)
+        self.assertFalse(strict_load(out/'live-status.json')['retained_verified_file'])
+
     def test_exact_same_run_native_evidence_admits_one_generation(self):
         """Exact source/run/attempt and six exact prerequisite outcomes admit budget one."""
         status=self.admit()
