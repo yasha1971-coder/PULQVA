@@ -8,11 +8,11 @@
   "kernel_tree": "199a069695efe62e082a6886918e53e1c22a9179",
   "product_trees": {
     "crates": "14cc98aa7de373eabc5ebd28dfcf8e38886141b0",
-    "apps": "ebe7ff47082bec18b6e8159a855238dd040b6057"
+    "apps": "1c020d5862c963ad1ced3c0e840b9fc061cbcb66"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "36b54b6a6e04eba3ea23c734bc9ac7a4619edc60",
-    "NEXT.md": "62271a6c6e384f958a56671799ffd9286cc60afb",
+    "PROJECT_STATE.json": "7d56f36050b153324c79c603a9d6ae986b92e24f",
+    "NEXT.md": "ae78c384e3f2bd1d26729abbcc0a1355cc6eb786",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -67,7 +67,7 @@
     "sidecars/ffmpeg/VERSION": "5bfd932886f2994b89ee543e240abdb8fd1aff53",
     ".github/workflows/ffmpeg-sidecar-check.yml": "4fc1d5ad32f8d633efd0120846fc82fa3ed425a9",
     ".github/workflows/ffmpeg-real-remux-check.yml": "be45b4a88e3581304ef08cd0f63af4333f7115e2",
-    "apps/pulqva-desktop/src-tauri/src/main.rs": "d98ba732d9876a7d3601e23aadb7fefd6c947a34",
+    "apps/pulqva-desktop/src-tauri/src/main.rs": "5b749a08c769cb7ff98ab7a5d378bdb97252029d",
     "sidecars/ffmpeg/SHA256SUMS": "ca44ba08e2f29b79b72abf56c7b58e4a8ebe2c82",
     "sidecars/ffmpeg/SOURCE_PROOF.json": "52fa5a1c20ae64fbd3c0ec1b6a4f5ab18a33728c"
   },
@@ -116,7 +116,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "T069-G2 observe focused monthly FFmpeg migration PR exact-head two-OS compatibility/remux CI",
+  "next_action": "T069-G2 observe PR85 exact correction-head Windows/Linux desktop tests and continuity/recovery",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",

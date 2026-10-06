@@ -2420,7 +2420,7 @@ mod tests {
             .expect_err("zero readiness timeout must fail closed and clean up child");
 
         assert_eq!(error.code, "tor-readiness-failed");
-        assert_eq!(error.message, "Tor readiness verification timed out");
+        assert_eq!(error.message, "Tor readiness verification timed out at Listener");
         assert!(!root.join("cache").exists());
         assert!(!root.join("state").exists());
         assert!(!root.join("downloads").exists());

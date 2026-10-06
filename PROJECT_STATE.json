@@ -127,7 +127,7 @@
       "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
     }
   },
-  "next_phase": "T069-G2-FFMPEG-MIGRATION-OBSERVE",
+  "next_phase": "T069-G2-DESKTOP-TIMEOUT-CORRECTION-OBSERVE",
   "g2d_readback_context": {
     "status": "CAPTURE_ADAPTER_LOCAL_SYNTHETIC_VERIFIED_HOSTED_PENDING",
     "source_base": "4a3f9ea00d2be5f4dafb1ddfc3b15eb3e544cea2",
@@ -347,5 +347,19 @@
     "scope": "Archive identity and standard-library archive member hashing only; no executable launch, repinning or product acceptance",
     "migration_parent": "a3a934c6c04167ecb5b7874345bb590c4deb433b",
     "followup_branch": "fix/T069-ffmpeg-monthly-source"
+  },
+  "desktop_timeout_recovery": {
+    "status": "ASSERTION_CORRECTED_NATIVE_CI_PENDING",
+    "source_head": "88c99d033df324bf0be597ec2dc717687a3732f2",
+    "diagnosis_checkpoint": 6027034923,
+    "failed_run": 37392298919,
+    "failed_jobs": [
+      112039977678,
+      112039977957
+    ],
+    "correction": "Exact expected zero-timeout message includes at Listener; production code unchanged",
+    "preserved": "Error code, child cleanup and absent cache/state/download assertions; Kernel and Tor policy",
+    "scope": "Test assertion only; local Rust/Windows unavailable; corrected native acceptance PENDING",
+    "next_action": "Observe one automatic CI wave at published exact correction head; no live launch, retry or merge"
   }
 }
