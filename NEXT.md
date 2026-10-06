@@ -1,8 +1,9 @@
 # NEXT
 
-## T069-G2 — FFmpeg replacement source PREPARED
+## T069-G2 — FFmpeg monthly source migration PREPARED
 
-PR80 feat/T069-intent-contract; parent5fde8951a17f805aebb0260e609b3f615a2ed061.
-Original daily release2026-09-20 is404. Candidate monthly release2026-09-30-13-08 exists; both full archives downloaded and independently match API SHA256 and exact sizes. Standard-library tar/ZIP readers hashed ffmpeg/ffprobe without execution. See recovery/evidence/ffmpeg-source-candidate.json. This is identity evidence, not compatibility, matrix or live Tor acceptance. Production pins/workflows unchanged. Historical evidence and global verified anchor unchanged.
+Parent PR80 HEAD a3a934c6c04167ecb5b7874345bb590c4deb433b. Focused follow-up targets feat/T069-intent-contract from fix/T069-ffmpeg-monthly-source. Recovery envelope remains anchored to parent PR80; this follow-up does not replace that development route.
 
-ONE NEXT ACTION: T069-G2 FFmpeg source migration: adopt this exact monthly snapshot consistently in existing FFmpeg consumers and SOURCE_PROOF, preserve checks and candidate identities, then run one existing two-OS CI build wave. New archive bytes require fresh compatibility/remux evidence; older green results do not establish acceptance. Before implementation inspect live HEAD and current CI. Retained-file workflow remains pending behind deterministic gates. Owner merge authorization exists, but PR is draft/unmerged and CI blocked. No release/scheduler change.
+Adopted byte-verified September monthly snapshot in VERSION, SHA256SUMS, SOURCE_PROOF, both existing FFmpeg workflows and desktop resource paths/assertions. Kernel, Tor routing, TLS and archive verification unchanged. Source commit resolved through upstream API. Fresh two-OS CLI/remux and desktop tests PENDING; local Cargo/Windows unavailable. Archive identity is not execution acceptance.
+
+ONE NEXT ACTION: observe exact follow-up HEAD automatic CI, including both OS CLI/remux, desktop resource/compatibility tests and continuity/recovery. Inspect first concrete failure before any new correction; no blind retry. Retained intent->choice->file workflow remains NOT_TESTED. No merge/release/scheduler changes.

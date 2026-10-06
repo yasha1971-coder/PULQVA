@@ -10,7 +10,7 @@
   "next_task": "T069",
   "last_completed_subtask": "T069-G1",
   "next_subtask": "T069-G2",
-  "ci": "blocked",
+  "ci": "pending",
   "architecture_status": "kernel_frozen_implementation_open",
   "scope_note": "G2C1 containment and authority closeout3b212 are scoped-verified. G2C2 positive Linux media admission/capture is implemented and locally synthetic-tested; hosted acceptance and real execution are PENDING. No model-to-file or release acceptance.",
   "known_blockers": [
@@ -26,7 +26,7 @@
     "Autopilot authorization/ranking, user-facing choice, UI integration, self-contained Windows/Linux packages, clean-machine acceptance and package egress remain open.",
     "Automatic contracts remain on both OSes. Only explicit exact-source attempt1 Linux media may use the newly implemented same-run native prerequisite/capture path after its deterministic gate. Hosted G2C2 behavior and real media execution remain NOT_TESTED; other three legacy gates stay closed. No historical transport failure is repaired.",
     "G2B helper tests do not establish end-to-end observed/unobserved socket-trace equivalence. Native collector stdout was not retained in the original artifact; do not retroactively upgrade that evidence.",
-    "Pinned FFmpeg daily release2026-09-20 returns404. September monthly replacement archive bytes are verified for both OSes, but not adopted or compatibility-tested."
+    "FFmpeg monthly archive pins adopted consistently; fresh Windows/Linux CLI, remux and desktop compatibility CI pending."
   ],
   "verification_context": {
     "kind": "Observed existing deterministic G1 native log; no new model or network execution",
@@ -95,7 +95,7 @@
   "execution_mode": "scheduled_bounded_owner_authorized",
   "owner_assistance_rule": "Use supported tools; request a minimal safe owner action only for a confirmed barrier; independently verify the result. Never bypass an explicit tool denial.",
   "prior_detailed_history": "PR80 checkpoints5966597137,5966731022,5967983142,5969904153,5970140310; earlier PR73 history retained in Git.",
-  "updated": "2026-10-04",
+  "updated": "2026-10-06",
   "g2a_context": {
     "status": "REMOTE_CI_VERIFIED",
     "scope": "Matrix codec and deterministic self-test only; no Rust/model/Tor/network fixes",
@@ -127,7 +127,7 @@
       "scope": "Python evidence-codec acceptance only; not Rust/model/Tor/E2E acceptance"
     }
   },
-  "next_phase": "T069-G2D-MATRIX-RECOVERY-OBSERVE",
+  "next_phase": "T069-G2-FFMPEG-MIGRATION-OBSERVE",
   "g2d_readback_context": {
     "status": "CAPTURE_ADAPTER_LOCAL_SYNTHETIC_VERIFIED_HOSTED_PENDING",
     "source_base": "4a3f9ea00d2be5f4dafb1ddfc3b15eb3e544cea2",
@@ -294,7 +294,7 @@
   },
   "ffmpeg_source_recovery": {
     "schema": 1,
-    "status": "ARCHIVE_BYTES_VERIFIED_COMPATIBILITY_NOT_TESTED",
+    "status": "MONTHLY_PINS_ADOPTED_TWO_OS_CI_PENDING",
     "source_head": "5fde8951a17f805aebb0260e609b3f615a2ed061",
     "upstream_release": "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-30-13-08",
     "release_tag": "autobuild-2026-09-30-13-08",
@@ -344,6 +344,8 @@
     ],
     "observed_at": "2026-10-05T23:29:48Z",
     "digest_origin": "GitHub release asset digest, independently matched against downloaded full bytes",
-    "scope": "Archive identity and standard-library archive member hashing only; no executable launch, repinning or product acceptance"
+    "scope": "Archive identity and standard-library archive member hashing only; no executable launch, repinning or product acceptance",
+    "migration_parent": "a3a934c6c04167ecb5b7874345bb590c4deb433b",
+    "followup_branch": "fix/T069-ffmpeg-monthly-source"
   }
 }

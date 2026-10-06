@@ -8,11 +8,11 @@
   "kernel_tree": "199a069695efe62e082a6886918e53e1c22a9179",
   "product_trees": {
     "crates": "14cc98aa7de373eabc5ebd28dfcf8e38886141b0",
-    "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
+    "apps": "ebe7ff47082bec18b6e8159a855238dd040b6057"
   },
   "sealed_files": {
-    "PROJECT_STATE.json": "fbed400ac04d73ed8cea2bfa2afbf8d02e87e9be",
-    "NEXT.md": "001f3ffac0bb5c2f8b936f9099733429513573c1",
+    "PROJECT_STATE.json": "36b54b6a6e04eba3ea23c734bc9ac7a4619edc60",
+    "NEXT.md": "62271a6c6e384f958a56671799ffd9286cc60afb",
     "kernel/CORE_CONTRACT.md": "0f16daadcb6096ed5258ad5958530564c50030e4",
     "kernel/PRIVACY_INVARIANTS.md": "08db58f788345e16eb6db4d0dce90e69df53ee2e",
     "kernel/UX_CONTRACT.md": "a11fb80747f774cb7ef85abdaf8f4a635994613b",
@@ -63,7 +63,13 @@
     "scripts/arti_windows_compiler.ps1": "2ce39476eb4e368a4c02049b55059f823fa2d1f5",
     "scripts/restore_arti_windows_compiler.ps1": "b90defb4b6eb2f5ff66491798b5ce563d9049225",
     ".github/workflows/arti-sidecar-check.yml": "ddb23d66471e040bf855a939a034da51e69232cc",
-    "recovery/evidence/ffmpeg-source-candidate.json": "a349f81ec0d9af571fa6c17be94f179b9e815b01"
+    "recovery/evidence/ffmpeg-source-candidate.json": "a349f81ec0d9af571fa6c17be94f179b9e815b01",
+    "sidecars/ffmpeg/VERSION": "5bfd932886f2994b89ee543e240abdb8fd1aff53",
+    ".github/workflows/ffmpeg-sidecar-check.yml": "4fc1d5ad32f8d633efd0120846fc82fa3ed425a9",
+    ".github/workflows/ffmpeg-real-remux-check.yml": "be45b4a88e3581304ef08cd0f63af4333f7115e2",
+    "apps/pulqva-desktop/src-tauri/src/main.rs": "d98ba732d9876a7d3601e23aadb7fefd6c947a34",
+    "sidecars/ffmpeg/SHA256SUMS": "ca44ba08e2f29b79b72abf56c7b58e4a8ebe2c82",
+    "sidecars/ffmpeg/SOURCE_PROOF.json": "52fa5a1c20ae64fbd3c0ec1b6a4f5ab18a33728c"
   },
   "state_contract": {
     "active_task": "T069",
@@ -110,7 +116,7 @@
     ],
     "scope": "Historical five-case semantic/policy smoke; not full E2E; no new measurement or compliant matrix generation"
   },
-  "next_action": "T069-G2 migrate verified monthly FFmpeg source and observe one existing two-OS compatibility/remux wave",
+  "next_action": "T069-G2 observe focused monthly FFmpeg migration PR exact-head two-OS compatibility/remux CI",
   "limitations": [
     "Guard checks internal consistency and byte identity, not all historical claims or fresh remote state.",
     "Backup is only durable when retained independently of Actions/account.",
