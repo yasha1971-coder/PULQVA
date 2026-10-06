@@ -587,8 +587,8 @@ fn current_sidecar_platform_spec() -> Result<SidecarPlatformSpec, DownloadAction
             arti_digest_asset: "linux-x86_64/arti",
             ytdlp_resource: "sidecars/yt-dlp/linux-x86_64/yt-dlp",
             ytdlp_digest_asset: "yt-dlp_linux",
-            ffmpeg_resource: "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz",
-            ffmpeg_digest_asset: "ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz",
+            ffmpeg_resource: "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz",
+            ffmpeg_digest_asset: "ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz",
         });
     }
 
@@ -600,8 +600,8 @@ fn current_sidecar_platform_spec() -> Result<SidecarPlatformSpec, DownloadAction
             arti_digest_asset: "windows-x86_64/arti.exe",
             ytdlp_resource: "sidecars/yt-dlp/windows-x86_64/yt-dlp.exe",
             ytdlp_digest_asset: "yt-dlp.exe",
-            ffmpeg_resource: "sidecars/ffmpeg/windows-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip",
-            ffmpeg_digest_asset: "ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip",
+            ffmpeg_resource: "sidecars/ffmpeg/windows-x86_64/ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+            ffmpeg_digest_asset: "ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
         });
     }
 
@@ -2420,7 +2420,7 @@ mod tests {
             .expect_err("zero readiness timeout must fail closed and clean up child");
 
         assert_eq!(error.code, "tor-readiness-failed");
-        assert_eq!(error.message, "Tor readiness verification timed out");
+        assert_eq!(error.message, "Tor readiness verification timed out at Listener");
         assert!(!root.join("cache").exists());
         assert!(!root.join("state").exists());
         assert!(!root.join("downloads").exists());
@@ -2743,7 +2743,7 @@ mod tests {
 
         assert_eq!(plan.items[0].identity.version, "2.6.0");
         assert_eq!(plan.items[1].identity.version, "2026.08.19");
-        assert_eq!(plan.items[2].identity.version, "n9.0.2-3-ga5923073bf");
+        assert_eq!(plan.items[2].identity.version, "n9.0.2-17-g2a571b6068");
         assert_eq!(
             plan.items[0]
                 .identity
@@ -2786,7 +2786,7 @@ mod tests {
             assert_eq!(
                 plan.items[2].source_resource,
                 Path::new(
-                    "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz"
+                    "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz"
                 )
             );
         }
@@ -2805,7 +2805,7 @@ mod tests {
             assert_eq!(
                 plan.items[2].source_resource,
                 Path::new(
-                    "sidecars/ffmpeg/windows-x86_64/ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip"
+                    "sidecars/ffmpeg/windows-x86_64/ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip"
                 )
             );
         }
@@ -2841,7 +2841,7 @@ mod tests {
         assert_eq!(resolved.items[2].kind, BundledSidecarKind::Ffmpeg);
         assert_eq!(resolved.items[0].identity.version, "2.6.0");
         assert_eq!(resolved.items[1].identity.version, "2026.08.19");
-        assert_eq!(resolved.items[2].identity.version, "n9.0.2-3-ga5923073bf");
+        assert_eq!(resolved.items[2].identity.version, "n9.0.2-17-g2a571b6068");
         assert!(!root.exists());
     }
 
@@ -2910,7 +2910,7 @@ mod tests {
                     source: ffmpeg_source,
                     destination: layout.ffmpeg_executable().expect("FFmpeg destination derives"),
                     identity: BundledSidecarIdentity {
-                        version: "n9.0.2-3-ga5923073bf".to_owned(),
+                        version: "n9.0.2-17-g2a571b6068".to_owned(),
                         pinned_source_sha256: Some(digest),
                     },
                 },

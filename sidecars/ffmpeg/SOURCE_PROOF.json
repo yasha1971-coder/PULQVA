@@ -1,9 +1,9 @@
 {
   "upstream_project": "FFmpeg",
   "upstream_source_repository": "https://github.com/FFmpeg/FFmpeg",
-  "upstream_source_commit": "a5923073bfd8f25b7300d93af3f8e690174ebd30",
-  "upstream_version_marker": "n9.0.2-3-ga5923073bf",
-  "upstream_commit_date": "2026-09-20T01:25:00Z",
+  "upstream_source_commit": "2a571b606854520cf89804d8030c8b328e621689",
+  "upstream_version_marker": "n9.0.2-17-g2a571b6068",
+  "upstream_commit_date": "2026-09-29T20:36:10Z",
   "official_stable_release_context": {
     "release": "9.0.2",
     "released": "2026-09-18",
@@ -11,26 +11,53 @@
   },
   "binary_builder": {
     "repository": "https://github.com/BtbN/FFmpeg-Builds",
-    "release_tag": "autobuild-2026-09-20-13-11",
-    "release_published_at": "2026-09-20T13:12:55Z",
+    "release_tag": "autobuild-2026-09-30-13-08",
+    "release_published_at": "2026-09-30T13:09:24Z",
     "official_ffmpeg_project_binary": false,
-    "reason": "FFmpeg publishes source releases; PULQVA uses one dated cross-platform static-binary build snapshot and verifies each archive by SHA-256 before execution."
+    "reason": "FFmpeg publishes source releases; PULQVA uses one dated cross-platform static-binary build snapshot and verifies each archive by SHA-256 before execution.",
+    "retention_basis": "Last build of month; upstream retention policy two years; archive bytes still require independent verification"
   },
   "artifacts": [
     {
-      "platform": "linux-x86_64",
-      "asset": "ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz",
-      "size_bytes": 150145424,
-      "sha256": "7569c7c00a421d4fb4636925a126e96e051bb5cdd0b0e0a91576ddfadddd9bff",
-      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-20-13-11/ffmpeg-n9.0.2-3-ga5923073bf-linux64-gpl-9.0.tar.xz"
+      "id": 600951759,
+      "asset": "ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz",
+      "size_bytes": 151017172,
+      "sha256": "68ee646831adaae2495618346f3bba94ff207ff83bbd34d643e7004730d66269",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz",
+      "members": [
+        {
+          "name": "ffmpeg",
+          "size": 172692552,
+          "sha256": "0d709a0bed1a43f24cd2c420878c63afea4580671b6949ad19ed124572f3bc3d"
+        },
+        {
+          "name": "ffprobe",
+          "size": 172467208,
+          "sha256": "a5bd5e9f8d74ab2c6d7d9e2e2738ff6d67bf9613e7143e143ba8ebe9b06385fb"
+        }
+      ],
+      "platform": "linux-x86_64"
     },
     {
-      "platform": "windows-x86_64",
-      "asset": "ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip",
-      "size_bytes": 192925953,
-      "sha256": "2304b4ad6a5d9660b163c8a42d15433327d1ff4a57cae79a8e2d122c5af0f491",
-      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-20-13-11/ffmpeg-n9.0.2-3-ga5923073bf-win64-gpl-9.0.zip"
+      "id": 600950768,
+      "asset": "ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+      "size_bytes": 194034585,
+      "sha256": "a0e45723c72141975f51d8666302e614711745f3102b704ca3f82c897a58d278",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0.zip",
+      "members": [
+        {
+          "name": "ffmpeg.exe",
+          "size": 165155840,
+          "sha256": "513368c81583572ce1d09d5c7ff827feed1a63db352412a5001f4da3a1583d98"
+        },
+        {
+          "name": "ffprobe.exe",
+          "size": 164954624,
+          "sha256": "0fd8f3bae96cc707993bcd8c56c13f8cd73962d37dbcaac0dad4fe3a0ce1f68f"
+        }
+      ],
+      "platform": "windows-x86_64"
     }
   ],
-  "scope": "CLI availability proof only: ffmpeg -version and ffprobe -version. No media URL, transform, remux, transcode, or runtime network route."
+  "scope": "Downloaded archive and member identities verified. CLI and real local stream-copy remux compatibility require fresh two-OS CI; no live Tor or product E2E acceptance."
 }
