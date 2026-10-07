@@ -15,7 +15,7 @@ import unittest
 import uuid
 
 from matrix_receipt import (PROTOCOL, MatrixRecorder, canonical, digest, strict_load,
-                            validate_manifest, verify, write_exclusive)
+                            validate_manifest, verify, write_exclusive, COMPARISON_CONTROLS)
 
 
 def fixture_plan():
@@ -35,6 +35,18 @@ def fixture_plan():
                              invariant_set=['same evaluator', 'fresh fixture'],
                              expected={'fixture_accepted': True}, depends_on=[])
                         for pid in ('A', 'B')])
+
+
+
+def comparison_plan():
+    plan = fixture_plan()
+    controls = {key: digest({'synthetic_control': key}) for key in COMPARISON_CONTROLS}
+    plan['comparison'] = dict(schema=1, question='Does the subject change the fixed outcome?',
+        treatment='implementation under test', arms=[
+            dict(id=pid, subject_sha256=digest({'synthetic_subject': pid}),
+                 controls=copy.deepcopy(controls), probe_ids=[pid],
+                 evidence_refs=['synthetic-measured-controls-' + pid]) for pid in ('A', 'B')])
+    return plan
 
 
 def failure_details(items):
@@ -254,6 +266,136 @@ class MatrixReceiptTests(unittest.TestCase):
             result = subprocess.run(args, capture_output=True, text=True, timeout=10)
             self.assertEqual(result.returncode, 2)
             self.assertEqual(result.stdout.strip(), 'PULQVA_MATRIX_INVALID')
+
+
+    def test_comparison_matched_controls_pass(self):
+        """Different declared subjects with identical measured controls permit comparison capture."""
+        plan = comparison_plan(); rec = MatrixRecorder(plan)
+        add(rec, 'A'); add(rec, 'B')
+        receipt = rec.close(plan['identity'])
+        self.assertEqual(verify(plan, receipt), 'PASS')
+        self.assertEqual(receipt['comparison_status'], 'MATCHED')
+        self.assertEqual(receipt['comparison_sha256'], digest(plan['comparison']))
+
+    def test_comparison_missing_controls_rejected(self):
+        """Missing conditions cannot be replaced by a caveat or inferred from another arm."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls'].pop('corpus')
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_unknown_controls_rejected(self):
+        """Unknown/unmeasured conditions reject admission even when both arms use the same placeholder."""
+        for unknown in (None, '', 'unknown', 'a'*63, True):
+            plan = comparison_plan()
+            for arm in plan['comparison']['arms']: arm['controls']['environment'] = unknown
+            with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_all_additional_controls_must_match(self):
+        """A control added by a collector also participates in exact matching."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['load'] = 'b'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_probe_coverage_and_unique_assignment(self):
+        """A comparison cannot omit, duplicate or import probes from another plan."""
+        for ids in ([], ['A'], ['B', 'B'], ['foreign']):
+            plan = comparison_plan(); plan['comparison']['arms'][1]['probe_ids'] = ids
+            with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_duplicate_arms_and_same_subject_rejected(self):
+        """Duplicated arms or an unchanged subject cannot mint a treatment comparison."""
+        for key in ('id', 'subject_sha256'):
+            plan = comparison_plan(); arms = plan['comparison']['arms']
+            arms[1][key] = arms[0][key]
+            with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_schema_and_evidence_required(self):
+        """Malformed declarations, unknown extensions and missing provenance stop before capture."""
+        for mutate in (lambda c: c.update(schema=True), lambda c: c.update(question=''),
+                       lambda c: c.update(treatment=''), lambda c: c.update(waiver='accept anyway'),
+                       lambda c: c['arms'][0].update(evidence_refs=[])):
+            plan = comparison_plan(); mutate(plan['comparison'])
+            with self.assertRaises(ValueError): MatrixRecorder(plan)
+        plan = comparison_plan(); plan['comparison'] = None
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_frozen_plan_cannot_be_repaired_in_place(self):
+        """Changing comparison controls after capture invalidates the old manifest receipt binding."""
+        plan = comparison_plan(); rec = MatrixRecorder(plan); add(rec, 'A'); add(rec, 'B')
+        receipt = rec.close(plan['identity'])
+        changed = copy.deepcopy(plan)
+        for arm in changed['comparison']['arms']: arm['controls']['corpus'] = 'c'*64
+        with self.assertRaises(ValueError): verify(changed, receipt)
+        receipt['comparison_sha256'] = '0'*64
+        with self.assertRaises(ValueError): verify(plan, receipt)
+
+    def test_single_object_receipt_cannot_claim_comparison(self):
+        """Historical single-object success remains valid but cannot be relabelled a matched comparison."""
+        receipt = self.complete(); receipt['comparison_status'] = 'MATCHED'
+        with self.assertRaises(ValueError): verify(self.plan, receipt)
+
+    def test_comparison_mismatched_corpus_rejected(self):
+        """Unequal corpus invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['corpus'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_request_rejected(self):
+        """Unequal request invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['request'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_expected_output_rejected(self):
+        """Unequal expected_output invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['expected_output'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_environment_rejected(self):
+        """Unequal environment invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['environment'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_toolchain_rejected(self):
+        """Unequal toolchain invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['toolchain'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_model_policy_rejected(self):
+        """Unequal model_policy invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['model_policy'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_flags_rejected(self):
+        """Unequal flags invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['flags'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_resource_budget_rejected(self):
+        """Unequal resource_budget invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['resource_budget'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_cache_policy_rejected(self):
+        """Unequal cache_policy invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['cache_policy'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_transport_policy_rejected(self):
+        """Unequal transport_policy invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['transport_policy'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_isolation_rejected(self):
+        """Unequal isolation invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['isolation'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_metric_rejected(self):
+        """Unequal metric invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['metric'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
+
+    def test_comparison_mismatched_evaluator_rejected(self):
+        """Unequal evaluator invalidates comparison before the main runtime can be invoked."""
+        plan = comparison_plan(); plan['comparison']['arms'][1]['controls']['evaluator'] = 'f'*64
+        with self.assertRaises(ValueError): MatrixRecorder(plan)
 
 
 def run_matrix(destination: Path) -> int:

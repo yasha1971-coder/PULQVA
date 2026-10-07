@@ -63,6 +63,65 @@ def strings(value: object, *, empty: bool = False) -> bool:
             and all(text(x) for x in value) and len(set(value)) == len(value))
 
 
+
+# A comparison may vary its subject, not its measurement conditions. Collectors
+# measure these identities before capture and bind them into final_identity too.
+# The codec checks declarations/consistency; it cannot authenticate a dishonest
+# collector or infer comparability from an absent comparison declaration.
+COMPARISON_CONTROLS = (
+    'corpus', 'request', 'expected_output', 'environment', 'toolchain',
+    'model_policy', 'flags', 'resource_budget', 'cache_policy',
+    'transport_policy', 'isolation', 'metric', 'evaluator',
+)
+
+
+def validate_comparison(comparison: dict, probe_ids: set[str]) -> None:
+    """Reject unequal/unknown controls before MatrixRecorder can be constructed.
+
+    Subject hashes may differ by the declared experimental factor. Every other
+    condition must be captured and identical. Windows/Linux functional gates are
+    separate strata, not a matched performance comparison. Historical single-
+    object manifests remain valid but do not gain comparative acceptance.
+    """
+    require(isinstance(comparison, dict), 'comparison declaration must be an object')
+    require(set(comparison) == {'schema', 'question', 'treatment', 'arms'},
+            'incomplete or unknown comparison fields')
+    require(type(comparison['schema']) is int and comparison['schema'] == 1,
+            'unsupported comparison schema')
+    require(text(comparison['question']) and text(comparison['treatment']),
+            'comparison question/treatment must be predeclared')
+    arms = comparison['arms']
+    require(isinstance(arms, list) and 2 <= len(arms) <= 16, 'invalid comparison arms')
+    names, covered, subjects = set(), set(), set()
+    reference = None
+    for arm in arms:
+        require(isinstance(arm, dict) and set(arm) ==
+                {'id', 'subject_sha256', 'controls', 'probe_ids', 'evidence_refs'},
+                'incomplete or unknown comparison arm')
+        require(text(arm['id']) and arm['id'] not in names, 'duplicate comparison arm')
+        names.add(arm['id'])
+        subject = arm['subject_sha256']
+        require(isinstance(subject, str) and re.fullmatch('[0-9a-f]{64}', subject),
+                'missing comparison subject identity')
+        subjects.add(subject)
+        controls = arm['controls']
+        require(isinstance(controls, dict) and set(COMPARISON_CONTROLS) <= set(controls),
+                'missing comparison controls')
+        for name, value in controls.items():
+            require(text(name) and isinstance(value, str) and
+                    re.fullmatch('[0-9a-f]{64}', value), 'unknown comparison condition')
+        if reference is None:
+            reference = controls
+        require(controls == reference, 'comparison INVALID: conditions differ; prepare a new generation')
+        require(strings(arm['evidence_refs']), 'comparison lacks control evidence references')
+        ids = arm['probe_ids']
+        require(strings(ids) and set(ids) <= probe_ids and not (set(ids) & covered),
+                'comparison probe missing, foreign or multiply assigned')
+        covered.update(ids)
+    require(len(subjects) >= 2, 'comparison has no different experimental subjects')
+    require(covered == probe_ids, 'comparison must cover every declared probe')
+
+
 def validate_manifest(plan: dict) -> None:
     canonical(plan)
     require(plan.get('protocol') == PROTOCOL, 'unknown matrix protocol')
@@ -125,6 +184,8 @@ def validate_manifest(plan: dict) -> None:
                 set(probe['depends_on']) <= seen, 'dependency missing or out of order')
         require(probe['expected'] is not None, 'missing expected outcome')
         seen.add(pid)
+    if 'comparison' in plan:
+        validate_comparison(plan['comparison'], seen)
 
 
 def aggregate(plan: dict, rows: list[dict], *, intact: bool, closed: bool) -> str:
@@ -153,6 +214,12 @@ def verify(plan: dict, receipt: dict) -> str:
     if not receipt['intact']:
         require(text(receipt.get('integrity_reason')), 'missing integrity failure reason')
     require(strings(receipt.get('limitations')), 'missing scope limitations')
+    if 'comparison' in plan:
+        require(receipt.get('comparison_sha256') == digest(plan['comparison']) and
+                receipt.get('comparison_status') == 'MATCHED', 'missing comparison binding')
+    else:
+        require('comparison_sha256' not in receipt and 'comparison_status' not in receipt,
+                'single-object evidence cannot assert comparison acceptance')
     rows = receipt.get('probes')
     require(isinstance(rows, list) and len(rows) == len(plan['probes']),
             'missing or extra planned probes')
@@ -242,6 +309,9 @@ class MatrixRecorder:
                    limitations=['Consistency only; collector must verify actual bytes and isolation.',
                                 'Probe PASS does not itself confirm the underlying hypothesis.',
                                 'Not whole-product acceptance or an authenticity signature.'])
+        if 'comparison' in self._plan:
+            doc['comparison_sha256'] = digest(self._plan['comparison'])
+            doc['comparison_status'] = 'MATCHED'
         return doc
 
     def close(self, final_identity: dict, *, early_exit_reason: str = 'not_executed') -> dict:
