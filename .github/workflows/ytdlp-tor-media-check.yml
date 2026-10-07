@@ -11,9 +11,20 @@ on:
         description: Exact full source SHA; must equal the selected dispatch ref
         required: true
         type: string
+      profile:
+        description: Fixed fixture profile; neither accepts arbitrary queries or executables
+        required: true
+        type: choice
+        default: fixed-public-media
+        options:
+          - fixed-public-media
+          - retained-commons
 
 permissions:
   contents: read
+
+env:
+  PULQVA_MEDIA_PROFILE: ${{ inputs.profile || 'fixed-public-media' }}
 
 concurrency:
   group: media-${{ github.event.pull_request.head.sha || github.sha }}
@@ -78,6 +89,10 @@ jobs:
           python-version: '3.12'
       - name: Test positive admission and bounded capture without Tor
         run: python -m unittest discover -s tools/ci -p 'test_media_evidence.py' -v
+      - name: Test existing retained-file readback and native collector without Tor
+        run: |
+          python -m unittest discover -s tools/ci -p 'test_retained_commons.py' -v
+          python -m unittest discover -s tools/ci -p 'test_readiness_contract_matrix.py' -v
       - name: Install pinned Rust
         run: rustup toolchain install 1.91.0 --profile minimal
       - name: Run existing deterministic contracts (no live Tor)
@@ -85,11 +100,17 @@ jobs:
         run: |
           set -euo pipefail
           cargo +1.91.0 test --locked -p pulqva-privacy --example real_ytdlp_tor_media
+          cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery --all-targets
       - name: Native prerequisite for this explicit generation
         if: ${{ github.event_name == 'workflow_dispatch' && runner.os == 'Linux' }}
         env:
           PULQVA_SOURCE_SHA: ${{ github.sha }}
         run: python3 tools/ci/readiness_contract_matrix.py "$RUNNER_TEMP/media-native-prerequisite"
+      - name: Native retained-file prerequisite for this explicit profile
+        if: ${{ github.event_name == 'workflow_dispatch' && runner.os == 'Linux' && inputs.profile == 'retained-commons' }}
+        env:
+          PULQVA_SOURCE_SHA: ${{ github.sha }}
+        run: python3 tools/ci/readiness_contract_matrix.py "$RUNNER_TEMP/media-native-prerequisite/retained-commons" --retained-commons
       - name: Retain same-run native prerequisite
         if: ${{ always() && github.event_name == 'workflow_dispatch' && runner.os == 'Linux' }}
         uses: actions/upload-artifact@v4
@@ -192,14 +213,27 @@ jobs:
           echo "YTDLP_BIN=$EXEC_BIN" >> "$GITHUB_ENV"
 
       - name: Prebuild existing fixture before freezing evidence
+        if: ${{ env.PULQVA_MEDIA_PROFILE == 'fixed-public-media' }}
         run: cargo +1.91.0 build --locked -p pulqva-privacy --example real_ytdlp_tor_media
+      - name: Prebuild existing retained Commons fixture before freezing evidence
+        if: ${{ env.PULQVA_MEDIA_PROFILE == 'retained-commons' }}
+        run: cargo +1.91.0 build --locked -p pulqva-discovery --example real_commons_file
       - name: Capture one immutable existing Tor media fixture
+        if: ${{ env.PULQVA_MEDIA_PROFILE == 'fixed-public-media' }}
         shell: bash
         run: |
           set -euo pipefail
           python3 tools/ci/media_evidence.py capture \
             "$RUNNER_TEMP/media-evidence" "$RUNNER_TEMP/media-prerequisite" \
             "$GITHUB_WORKSPACE/target/debug/examples/real_ytdlp_tor_media" "$ARTI_BIN" "$YTDLP_BIN"
+      - name: Capture one selected retained Commons journey
+        if: ${{ env.PULQVA_MEDIA_PROFILE == 'retained-commons' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/ci/media_evidence.py capture-retained \
+            "$RUNNER_TEMP/media-evidence" "$RUNNER_TEMP/media-prerequisite" \
+            "$GITHUB_WORKSPACE/target/debug/examples/real_commons_file" "$ARTI_BIN" "$YTDLP_BIN"
       - name: Close actual evidence or mark preparation NOT TESTED
         if: always()
         env:
@@ -214,5 +248,7 @@ jobs:
             ${{ runner.temp }}/media-evidence/*.json
             ${{ runner.temp }}/media-evidence/stdout.bin
             ${{ runner.temp }}/media-evidence/stderr.bin
+            ${{ runner.temp }}/media-evidence/retained-file/receipt.json
+            ${{ runner.temp }}/media-evidence/retained-file/selected.webm
           if-no-files-found: error
           retention-days: 90

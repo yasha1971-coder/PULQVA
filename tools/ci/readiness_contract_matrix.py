@@ -61,6 +61,41 @@ PROBES = [
     },
 ]
 
+# Same finite collector, a separate immutable discovery-libtest object/boundary.
+# No arbitrary package, executable target or test names come from workflow inputs.
+RETAINED_PROBES = [
+    dict(id="RF-HASH", test="artifact::tests::verified_receipt_uses_actual_file_hashes_and_selected_metadata",
+         hypothesis="The production verifier binds actual bytes to selected provider metadata.",
+         invariant_set=["actual file read", "selection binding", "no network"], expected="valid content receipt"),
+    dict(id="RF-FOREIGN", test="artifact::tests::rejects_empty_stale_reordered_foreign_and_wrong_source_before_file_io",
+         hypothesis="Foreign or stale selection cannot authorize file verification.",
+         invariant_set=["reject before file IO", "unchanged candidate provenance"], expected="foreign selections rejected"),
+    dict(id="RF-CORRUPT", test="artifact::tests::same_size_corruption_cannot_mint_a_verified_receipt",
+         hypothesis="Equal length does not let corrupted content pass the production verifier.",
+         invariant_set=["same size", "expected provider digest"], expected="same-size corruption rejected"),
+    dict(id="RF-STALE", test="artifact::tests::file_metadata_is_checked_again_instead_of_trusting_old_completion_size",
+         hypothesis="Verification rereads file metadata instead of trusting earlier completion.",
+         invariant_set=["fresh file metadata", "no stale receipt trust"], expected="changed metadata rejected"),
+    dict(id="RF-BOUNDS", test="artifact::tests::streams_are_bounded_and_truncation_is_not_success",
+         hypothesis="Short and excessive streams cannot become complete verified files.",
+         invariant_set=["bounded stream", "exact expected length"], expected="truncated/excess data rejected"),
+    dict(id="RF-LINK", test="artifact::tests::observable_symlink_is_rejected_without_following_it",
+         hypothesis="An observed symlink cannot replace a regular retained file.",
+         invariant_set=["no link following", "owned fixture"], expected="symlink rejected"),
+]
+
+
+def profile_spec(profile: str = "readiness") -> dict:
+    if profile == "readiness":
+        return dict(package="pulqva-privacy", target="pulqva_privacy", probes=PROBES,
+                    fixtures="crates/pulqva-privacy/src/arti_readiness/tests.rs",
+                    boundary="T069-G2B-readiness-diagnostics-native-contract")
+    if profile == "retained-commons":
+        return dict(package="pulqva-discovery", target="pulqva_discovery", probes=RETAINED_PROBES,
+                    fixtures="crates/pulqva-discovery/src/artifact/tests.rs",
+                    boundary="T069-G2D-retained-verifier-native-contract")
+    raise ValueError("unknown_native_profile")
+
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -74,8 +109,9 @@ def sha256_file(path: Path) -> str:
 def git(*args: str) -> str:
     return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True, timeout=20).strip()
 
-def compile_test_binary() -> Path:
-    cmd = ["cargo", "+1.91.0", "test", "--locked", "-p", "pulqva-privacy",
+def compile_test_binary(profile: str = "readiness") -> Path:
+    spec = profile_spec(profile)
+    cmd = ["cargo", "+1.91.0", "test", "--locked", "-p", spec["package"],
            "--lib", "--no-run", "--message-format=json"]
     proc = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, timeout=240)
     if proc.returncode != 0:
@@ -88,7 +124,7 @@ def compile_test_binary() -> Path:
             continue
         if (item.get("reason") == "compiler-artifact"
                 and item.get("profile", {}).get("test") is True
-                and item.get("target", {}).get("name") == "pulqva_privacy"
+                and item.get("target", {}).get("name") == spec["target"]
                 and item.get("executable")):
             executables.append(Path(item["executable"]))
     if len(executables) != 1 or not executables[0].is_file():
@@ -131,12 +167,12 @@ def execution_verdict(test: str, proc: subprocess.CompletedProcess) -> tuple[str
     return "PASS", None
 
 
-def measured_identity(manifest: dict, binary: Path) -> dict:
+def measured_identity(manifest: dict, binary: Path, profile: str = "readiness") -> dict:
     """Read actual bytes again; never close by comparing the plan to itself."""
     identity = copy.deepcopy(manifest["identity"])
     paths = {
         "runtime": binary,
-        "fixtures": ROOT / "crates/pulqva-privacy/src/arti_readiness/tests.rs",
+        "fixtures": ROOT / profile_spec(profile)["fixtures"],
         "evaluator": Path(__file__),
         "codec": Path(__file__).with_name("matrix_receipt.py"),
     }
@@ -148,7 +184,8 @@ def measured_identity(manifest: dict, binary: Path) -> dict:
     return identity
 
 
-def collect(binary: Path, out: Path, manifest: dict) -> int:
+def collect(binary: Path, out: Path, manifest: dict, profile: str = "readiness") -> int:
+    specs = profile_spec(profile)["probes"]
     recorder = MatrixRecorder(manifest)
     # Persist criteria BEFORE executing a probe. Never overwrite another generation.
     write_exclusive(out / "manifest.json", manifest)
@@ -157,8 +194,8 @@ def collect(binary: Path, out: Path, manifest: dict) -> int:
                "probes": []}
     env = dict(os.environ, RUST_TEST_NOCAPTURE="0")
     try:
-        for spec in PROBES:
-            if measured_identity(manifest, binary) != manifest["identity"]:
+        for spec in specs:
+            if measured_identity(manifest, binary, profile) != manifest["identity"]:
                 recorder.fail_closed("frozen_identity_changed_before_probe")
                 break
             started = time.monotonic_ns()
@@ -196,7 +233,7 @@ def collect(binary: Path, out: Path, manifest: dict) -> int:
     except (Exception, KeyboardInterrupt):
         # Persist an explicitly unsafe/incomplete generation, never an accidental green.
         recorder.fail_closed("collector_interrupted_or_failed")
-    receipt = recorder.close(measured_identity(manifest, binary), early_exit_reason="probe_not_executed")
+    receipt = recorder.close(measured_identity(manifest, binary, profile), early_exit_reason="probe_not_executed")
     seen = {row["id"] for row in results["probes"]}
     for row in receipt["probes"]:
         if row["id"] not in seen:
@@ -210,12 +247,14 @@ def collect(binary: Path, out: Path, manifest: dict) -> int:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        raise SystemExit("expected output directory")
+    if len(sys.argv) not in (2, 3) or (len(sys.argv) == 3 and sys.argv[2] != "--retained-commons"):
+        raise SystemExit("expected output directory [--retained-commons]")
+    profile = "retained-commons" if len(sys.argv) == 3 else "readiness"
+    spec = profile_spec(profile)
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=False)
     try:
-        binary = compile_test_binary()
+        binary = compile_test_binary(profile)
     except Exception as exc:
         (out / "runner-error.json").write_bytes(
             canonical({"status": "ERROR", "stage": "compile_test_binary",
@@ -241,22 +280,22 @@ def main() -> int:
             "prompt": component("not_applicable", reason="deterministic native contract; no prompt"),
             "schema": component("not_applicable", reason="deterministic native contract; no model schema"),
             "flags": component("captured", sha256=sha256_bytes(canonical({
-                "binary": "pulqva_privacy libtest",
+                "binary": spec["target"] + " libtest",
                 "mode": "fresh process per exact test",
                 "toolchain": "1.91.0",
                 "argv_flags": TEST_FLAGS, "RUST_TEST_NOCAPTURE": "0",
-                "exact_tests": [p["test"] for p in PROBES],
+                "exact_tests": [p["test"] for p in spec["probes"]],
             }))),
             "fixtures": component("captured", sha256=sha256_file(
-                ROOT / "crates/pulqva-privacy/src/arti_readiness/tests.rs")),
+                ROOT / spec["fixtures"])),
             "evaluator": component("captured", sha256=sha256_file(Path(__file__))),
             "codec": component("captured", sha256=sha256_file(Path(__file__).with_name("matrix_receipt.py"))),
         },
     }
     manifest = {
         "protocol": "pulqva-evidence-boundary-v1",
-        "boundary": "T069-G2B-readiness-diagnostics-native-contract",
-        "generation_id": f"{checkout_sha[:12]}-{os.environ.get('GITHUB_RUN_ID', 'local')}-{os.environ.get('GITHUB_RUN_ATTEMPT', '0')}",
+        "boundary": spec["boundary"],
+        "generation_id": f"{checkout_sha[:12]}-{os.environ.get('GITHUB_RUN_ID', 'local')}-{os.environ.get('GITHUB_RUN_ATTEMPT', '0')}" + ("-retained-verifier" if profile == "retained-commons" else ""),
         "identity": identity,
         "environment": {
             "os": platform.system(),
@@ -273,10 +312,10 @@ def main() -> int:
             {k: value for k, value in spec.items() if k != "test"}
             | {"depends_on": [], "expected": {"contract": spec["expected"],
                  "test": spec["test"], "executed": 1, "passed": 1}}
-            for spec in PROBES
+            for spec in spec["probes"]
         ],
     }
-    return collect(binary, out, manifest)
+    return collect(binary, out, manifest, profile)
 
 if __name__ == "__main__":
     raise SystemExit(main())

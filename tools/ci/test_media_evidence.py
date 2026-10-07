@@ -15,6 +15,7 @@ from unittest.mock import patch
 import uuid
 
 import media_evidence as media
+import readiness_contract_matrix as native
 from matrix_receipt import MatrixRecorder, canonical, digest, strict_load, verify, write_exclusive
 from readiness_contract_matrix import PROBES
 
@@ -91,10 +92,15 @@ class MediaEvidenceTests(unittest.TestCase):
     def capture(self, out=None):
         return media.run_fixture(self.root,out or self.base/'output',self.prereq,self.binary,self.arti,self.ytdlp,self.env)
 
-    def retained_capture(self, corrupt=False, missing=False):
-        """Synthetic child and owned output; no external process/network request."""
+    def prepare_retained(self):
+        """Build explicit synthetic native-prerequisite input; not real native evidence."""
         fixture = self.root/'crates/pulqva-discovery/examples/real_commons_file.rs'
-        fixture.parent.mkdir(parents=True); fixture.write_bytes((ROOT/'crates/pulqva-discovery/examples/real_commons_file.rs').read_bytes())
+        fixture.parent.mkdir(parents=True, exist_ok=True); fixture.write_bytes((ROOT/'crates/pulqva-discovery/examples/real_commons_file.rs').read_bytes())
+        for rel in ('crates/pulqva-core/src/journey.rs', 'crates/pulqva-discovery/src/artifact.rs',
+                    'crates/pulqva-discovery/src/artifact/tests.rs', 'crates/pulqva-discovery/src/commons.rs',
+                    'crates/pulqva-discovery/src/https.rs'):
+            dest = self.root/rel; dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes((ROOT/rel).read_bytes())
         subprocess.run(['git','add','.'],cwd=self.root,check=True)
         subprocess.run(['git','-c','user.name=Fixture','-c','user.email=fixture@example.invalid',
                         '-c','commit.gpgsign=false','commit','-qm','retained synthetic fixture'],cwd=self.root,check=True)
@@ -104,6 +110,42 @@ class MediaEvidenceTests(unittest.TestCase):
             obj['source_sha']=obj['checkout_sha']=self.source
         self.receipt['manifest_sha256']=digest(self.plan)
         self.save_prereq()
+        self.env['PULQVA_MEDIA_PROFILE'] = media.RETAINED_PROFILE
+        self.extra_dir = self.prereq/media.RETAINED_PROFILE
+        self.extra_dir.mkdir()
+        self.extra_plan = copy.deepcopy(self.plan)
+        self.extra_plan['generation_id'] = 'synthetic-retained-prerequisite'
+        self.extra_plan['boundary'] = native.profile_spec(media.RETAINED_PROFILE)['boundary']
+        self.extra_plan['identity']['components']['fixtures'] = media.captured(media.sha(
+            self.root/native.profile_spec(media.RETAINED_PROFILE)['fixtures']))
+        self.extra_plan['probes'] = [
+            {k: copy.deepcopy(v) for k, v in p.items() if k != 'test'} |
+            dict(expected=dict(contract=p['expected'], test=p['test'], executed=1, passed=1), depends_on=[])
+            for p in native.RETAINED_PROBES]
+        recorder = MatrixRecorder(self.extra_plan)
+        rows = []
+        for spec in native.RETAINED_PROBES:
+            data = ('running 1 test\ntest '+spec['test']+' ... ok\n\n'
+                    'test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s\n').encode()
+            rows.append(dict(id=spec['id'], test=spec['test'], result='PASS', returncode=0,
+                             stdout_hex=data.hex(), stderr_hex='', output_truncated=False,
+                             stdout_sha256=hashlib.sha256(data).hexdigest(),
+                             stderr_sha256=hashlib.sha256(b'').hexdigest()))
+            recorder.record(spec['id'], result='PASS', duration_ms=0.0, observed='synthetic prerequisite input',
+                            evidence_refs=['test-results.json'])
+        self.extra_raw = dict(fresh_process_per_probe=True, probes=rows)
+        self.extra_receipt = recorder.close(self.extra_plan['identity'])
+        self.save_extra()
+
+    def save_extra(self):
+        for name, value in [('manifest.json', self.extra_plan), ('test-results.json', self.extra_raw)]:
+            (self.extra_dir/name).write_bytes(canonical(value)+b'\n')
+        self.extra_receipt['raw_evidence_sha256'] = media.sha(self.extra_dir/'test-results.json')
+        (self.extra_dir/'matrix_receipt.json').write_bytes(canonical(self.extra_receipt)+b'\n')
+
+    def retained_capture(self, corrupt=False, missing=False, cleanup=True):
+        # Synthetic child and owned output; no Tor/model/network execution.
+        self.prepare_retained()
         out=self.base/'retained-output'
         def child(argv,cwd,env):
             self.assertEqual(env['PULQVA_SOURCE_SHA'], self.source)
@@ -117,7 +159,7 @@ class MediaEvidenceTests(unittest.TestCase):
                 publisher_authenticated=False,windows_e2e_verified=False)
             (directory/'receipt.json').write_text(json.dumps(receipt))
             if not missing: (directory/'selected.webm').write_bytes(b'abd' if corrupt else b'abc')
-            return dict(stdout=b'PULQVA_COMMONS_FILE_E2E_OK\n',stderr=b'',reason=None,cleanup=True,returncode=0,duration_ms=1.0)
+            return dict(stdout=b'PULQVA_COMMONS_FILE_E2E_OK\n',stderr=b'',reason=None,cleanup=cleanup,returncode=0,duration_ms=1.0)
         with patch.object(media,'bounded_process',side_effect=child):
             result=media.run_fixture(self.root,out,self.prereq,self.binary,self.arti,self.ytdlp,self.env,retained=True)
         return result,out
@@ -303,7 +345,124 @@ class MediaEvidenceTests(unittest.TestCase):
         self.assertIn('media_evidence.py finalize',text)
         self.assertIn('media-evidence/*.json',text)
         self.assertNotIn('continue-on-error:',text)
-        self.assertEqual(text.count('media_evidence.py capture'),1)
+        self.assertEqual(text.count('media_evidence.py capture'),2)
+
+    def test_explicit_retained_admission_binds_both_native_boundaries(self):
+        """Retained admission requires both same-run native manifests and records each digest."""
+        self.prepare_retained()
+        status = self.admit()
+        self.assertEqual(status['profile'], media.RETAINED_PROFILE)
+        self.assertEqual(status['prerequisite_manifest_sha256'], digest(self.plan))
+        self.assertEqual(status['retained_prerequisite_manifest_sha256'], digest(self.extra_plan))
+
+    def test_retained_profile_without_native_supplement_cannot_launch(self):
+        """Selecting retained mode alone never authorizes a new runtime invocation."""
+        self.env['PULQVA_MEDIA_PROFILE'] = media.RETAINED_PROFILE
+        with patch.object(media, 'bounded_process') as called:
+            with self.assertRaises((ValueError, OSError)):
+                media.run_fixture(self.root, self.base/'out', self.prereq, self.binary,
+                                  self.arti, self.ytdlp, self.env, retained=True)
+            called.assert_not_called()
+        self.assertFalse((self.base/'out').exists())
+
+    def test_profile_mismatch_cannot_switch_capture_after_admission(self):
+        """A legacy admission cannot be silently used to run the retained-file profile."""
+        with patch.object(media, 'bounded_process') as called:
+            with self.assertRaisesRegex(ValueError, 'capture_profile_mismatch'):
+                media.run_fixture(self.root, self.base/'out', self.prereq, self.binary,
+                                  self.arti, self.ytdlp, self.env, retained=True)
+            called.assert_not_called()
+
+    def test_unknown_profile_denied_before_any_prerequisite_or_launch(self):
+        """Arbitrary profile strings never become commands, packages or test filters."""
+        self.env['PULQVA_MEDIA_PROFILE'] = 'retained-commons; arbitrary-command'
+        with patch.object(media, 'verify_prerequisite') as called:
+            with self.assertRaisesRegex(ValueError, 'unknown_media_profile'): self.admit()
+            called.assert_not_called()
+
+    def test_retained_prerequisite_cannot_reuse_readiness_boundary(self):
+        """A valid readiness receipt is not evidence for the retained-file verifier."""
+        self.prepare_retained()
+        for name in ('manifest.json', 'matrix_receipt.json', 'test-results.json'):
+            (self.extra_dir/name).write_bytes((self.prereq/name).read_bytes())
+        with self.assertRaisesRegex(ValueError, 'wrong_boundary'): self.admit()
+
+    def test_retained_prerequisite_zero_tests_rejected_despite_fresh_raw_digest(self):
+        """Zero executed native tests cannot authorize retention even with recomputed raw hashes."""
+        self.prepare_retained()
+        row = self.extra_raw['probes'][0]
+        data = b'running 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s\n'
+        row['stdout_hex'] = data.hex(); row['stdout_sha256'] = hashlib.sha256(data).hexdigest()
+        self.save_extra()
+        with self.assertRaisesRegex(ValueError, 'exact_native_test_not_executed'): self.admit()
+
+    def test_retained_prerequisite_foreign_source_denied(self):
+        """A self-consistent retained prerequisite from another source is refused."""
+        self.prepare_retained()
+        for obj in (self.extra_plan['identity'], self.extra_receipt['identity']):
+            obj['source_sha'] = obj['checkout_sha'] = 'b'*40
+        self.extra_receipt['manifest_sha256'] = digest(self.extra_plan); self.save_extra()
+        with self.assertRaisesRegex(ValueError, 'foreign_or_stale_prerequisite'): self.admit()
+
+    @POSIX
+    def test_retained_cleanup_failure_cannot_mint_verified_file(self):
+        """Correct marker and file bytes do not compensate for incomplete process cleanup."""
+        result, out = self.retained_capture(cleanup=False)
+        self.assertEqual(result, 1)
+        self.assertFalse(strict_load(out/'matrix_receipt.json')['retained_verified_file'])
+
+    def test_retained_native_compilation_selects_only_fixed_discovery_libtest(self):
+        """The shared collector selects the declared discovery libtest from Cargo JSON."""
+        item = dict(reason='compiler-artifact', profile=dict(test=True),
+                    target=dict(name='pulqva_discovery'), executable=str(self.binary))
+        proc = subprocess.CompletedProcess([], 0, json.dumps(item), '')
+        with patch.object(native.subprocess, 'run', return_value=proc) as called:
+            self.assertEqual(native.compile_test_binary(media.RETAINED_PROFILE), self.binary)
+            cmd = called.call_args.args[0]
+            self.assertIn('pulqva-discovery', cmd); self.assertIn('--no-run', cmd)
+            self.assertIn('--message-format=json', cmd)
+            self.assertNotIn('pulqva-privacy', cmd)
+        with self.assertRaises(ValueError): native.profile_spec('arbitrary')
+
+    def test_retained_native_collector_executes_expected_named_tests_only(self):
+        """The shared collector records all six retained-verifier tests after its manifest exists."""
+        self.prepare_retained()
+        plan = copy.deepcopy(self.extra_plan)
+        plan['identity'] = native.measured_identity(plan, self.binary, media.RETAINED_PROFILE)
+        out = self.base/'native-output'; out.mkdir()
+        def execute(argv, **kwargs):
+            self.assertEqual(strict_load(out/'manifest.json'), plan)
+            self.assertIn(argv[1], [p['test'] for p in native.RETAINED_PROBES])
+            data = ('running 1 test\ntest '+argv[1]+' ... ok\n\n'
+                    'test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s\n').encode()
+            return subprocess.CompletedProcess(argv, 0, data, b'')
+        with patch.object(native.subprocess, 'run', side_effect=execute) as called:
+            self.assertEqual(native.collect(self.binary, out, plan, media.RETAINED_PROFILE), 0)
+            self.assertEqual(called.call_count, 6)
+        self.assertEqual(verify(plan, strict_load(out/'matrix_receipt.json')), 'PASS')
+        self.assertEqual([p['id'] for p in strict_load(out/'test-results.json')['probes']],
+                         [p['id'] for p in native.RETAINED_PROBES])
+
+    def test_workflow_retained_profile_has_fixed_selection_prerequisites_and_upload(self):
+        """The retained profile uses fixed paths, prior native gates and two-file-only retention."""
+        text = (ROOT/'.github/workflows/ytdlp-tor-media-check.yml').read_text()
+        self.assertIn('type: choice', text)
+        self.assertIn('default: fixed-public-media', text)
+        self.assertIn('PULQVA_MEDIA_PROFILE:', text)
+        self.assertIn('cargo +1.91.0 test --locked -p pulqva-core -p pulqva-discovery --all-targets', text)
+        self.assertIn('media-native-prerequisite/retained-commons" --retained-commons', text)
+        retained = text.split('      - name: Capture one selected retained Commons journey', 1)[1].split('      - name:', 1)[0]
+        legacy = text.split('      - name: Capture one immutable existing Tor media fixture', 1)[1].split('      - name:', 1)[0]
+        self.assertIn("env.PULQVA_MEDIA_PROFILE == 'retained-commons'", retained)
+        self.assertIn("env.PULQVA_MEDIA_PROFILE == 'fixed-public-media'", legacy)
+        self.assertIn('media_evidence.py capture-retained', retained)
+        self.assertIn('target/debug/examples/real_commons_file', retained)
+        self.assertNotIn('${{ inputs.', retained)
+        upload = text.split('      - name: Retain bounded public evidence', 1)[1]
+        self.assertIn('media-evidence/retained-file/receipt.json', upload)
+        self.assertIn('media-evidence/retained-file/selected.webm', upload)
+        self.assertNotIn('retained-file/**', upload)
+        self.assertNotIn('owned-home', upload); self.assertNotIn('owned-tmp', upload)
 
 
 def run_matrix(out: Path) -> int:
