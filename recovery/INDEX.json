@@ -20,15 +20,15 @@
     "decisions/INDEX.json": "e1268d0a6c3d297056d1db49c98ba2ea75e92705",
     "recovery/legacy/ADR-0007-windows-official-tor-runtime.md": "12352f634fda51b3fe12769fef6178f8b0ba6372",
     "recovery/evidence/g1-observation.json": "c40a01c47d485f75b1cfe914e2037339b3646bb4",
-    "tools/ci/matrix_receipt.py": "44288e7a58a85e83e4ffc2c1971b3de4ab89f817",
-    "tools/ci/test_matrix_receipt.py": "f17f3b988ad12c0df4934e462b361d50106b1f29",
+    "tools/ci/matrix_receipt.py": "2a9bebd72ad6908bec98c5b56585ffd24bc546ee",
+    "tools/ci/test_matrix_receipt.py": "29ea430ab1db2b8be66fdcfc2f2c5eb1c82d6536",
     "decisions/T069-G2A-evidence-boundary-2026-10-03.md": "6a9b2194a55d99874016caf54a014881de1e8322",
     "recovery/evidence/g2a-observation.json": "7dc344c61b85831069b31c7019727781dcaf35f2",
     "crates/pulqva-privacy/src/arti_readiness.rs": "88234427553ae754a86a319268146a5a62fa71f3",
     "crates/pulqva-privacy/src/arti_readiness/tests.rs": "be7180b01c6b06ef423dc253ff821961818d6c2e",
     "crates/pulqva-privacy/src/lib.rs": "037ff265939354e1a3da30900c52f1f21d3c5d86",
     "crates/pulqva-privacy/examples/real_ytdlp_tor_media.rs": "fa831e28731e1bb1a5cc77f14fd7c702c09f63b5",
-    ".github/workflows/rust-check.yml": "37850e19b20496f3fefef044f3473c2814444651",
+    ".github/workflows/rust-check.yml": "136ca77722f827b1c8134e1d2d9beffb2576c2ec",
     "tools/ci/readiness_contract_matrix.py": "a29d825489f82c7fbe900edfb3fa546ac2878bc5",
     "decisions/T069-G2B-passive-readiness-2026-10-04.md": "fdb890fc4a8128599af6a2af4742e318a8e12bfc",
     "tools/ci/test_readiness_contract_matrix.py": "09f47b66819aa0d14c8e9cd81afe4c043cdc1fce",
@@ -63,7 +63,8 @@
     "scripts/arti_windows_compiler.ps1": "2ce39476eb4e368a4c02049b55059f823fa2d1f5",
     "scripts/restore_arti_windows_compiler.ps1": "b90defb4b6eb2f5ff66491798b5ce563d9049225",
     ".github/workflows/arti-sidecar-check.yml": "ddb23d66471e040bf855a939a034da51e69232cc",
-    "recovery/evidence/ffmpeg-source-candidate.json": "a349f81ec0d9af571fa6c17be94f179b9e815b01"
+    "recovery/evidence/ffmpeg-source-candidate.json": "a349f81ec0d9af571fa6c17be94f179b9e815b01",
+    "tasks/READY/T069-PAR-01-method-before-parallel.md": "0ed8b72a2505f7161db6037fe916314cf432e129"
   },
   "state_contract": {
     "active_task": "T069",

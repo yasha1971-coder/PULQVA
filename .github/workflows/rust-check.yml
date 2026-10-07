@@ -14,6 +14,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate comparison method before native or live work
+        run: python3 tools/ci/test_matrix_receipt.py "$RUNNER_TEMP/pulqva-method/matrix_receipt.json"
+
+      - name: Retain method preflight (not product acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-method-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pulqva-method/
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Verify media positive admission and bounded capture (synthetic)
         env:
           PULQVA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
