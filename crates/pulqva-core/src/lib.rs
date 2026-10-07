@@ -7,6 +7,9 @@ mod candidate;
 mod intent;
 mod interpreted_intent;
 mod journey;
+mod pending_journey;
+
+pub use pending_journey::PendingInterpretedJourney;
 
 pub use candidate::{SearchCandidate, SearchCandidateError};
 pub use intent::{SearchIntent, SearchIntentError};

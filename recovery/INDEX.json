@@ -7,7 +7,7 @@
   "snapshot_note": "Historical source anchor, not a fabricated self-referential current HEAD. Resolve live HEAD before writing.",
   "kernel_tree": "199a069695efe62e082a6886918e53e1c22a9179",
   "product_trees": {
-    "crates": "14cc98aa7de373eabc5ebd28dfcf8e38886141b0",
+    "crates": "a9941eb173a7161aa4c2d51faf578ebd58922290",
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
@@ -64,7 +64,11 @@
     "scripts/restore_arti_windows_compiler.ps1": "b90defb4b6eb2f5ff66491798b5ce563d9049225",
     ".github/workflows/arti-sidecar-check.yml": "ddb23d66471e040bf855a939a034da51e69232cc",
     "recovery/evidence/ffmpeg-source-candidate.json": "a349f81ec0d9af571fa6c17be94f179b9e815b01",
-    "tasks/READY/T069-PAR-01-method-before-parallel.md": "0ed8b72a2505f7161db6037fe916314cf432e129"
+    "tasks/READY/T069-PAR-01-method-before-parallel.md": "0ed8b72a2505f7161db6037fe916314cf432e129",
+    "crates/pulqva-core/src/lib.rs": "13f4f9e5953bb3e6c8492134b213d86b66195091",
+    "crates/pulqva-core/tests/t069_pending_interpreted_journey.rs": "b38127e9f7ba2435d8fed3452912123043d46ab3",
+    "tasks/READY/T069-C1-bound-interpreted-journey.md": "c4871528f533228bc06ff6b0bcf1c68fab9e048c",
+    "crates/pulqva-core/src/pending_journey.rs": "fbea39a0a74a32e876c79fdbd9d7d0847a08e97d"
   },
   "state_contract": {
     "active_task": "T069",
@@ -127,5 +131,14 @@
     "actual_checkout": "85eaee75c0dcef7294ed5cb42370542e2224b610",
     "probes_passed": 17,
     "scope": "finite Python evidence-codec acceptance only"
+  },
+  "lane_c_pending": {
+    "task": "T069-C1",
+    "branch": "feat/T069-bound-interpreted-journey",
+    "source_base": "df5ac954485920c49e422fdb1eb5e9d3dd43c648",
+    "status": "IMPLEMENTED_HOSTED_NATIVE_PENDING",
+    "task_card": "tasks/READY/T069-C1-bound-interpreted-journey.md",
+    "scope": "Additive bound caller adapter; no model/Tor/UI/whole-product acceptance",
+    "one_next_action": "Observe first exact-source core integration tests and compile-fail doctests in existing rust-check; do not replay old laptop/live baseline."
   }
 }
