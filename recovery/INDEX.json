@@ -29,7 +29,7 @@
     "crates/pulqva-privacy/src/lib.rs": "037ff265939354e1a3da30900c52f1f21d3c5d86",
     "crates/pulqva-privacy/examples/real_ytdlp_tor_media.rs": "fa831e28731e1bb1a5cc77f14fd7c702c09f63b5",
     ".github/workflows/rust-check.yml": "136ca77722f827b1c8134e1d2d9beffb2576c2ec",
-    "tools/ci/readiness_contract_matrix.py": "a29d825489f82c7fbe900edfb3fa546ac2878bc5",
+    "tools/ci/readiness_contract_matrix.py": "54de3f91b10bc9050c6f64fb62b531f65d23fa19",
     "decisions/T069-G2B-passive-readiness-2026-10-04.md": "fdb890fc4a8128599af6a2af4742e318a8e12bfc",
     "tools/ci/test_readiness_contract_matrix.py": "09f47b66819aa0d14c8e9cd81afe4c043cdc1fce",
     "recovery/evidence/g2b-37202811555.zip": "d11070e9f2e7e64d993d2694cd07e6499b3daf29",
@@ -41,7 +41,7 @@
     "decisions/T069-G2C1-trigger-containment-2026-10-04.md": "937b6bf86dfdf63b057ee0148d2792bcf0658d24",
     "recovery/evidence/g2b1-37205544440.zip": "12c7a5a21efb3ce4efcfe9b9ec0201f3f103dc88",
     ".github/workflows/tor-readiness-check.yml": "d1a94396656b9e929e4b6156bcfa2b408a12c160",
-    ".github/workflows/ytdlp-tor-media-check.yml": "1f31f15118a29b90c4b91789ef765a1200dd7a8c",
+    ".github/workflows/ytdlp-tor-media-check.yml": "ac6943553e21ebb3ab0024b34d374258ea23e438",
     ".github/workflows/ytdlp-tor-metadata-check.yml": "a5cc21b7a3242264d8c927b541d9a917f9705f5e",
     ".github/workflows/commons-tor-discovery-check.yml": "29d8f110efeefae7a081584a972723c6f835142a",
     "START_HERE.md": "a95abac6aed824e530ca98e86e41cfa9443f7252",
@@ -55,16 +55,18 @@
     "recovery/evidence/g2c1-37208088561/manifest.json": "70ec4c350e0fd8011f96a7b1de6895c75f9bf0ef",
     "recovery/evidence/g2c1-37208088561/live-status-readiness.json": "513552e9cfc8b5acd3011eedf83d671d36c1df40",
     "recovery/evidence/g2c1-37208088561/live-status-commons.json": "7fb052729947844328cb31188bbe7289a3e40915",
-    "tools/ci/media_evidence.py": "16ec35eb27ae9647ff98cdcfb1c8fa38d6f1cabd",
+    "tools/ci/media_evidence.py": "e76f8d57c470b4ab17424675cefacfe39db6232a",
     "tools/ci/test_retained_commons.py": "9dff687c0e0f006a2cf140ebdc645bdc5ec2a669",
-    "tools/ci/test_media_evidence.py": "9d465048e7a3d4858b8b2e6b7ac1a7de4283552e",
+    "tools/ci/test_media_evidence.py": "61e3cfb16747a5b11953ce623ea2437929df0c82",
     "decisions/T069-G2C2-media-admission-2026-10-04.md": "2664b726254018b272c52dbc509bcb0f243b214f",
     "recovery/evidence/g2c2-local-observation.json": "fdf85f10c29ab1a48eb0524ecdb1b893c6eecc45",
     "scripts/arti_windows_compiler.ps1": "2ce39476eb4e368a4c02049b55059f823fa2d1f5",
     "scripts/restore_arti_windows_compiler.ps1": "b90defb4b6eb2f5ff66491798b5ce563d9049225",
     ".github/workflows/arti-sidecar-check.yml": "ddb23d66471e040bf855a939a034da51e69232cc",
     "recovery/evidence/ffmpeg-source-candidate.json": "a349f81ec0d9af571fa6c17be94f179b9e815b01",
-    "tasks/READY/T069-PAR-01-method-before-parallel.md": "0ed8b72a2505f7161db6037fe916314cf432e129"
+    "tasks/READY/T069-PAR-01-method-before-parallel.md": "0ed8b72a2505f7161db6037fe916314cf432e129",
+    "tasks/READY/T069-G2D-lane-a-retained-profile.md": "774551d101164b4a085ff2953fbc6e60bfbea586",
+    "recovery/evidence/accepted-g2c2-par01.zip": "117515714670ebf0af171d569367e2643241d42c"
   },
   "state_contract": {
     "active_task": "T069",
@@ -127,5 +129,22 @@
     "actual_checkout": "85eaee75c0dcef7294ed5cb42370542e2224b610",
     "probes_passed": 17,
     "scope": "finite Python evidence-codec acceptance only"
+  },
+  "lane_a_pending": {
+    "branch": "feat/T069-retained-profile",
+    "base": "df5ac954485920c49e422fdb1eb5e9d3dd43c648",
+    "task": "tasks/READY/T069-G2D-lane-a-retained-profile.md",
+    "status": "LOCAL_SYNTHETIC_PASS_HOSTED_PENDING",
+    "local_generation": "73eac462-94b6-4d5c-900a-821cbbebf5b7",
+    "source_scope": "isolated workflow/collector integration; parent State/NEXT unchanged",
+    "accepted_originals_archive": "recovery/evidence/accepted-g2c2-par01.zip",
+    "accepted_originals_sha256": "51c25f936938324a6beb9c539b9cf571795c69261af6c4fa355624ff40f69716",
+    "original_members_sha256": {
+      "PULQVA-media-37229503485.zip": "0bf70179d9ea31fe3b50f0b87121d612a2160754d8bd7d7997229c875eba0403",
+      "PULQVA-prerequisite-37229503485.zip": "1a319378b2f93ff7b944b2136b3ff877f544c08d57105f52c8f8296567d26307",
+      "PULQVA-admission-37229503485.zip": "f890a51f5e2cf09a03dd36bc6cab80fa2c29e9044b227a71bb3edf9af709fb9c",
+      "PULQVA-PAR01-CI-37587376826.zip": "8808c377cff2c6c61639a126f117b5322320d72e64c0ff811fc5f0a97b7fc4c3"
+    },
+    "next_action": "Observe exact-head automatic contracts before any retained-commons live dispatch"
   }
 }

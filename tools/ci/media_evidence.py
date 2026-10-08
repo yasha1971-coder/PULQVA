@@ -22,13 +22,15 @@ import time
 
 from matrix_receipt import (MatrixRecorder, canonical, digest, require, strict_load,
                             validate_manifest, verify, write_exclusive)
-from readiness_contract_matrix import PROBES, execution_verdict
+from readiness_contract_matrix import PROBES, execution_verdict, profile_spec
 
 ROOT = Path(__file__).resolve().parents[2]
 BOUNDARY = 'T069-G2C2-fixed-public-media-capture'
 WORKFLOW = 'ytdlp-tor-media-check'
 MARKER = b'PULQVA_YTDLP_TOR_MEDIA_OK'
 MAX_OUTPUT = 64 * 1024
+LEGACY_PROFILE = 'fixed-public-media'
+RETAINED_PROFILE = 'retained-commons'
 OUTER_TIMEOUT = 330  # Existing inner 90s readiness + 180s media, then cleanup allowance.
 
 
@@ -116,27 +118,30 @@ def checkout(root: Path) -> str:
                                    text=True, timeout=10).strip()
 
 
-def verify_prerequisite(directory: Path, root: Path, source: str, run: str, attempt: str) -> str:
+def verify_prerequisite(directory: Path, root: Path, source: str, run: str, attempt: str,
+                        profile: str = "readiness") -> str:
     """Validate actual named test output, not exit status, a badge, or caller assertion."""
+    contract = profile_spec(profile)
+    specs = contract['probes']
     plan = strict_load(directory / 'manifest.json')
     receipt = strict_load(directory / 'matrix_receipt.json')
     results = strict_load(directory / 'test-results.json')
     require(verify(plan, receipt) == 'PASS', 'prerequisite_not_accepted')
-    require(plan['boundary'] == 'T069-G2B-readiness-diagnostics-native-contract', 'wrong_boundary')
+    require(plan['boundary'] == contract['boundary'], 'wrong_boundary')
     identity = plan['identity']
     require((identity['source_sha'], identity['checkout_sha'], identity['run_id'], identity['attempt'])
             == (source, source, run, attempt), 'foreign_or_stale_prerequisite')
     require(plan['environment']['os'] == 'Linux', 'wrong_prerequisite_platform')
     require(receipt.get('raw_evidence_sha256') == sha(directory / 'test-results.json'), 'raw_digest')
     paths = {'evaluator': root / 'tools/ci/readiness_contract_matrix.py',
-             'fixtures': root / 'crates/pulqva-privacy/src/arti_readiness/tests.rs',
+             'fixtures': root / contract['fixtures'],
              'codec': root / 'tools/ci/matrix_receipt.py'}
     for name, path in paths.items():
         require(identity['components'].get(name) == captured(sha(path)), 'prerequisite_code_changed')
-    require([p['id'] for p in plan['probes']] == [p['id'] for p in PROBES], 'probe_inventory')
+    require([p['id'] for p in plan['probes']] == [p['id'] for p in specs], 'probe_inventory')
     rows = results.get('probes', [])
-    require(len(rows) == len(PROBES) and results.get('fresh_process_per_probe') is True, 'raw_inventory')
-    for spec, declaration, evidence in zip(PROBES, plan['probes'], rows):
+    require(len(rows) == len(specs) and results.get('fresh_process_per_probe') is True, 'raw_inventory')
+    for spec, declaration, evidence in zip(specs, plan['probes'], rows):
         for key in ('id', 'hypothesis', 'invariant_set'):
             require(declaration[key] == spec[key], 'prerequisite_criteria_changed')
         require(declaration['expected'] == dict(contract=spec['expected'], test=spec['test'], executed=1, passed=1)
@@ -161,12 +166,18 @@ def admit(env: dict, root: Path, prerequisite: Path) -> dict:
     require(re.fullmatch('[1-9][0-9]{0,19}', run) is not None, 'run_identity')
     require(env.get('PULQVA_CONTRACTS_RESULT') == 'success', 'contracts_not_successful')
     require(env.get('RUNNER_OS') == 'Linux', 'linux_only')
+    profile = env.get('PULQVA_MEDIA_PROFILE', LEGACY_PROFILE)
+    require(profile in (LEGACY_PROFILE, RETAINED_PROFILE), 'unknown_media_profile')
     native_digest = verify_prerequisite(prerequisite, root, source, run, attempt)
+    extra = {}
+    if profile == RETAINED_PROFILE:
+        extra['retained_prerequisite_manifest_sha256'] = verify_prerequisite(
+            prerequisite/'retained-commons', root, source, run, attempt, RETAINED_PROFILE)
     return dict(schema='pulqva-media-admission-v1', source_sha=source, checkout_sha=source,
                 run_id=run, attempt=1, workflow=WORKFLOW, event='workflow_dispatch', admitted=True,
                 generation_id=f'{source[:12]}-{run}-1-media', state='ADMITTED', launch_budget=1,
-                live_result='NOT_TESTED', prerequisite_manifest_sha256=native_digest,
-                scope='one fixed-public Linux fixture; no retained file or whole-product acceptance')
+                live_result='NOT_TESTED', prerequisite_manifest_sha256=native_digest, profile=profile, **extra,
+                scope='one selected fixed-public Linux profile; admission is not a file or whole-product result')
 
 
 def bounded_process(argv: list[str], cwd: Path, env: dict, *, timeout: float = OUTER_TIMEOUT,
@@ -245,6 +256,7 @@ def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti
                 env: dict, *, retained: bool = False) -> int:
     # Deliberately cannot be called to bypass admission via a ready-made status file.
     admission = admit(env, root, prerequisite)
+    require(retained == (admission['profile'] == RETAINED_PROFILE), 'capture_profile_mismatch')
     marker = b'PULQVA_COMMONS_FILE_E2E_OK' if retained else MARKER
     probe = 'RETAINED-FILE' if retained else 'MEDIA-FIXTURE'
     boundary = 'T069-G2D-retained-public-file' if retained else BOUNDARY
@@ -259,6 +271,10 @@ def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti
              'workflow': root/'.github/workflows/ytdlp-tor-media-check.yml',
              'arti_pin': root/'sidecars/arti/VERSION', 'ytdlp_pin': root/'sidecars/yt-dlp/SHA256SUMS',
              'lockfile': root/'Cargo.lock'}
+    if retained:
+        for rel in ('crates/pulqva-core/src/journey.rs', 'crates/pulqva-discovery/src/artifact.rs',
+                    'crates/pulqva-discovery/src/commons.rs', 'crates/pulqva-discovery/src/https.rs'):
+            paths[rel] = root/rel
     components = identities(root, paths)
     pins = [line.split()[0] for line in paths['ytdlp_pin'].read_text().splitlines()
             if len(line.split()) == 2 and line.split()[1] == 'yt-dlp_linux']
@@ -271,6 +287,8 @@ def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti
                                               inner_budgets='unchanged Rust fixture', outer_timeout=OUTER_TIMEOUT,
                                               output_cap_per_stream=MAX_OUTPUT, calls=1, env='isolated_home_temp_minimal')))
     components['prerequisite'] = captured(admission['prerequisite_manifest_sha256'])
+    if retained:
+        components['retained_prerequisite'] = captured(admission['retained_prerequisite_manifest_sha256'])
     identity = dict(source_sha=admission['source_sha'], checkout_sha=checkout(root), run_id=admission['run_id'],
                     attempt='1', job_id=None, job_id_reason='numeric job ID bound externally by GitHub job API',
                     components=components)
@@ -305,7 +323,7 @@ def run_fixture(root: Path, output: Path, prerequisite: Path, binary: Path, arti
         require(identities(root, paths) == {name: components[name] for name in paths}, 'prelaunch_identity_changed')
         require(admit(env, root, prerequisite) == admission, 'prelaunch_admission_changed')
         raw = bounded_process(argv, output, child_env)
-        passed = (raw['reason'] is None and raw['returncode'] == 0
+        passed = (raw['reason'] is None and raw['cleanup'] is True and raw['returncode'] == 0
                   and raw['stdout'].splitlines().count(marker) == 1
                   and b'WINDOWS_FAIL_CLOSED' not in raw['stdout'])
         readback = None
