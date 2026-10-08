@@ -7,7 +7,7 @@
   "snapshot_note": "Historical source anchor, not a fabricated self-referential current HEAD. Resolve live HEAD before writing.",
   "kernel_tree": "199a069695efe62e082a6886918e53e1c22a9179",
   "product_trees": {
-    "crates": "b034198d0585254262f60bba2f8f29b9d1ea823a",
+    "crates": "624242cccaca6782ce7ff9e462da931c750407e7",
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
@@ -74,7 +74,13 @@
     "crates/pulqva-intent-http/tests/t069_loopback_journey.rs": "a1772c3b3698e72503200f6d6c86155ca7a5217a",
     "crates/pulqva-intent-server/src/lib.rs": "a2cb09db1cefefbed3512e794ad7cf0baaa2bd6e",
     "crates/pulqva-intent-server/tests/t069_owned_journey.rs": "3948a1a814f9b61e45769d3c14c16a90737e1a8b",
-    "tasks/READY/T069-C2-loopback-journey.md": "2416804c7d060d6678fb98bc60beb6d518b50194"
+    "tasks/READY/T069-C2-loopback-journey.md": "c5812eeec7534f83c17b80be69184eefb16a12ce",
+    "Cargo.lock": "a3a75327215751e87b0e45ad70680e158c7ff003",
+    "crates/pulqva-intent-server/Cargo.toml": "1be1de164e1e85782e7465ae228a45c1732e0889",
+    "crates/pulqva-intent-server/src/bin/pulqva_request/dialogue.rs": "01e6013e429d8b1bb9cf1068d28e3e2a82e9c8e8",
+    "crates/pulqva-intent-server/src/bin/pulqva_request/main.rs": "27d7d86b97403732e9041e69cf421450bee9729f",
+    "crates/pulqva-intent-server/tests/t069_request_binary.rs": "82bf1e97f408fffea1af676671959b66f0ac1e41",
+    "tasks/READY/T069-C3-real-commons-caller.md": "8b8531fa58a3ed58721035b0bd2a68710be8c61d"
   },
   "state_contract": {
     "active_task": "T069",
@@ -139,19 +145,26 @@
     "scope": "finite Python evidence-codec acceptance only"
   },
   "lane_c_pending": {
-    "task": "T069-C2",
-    "branch": "feat/T069-loopback-journey",
-    "source_base": "6a91283b04dc13bf74ac0738a719f75aa54ec9e3",
-    "status": "IMPLEMENTED_HOSTED_NATIVE_PENDING",
-    "task_card": "tasks/READY/T069-C2-loopback-journey.md",
-    "prior_c1_acceptance": {
-      "checkpoint": 6043547531,
-      "run": 37658045135,
-      "job": 112918122618,
-      "tests": 11,
-      "doctests": 2
+    "task": "T069-C3-F1",
+    "branch": "feat/T069-real-commons-caller",
+    "source_base": "643678d67849b5520efd30484fe11f7c5723d876",
+    "status": "OWNERSHIP_CORRECTION_NATIVE_PENDING",
+    "task_card": "tasks/READY/T069-C3-real-commons-caller.md",
+    "prior_c2_acceptance": {
+      "checkpoint": 6053667433,
+      "run": 37708042615,
+      "job": 113087037098,
+      "http_tests": 14,
+      "owned_server_tests": 2
     },
-    "scope": "Actual loopback/strict parser connected to pending journey and owned IntentServer; synthetic inference/backend tests, not real model/Tor/UI",
-    "one_next_action": "Observe exact-head first rust-check:14 loopback +2 owned-server integration cases; preserve first failure without repair/retry inside generation."
+    "scope": "Concrete user-driven Linux backend binary: owned model to real owned-Arti Commons backend, explicit selection and existing retained-file verification. Local compile/live execution NOT TESTED.",
+    "one_next_action": "Observe corrected-source rust-check: original14 Linux caller cases plus3 new owner cleanup cases and affected C1/C2 regressions. No live generation before native acceptance.",
+    "prior_c3_failure": {
+      "source": "643678d67849b5520efd30484fe11f7c5723d876",
+      "run": 37748897723,
+      "job": 113216968810,
+      "checkpoint": 6055989520,
+      "error": "E0507 before all14 caller tests"
+    }
   }
 }
