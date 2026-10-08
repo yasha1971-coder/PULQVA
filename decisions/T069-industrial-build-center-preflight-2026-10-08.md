@@ -57,3 +57,18 @@ Integration method decision: choose PR88 head as candidate parent, port only PR8
 DONE: exact-head PR file inventory and overlap classification. PENDING: inspect PR85 functional patch and PR88 base inheritance, prepare one conflict-free integration generation. NOT TESTED: combined build, remux, Tor/media E2E, clean-machine ZIP. No code merge, dispatch, build, release or scheduler activation in this task.
 
 ONE NEXT ACTION: run source-level FFmpeg patch/consumer compatibility review against PR88's exact head; record each changed consumer and pin, then authorize or reject a single integration commit.
+
+## FFmpeg consumer compatibility PREPARE — 2026-10-09
+
+Reviewed original PR85 patches for main.rs, ffmpeg-sidecar-check.yml and ffmpeg-real-remux-check.yml, plus exact source/target blobs for all six FFmpeg functional files at fixed heads. No new build executed.
+
+- Source PR85 b81115a0e60bd4f0b934a42ec2a6693d6c6d6c25; target preparation ancestor PR88 c4df7aa2d025fe46559626a267b263c15803fdb6. This preparation branch has only documentation changes.
+- Workflows: replacing the old version n9.0.2-3-ga5923073bf and release autobuild-2026-09-20-13-11 with n9.0.2-17-g2a571b6068 and autobuild-2026-09-30-13-08 yields exact PR85 workflow bytes for BOTH FFmpeg workflows.
+- sidecars/ffmpeg/VERSION: same exact replacement yields PR85 bytes.
+- main.rs: PR85 also changes a test expectation for Tor readiness error text from 'Tor readiness verification timed out' to 'Tor readiness verification timed out at Listener'. This is NOT an FFmpeg pin change and must be isolated and justified against the current readiness behavior; do not blindly overwrite main.rs from PR85. The remaining FFmpeg path/version replacements require exact consumer/test checks.
+- SHA256SUMS: changing filenames alone is insufficient; PR85 contains NEW archive SHA256 digests: Linux 68ee646831adaae2495618346f3bba94ff207ff83bbd34d643e7004730d66269, Windows a0e45723c72141975f51d8666302e614711745f3102b704ca3f82c897a58d278. These are source-identity claims, not proof of runtime compatibility.
+- SOURCE_PROOF.json: 2709 bytes in PR85 versus 1767 bytes in PR88 parent; contains expanded source/builder/archive provenance. Must port as a structured manifest, validate exact upstream URLs, hash fields, version and platform mappings before build.
+
+**NO-GO on mass integration now:** method preflight detected a non-FFmpeg change in main.rs and two files whose transformation is not mere text replacement. Under owner rule, do not excuse mismatched conditions. Next isolated phase should produce an exact, testable FFmpeg-only integration patch, excluding the unrelated Tor readiness expectation until separately justified. Preserve existing Tor media evidence, no cherry-pick of documentation/state manifests, no merge/release.
+
+DONE: source-level compatibility classification for six FFmpeg files. PENDING: isolated patch generation and fresh deterministic two-OS compatibility/remux checks. NOT TESTED: combined binary, actual packaged ZIP, clean machine, Windows live Tor, model/user choice.
