@@ -66,3 +66,13 @@ size-only run37229503485. If native gates fail, preserve first outcome before a 
 repair generation. Full local model/user choice, Windows live Tor, product cancellation,
 egress, hostile filesystem races, UI packages and clean-machine acceptance remain open.
 Parent integration/state updates remain serialized. No merge/release/scheduler change.
+
+## Hosted evidence reconciliation — 2026-10-08
+
+Source 3ca7a85ef5de3f9108cc3213da173a6f65356c87, owner-dispatched run 37769355186 attempt 1, retained-commons: scoped PASS. Ubuntu and Windows deterministic contracts, same-run Linux native prerequisites and media admission succeeded. Linux Tor Commons fixed fixture: 10 candidates, index 1, selected.webm 2131934 bytes; file SHA256 0d77b81c7670ff7766240766a83a7fab4a3ad3aeb81d72f039113285b0acf423; original media artifact 11546608929 SHA256 b6dc1ca740ef4b00876d477308f033594ea0be5d27712a57df39c91fb8730b7f. Independent readback, provenance bindings and cleanup accepted in PR #88. The earlier PENDING paragraph is historical pre-run status, superseded by this checkpoint. Failed run 37642119152 remains failed. No new test or performance comparison.
+
+Current integration heads observed: PR88 f9a3b4c362c2217a94b6fef1acdec56980ec2310, PR87 df5ac954485920c49e422fdb1eb5e9d3dd43c648, PR80 a3a934c6c04167ecb5b7874345bb590c4deb433b; all open/draft. Parent recovery/INDEX.json is a historical sealed manifest of PR80, not an editable live-head ledger. Its sealed hashes MUST NOT be silently rewritten to match this branch. Likewise PROJECT_STATE.last_verified_commit remains unchanged pending parent integration checks.
+
+2026-10-08 external engineering review: Tor Project released Arti 2.7.0 on October 1 with security fixes and RPC enhancements (https://blog.torproject.org/arti_2_7_0_released/). GitHub recommends verified artifact attestations for release binaries (https://docs.github.com/en/actions/concepts/security/artifact-attestations). yt-dlp announced Windows 10+ requirements for upcoming Windows executables (https://github.com/yt-dlp/yt-dlp/issues/16917). These are candidate future engineering questions, NOT permission to repin, broaden acceptance, or mix updates into this evidence generation.
+
+DONE: scoped retained-file acceptance and this task-card reconciliation. PENDING: serialized parent integration, model/user choice, Windows live E2E and packaging. NOT TESTED: Arti 2.7 compatibility, attestation release gate, clean-machine ZIP. ONE NEXT ACTION: parent integration owner reconciles scoped evidence with its live source and existing independent lanes; retain historical INDEX intact until an explicitly versioned manifest migration is justified. No merge/release/dispatch.
