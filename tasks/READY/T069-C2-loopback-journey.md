@@ -1,5 +1,14 @@
 # T069-C2 — real interpreter call to explicit selected-file journey
 
+## Accepted native result — 2026-10-08
+
+Checkpoint6053667433: source288e32eb718f4c0ee3f0d3a2e206b52d753dda7c,
+rust-check37708042615/job113087037098; all14 HTTP+2 supervised-server cases
+executed/PASS. Actual checkout7672647 has the same tree0f6a4266. This supersedes
+the implementation-time native-PENDING text below. No rerun. C3 actual caller
+continues in T069-C3-real-commons-caller.md; historical limits remain unchanged.
+
+
 Lane C / issue #86 / claim6049510580, 2026-10-08. One atomic connection.
 Base C1: 6a91283b04dc13bf74ac0738a719f75aa54ec9e3; isolated branch
 feat/T069-loopback-journey. Parent/A/B refs must not be advanced by this task.

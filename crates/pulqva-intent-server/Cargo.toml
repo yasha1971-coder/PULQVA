@@ -7,5 +7,7 @@ publish = false
 
 [dependencies]
 pulqva-core = { path = "../pulqva-core" }
+pulqva-discovery = { path = "../pulqva-discovery" }
+pulqva-privacy = { path = "../pulqva-privacy" }
 pulqva-intent-http = { path = "../pulqva-intent-http" }
 serde_json = "1"

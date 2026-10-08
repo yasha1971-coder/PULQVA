@@ -600,7 +600,9 @@ name = "pulqva-intent-server"
 version = "0.0.0"
 dependencies = [
  "pulqva-core",
+ "pulqva-discovery",
  "pulqva-intent-http",
+ "pulqva-privacy",
  "serde_json",
 ]
 
