@@ -132,6 +132,22 @@ impl IntentServer {
             thread::sleep(Duration::from_millis(10));
         }
     }
+    /// Interpret on this owned live server, then wait for an explicit selection.
+    /// The existing completion budget caps inference; it is not a whole-download
+    /// deadline. Pending choices borrow the backend, not this server: inference
+    /// has finished before the caller presents them. GUI/Autopilot consent and
+    /// privacy-gated backend construction remain caller responsibilities.
+    pub fn request_choices<'a, B: pulqva_core::CandidateSearch + pulqva_core::CandidateRetrieval>(
+        &mut self, user_request: &str, backend: &'a mut B, timeout: Duration,
+    ) -> Result<pulqva_core::PendingInterpretedJourney<'a, B>, pulqva_intent_http::LoopbackJourneyError> {
+        use pulqva_intent_http::{LoopbackIntentEndpoint, LoopbackJourneyError, request_loopback_choices};
+        if !matches!(self.child.try_wait(), Ok(None)) {
+            return Err(LoopbackJourneyError::InterpreterUnavailable);
+        }
+        let endpoint = LoopbackIntentEndpoint::new(self.port, timeout.min(COMPLETION_BUDGET))
+            .map_err(|_| LoopbackJourneyError::InvalidRequest)?;
+        request_loopback_choices(endpoint, user_request, backend)
+    }
     pub fn port(&self)->u16{self.port}
 }
 impl Drop for IntentServer {

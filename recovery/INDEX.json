@@ -7,7 +7,7 @@
   "snapshot_note": "Historical source anchor, not a fabricated self-referential current HEAD. Resolve live HEAD before writing.",
   "kernel_tree": "199a069695efe62e082a6886918e53e1c22a9179",
   "product_trees": {
-    "crates": "a9941eb173a7161aa4c2d51faf578ebd58922290",
+    "crates": "b034198d0585254262f60bba2f8f29b9d1ea823a",
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
@@ -67,8 +67,14 @@
     "tasks/READY/T069-PAR-01-method-before-parallel.md": "0ed8b72a2505f7161db6037fe916314cf432e129",
     "crates/pulqva-core/src/lib.rs": "13f4f9e5953bb3e6c8492134b213d86b66195091",
     "crates/pulqva-core/tests/t069_pending_interpreted_journey.rs": "b38127e9f7ba2435d8fed3452912123043d46ab3",
-    "tasks/READY/T069-C1-bound-interpreted-journey.md": "c4871528f533228bc06ff6b0bcf1c68fab9e048c",
-    "crates/pulqva-core/src/pending_journey.rs": "fbea39a0a74a32e876c79fdbd9d7d0847a08e97d"
+    "tasks/READY/T069-C1-bound-interpreted-journey.md": "052f03be909c3b0e5a0d64d5e6370c657dd030f1",
+    "crates/pulqva-core/src/pending_journey.rs": "fbea39a0a74a32e876c79fdbd9d7d0847a08e97d",
+    "crates/pulqva-intent-http/src/lib.rs": "bc38728aefb009778492c52cc1ba3aaee1ba695d",
+    "crates/pulqva-intent-http/src/loopback_journey.rs": "cb15a5ee88805e635d8d7ccac7b014a55c19e5ba",
+    "crates/pulqva-intent-http/tests/t069_loopback_journey.rs": "a1772c3b3698e72503200f6d6c86155ca7a5217a",
+    "crates/pulqva-intent-server/src/lib.rs": "a2cb09db1cefefbed3512e794ad7cf0baaa2bd6e",
+    "crates/pulqva-intent-server/tests/t069_owned_journey.rs": "3948a1a814f9b61e45769d3c14c16a90737e1a8b",
+    "tasks/READY/T069-C2-loopback-journey.md": "2416804c7d060d6678fb98bc60beb6d518b50194"
   },
   "state_contract": {
     "active_task": "T069",
@@ -133,12 +139,19 @@
     "scope": "finite Python evidence-codec acceptance only"
   },
   "lane_c_pending": {
-    "task": "T069-C1",
-    "branch": "feat/T069-bound-interpreted-journey",
-    "source_base": "df5ac954485920c49e422fdb1eb5e9d3dd43c648",
+    "task": "T069-C2",
+    "branch": "feat/T069-loopback-journey",
+    "source_base": "6a91283b04dc13bf74ac0738a719f75aa54ec9e3",
     "status": "IMPLEMENTED_HOSTED_NATIVE_PENDING",
-    "task_card": "tasks/READY/T069-C1-bound-interpreted-journey.md",
-    "scope": "Additive bound caller adapter; no model/Tor/UI/whole-product acceptance",
-    "one_next_action": "Observe first exact-source core integration tests and compile-fail doctests in existing rust-check; do not replay old laptop/live baseline."
+    "task_card": "tasks/READY/T069-C2-loopback-journey.md",
+    "prior_c1_acceptance": {
+      "checkpoint": 6043547531,
+      "run": 37658045135,
+      "job": 112918122618,
+      "tests": 11,
+      "doctests": 2
+    },
+    "scope": "Actual loopback/strict parser connected to pending journey and owned IntentServer; synthetic inference/backend tests, not real model/Tor/UI",
+    "one_next_action": "Observe exact-head first rust-check:14 loopback +2 owned-server integration cases; preserve first failure without repair/retry inside generation."
   }
 }

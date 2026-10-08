@@ -20,7 +20,16 @@ It can live in the backend worker while waiting for a selection; no self-referen
 GUI state is proposed. Parent State/NEXT await serialized integration; this card and
 INDEX.lane_c_pending are the isolated continuation pointer.
 
-## Predeclared acceptance / current status
+## Current native acceptance — observed 2026-10-07
+
+Checkpoint6043547531 accepted original rust-check37658045135/job112918122618:
+11/11 integration and2/2 core compile-fail tests executed and passed. Actual checkout
+9fc8df72 and source6a91283 share treee3599ff364fa36e2f6a7b6ea459891cf6f590736.
+No rerun. This is scoped synthetic-backend acceptance, not real model/Tor/UI.
+Continue with tasks/READY/T069-C2-loopback-journey.md, not the historical pending
+notes below. The source/acceptance chronology is preserved.
+
+## Predeclared acceptance / historical pre-CI status
 
 Existing cargo test --workspace --locked runs 11 added ordinary native cases: Ask waits;
 Autopilot waits; Reject invokes neither service; selected fixture bytes are saved with
