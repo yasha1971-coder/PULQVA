@@ -1,3 +1,6 @@
+mod loopback_journey;
+pub use loopback_journey::{request_loopback_choices, LoopbackJourneyError};
+
 use pulqva_core::Interpretation;
 use serde::{Deserialize, Serialize};
 use serde_json::{value::RawValue, Value};
