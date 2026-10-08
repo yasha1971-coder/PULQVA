@@ -60,10 +60,10 @@ fn config(args: &[OsString]) -> Result<Config, &'static str> {
 struct ArtiOwner(Option<RunningArti>);
 impl ArtiOwner {
     fn stop(&mut self) -> Result<(), &'static str> {
-        if let Some(child) = self.0.as_mut() {
+        // Shutdown consumes RunningArti: move it out once, not through a borrow.
+        if let Some(child) = self.0.take() {
             child.stop_and_wait().map_err(|_| "Tor cleanup failed; runtime retained")?;
         }
-        self.0 = None;
         Ok(())
     }
 }
@@ -121,5 +121,61 @@ fn main() -> ExitCode {
     match run(&args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(category) => { eprintln!("PULQVA: {category}"); ExitCode::FAILURE }
+    }
+}
+
+#[cfg(test)]
+mod owner_tests {
+    use super::*;
+
+    #[test]
+    fn c3_f1_empty_owner_stop_is_idempotent() {
+        let mut owner = ArtiOwner(None);
+        assert_eq!(owner.stop(), Ok(()));
+        assert_eq!(owner.stop(), Ok(()));
+        assert!(owner.0.is_none());
+    }
+
+    // An explicit short-lived, no-network system fixture uses the unchanged
+    // production launcher. This tests ownership/reaping, not Tor connectivity,
+    // long-running child shutdown, or the launcher's I/O-failure behaviour.
+    #[cfg(target_os = "linux")]
+    fn fixture_owner() -> (ArtiOwner, PathBuf, u32) {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let root = env::temp_dir().join(format!("pulqva-c3-f1-{}-{}",
+            std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+        dialogue::create_private_dir(&root).expect("fresh test namespace");
+        let executable = Path::new("/usr/bin/true");
+        assert!(executable.is_file(), "Linux no-network system fixture missing");
+        let plan = ArtiRuntimePlan::new(executable, root.join("config/pulqva.toml"),
+            root.join("cache"), root.join("state"), TorSocksEndpoint::new(19050).unwrap());
+        let prepared = prepare_arti_runtime(plan).expect("prepare only, no readiness");
+        let child = launch_prepared_arti(prepared).expect("direct no-network child");
+        let pid = child.id();
+        (ArtiOwner(Some(child)), root, pid)
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn c3_f1_explicit_stop_takes_and_reaps_owned_child_once() {
+        let (mut owner, root, pid) = fixture_owner();
+        assert_eq!(owner.stop(), Ok(()));
+        assert!(owner.0.is_none());
+        assert!(!PathBuf::from(format!("/proc/{pid}")).exists(), "child not reaped");
+        assert_eq!(owner.stop(), Ok(()));
+        assert!(root.is_dir(), "owner shutdown must not delete runtime or output");
+        drop(owner);
+        fs::remove_dir_all(root).expect("remove only owned test namespace");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn c3_f1_drop_reaps_owned_child_without_deleting_runtime() {
+        let (owner, root, pid) = fixture_owner();
+        drop(owner);
+        assert!(!PathBuf::from(format!("/proc/{pid}")).exists(), "child not reaped");
+        assert!(root.is_dir(), "drop must not delete runtime or output");
+        fs::remove_dir_all(root).expect("remove only owned test namespace");
     }
 }

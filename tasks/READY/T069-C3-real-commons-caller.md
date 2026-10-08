@@ -3,6 +3,44 @@
 Claim6055453068 in #86. Isolated feat/T069-real-commons-caller from accepted C2
 288e32eb718f4c0ee3f0d3a2e206b52d753dda7c (PR90/checkpoint6053667433).
 
+## Current recovery — C3-F1 (2026-10-08)
+
+The first C3 native generation FAILED before executing the 14 new caller tests:
+run37748897723/job113216968810 at643678d67849b5520efd30484fe11f7c5723d876,
+actual checkout210fba00fa6f2223f0f0a5adc332d77d3eaaf573. Original diagnostic and
+scope are preserved in checkpoint6055989520. E0507 arose because ArtiOwner borrowed
+RunningArti with as_mut before calling its existing consuming stop_and_wait(self).
+The subsequent missing readiness artifact is a downstream effect, not a Tor error.
+
+C3-F1 replaces ONLY that shutdown borrow with Option::take. The Commons transport's
+separate as_mut borrow, error propagation, runtime/output separation, launcher API,
+Kernel, model/schema/pins and dependencies are unchanged. No live replay or retry.
+Three new owner tests cover empty/idempotent shutdown and explicit/drop reaping of
+an owned short-lived no-network system fixture. The latter two are Linux-only and
+use /usr/bin/true through the existing production launcher; they do not prove Tor,
+long-running-child termination, I/O-error recovery or descendant containment.
+
+Native gate: existing cargo test --workspace --locked must execute the original
+14 Linux caller cases PLUS these 3 new cases, and affected C1/C2 regressions.
+One frozen correction, one new automatic wave; preserve its first result. Local
+source/recovery checks do not substitute for native execution. No Rust/Cargo is
+available in this session. This correction's native acceptance is PENDING.
+
+ONE NEXT ACTION: observe the first corrected-source rust-check and actual named
+17 caller outcomes; do not report compiled or accepted from the old failed run.
+Then, only after acceptance, prepare one admitted actual model+Tor caller generation.
+No laptop action or replay of historical WSL/Windows retained-file baselines.
+
+Primary-source pre/post-source review:
+https://doc.rust-lang.org/error_codes/E0507.html
+https://doc.rust-lang.org/std/option/enum.Option.html#method.take
+Option::take transfers the owned value and leaves None on the pinned toolchain.
+The existing consuming shutdown may lose its handle on an I/O error; this fix does
+not solve that separate API limitation. Runtime retention on reported failure stays
+unchanged. Post-native acceptance review remains pending.
+
+## Original C3 implementation scope (preserved below)
+
 ## One implemented outcome
 
 The existing intent-server package now contains the actual `pulqva_request` backend

@@ -7,7 +7,7 @@
   "snapshot_note": "Historical source anchor, not a fabricated self-referential current HEAD. Resolve live HEAD before writing.",
   "kernel_tree": "199a069695efe62e082a6886918e53e1c22a9179",
   "product_trees": {
-    "crates": "5094f37cd742712ffab67b878685f066fcaf4f68",
+    "crates": "624242cccaca6782ce7ff9e462da931c750407e7",
     "apps": "db5ee99d8eba18636f75957b971c664aa05faa31"
   },
   "sealed_files": {
@@ -78,9 +78,9 @@
     "Cargo.lock": "a3a75327215751e87b0e45ad70680e158c7ff003",
     "crates/pulqva-intent-server/Cargo.toml": "1be1de164e1e85782e7465ae228a45c1732e0889",
     "crates/pulqva-intent-server/src/bin/pulqva_request/dialogue.rs": "01e6013e429d8b1bb9cf1068d28e3e2a82e9c8e8",
-    "crates/pulqva-intent-server/src/bin/pulqva_request/main.rs": "091ded1997c7eed918aa22c1599c8350ef9b3875",
+    "crates/pulqva-intent-server/src/bin/pulqva_request/main.rs": "27d7d86b97403732e9041e69cf421450bee9729f",
     "crates/pulqva-intent-server/tests/t069_request_binary.rs": "82bf1e97f408fffea1af676671959b66f0ac1e41",
-    "tasks/READY/T069-C3-real-commons-caller.md": "81ab8ca602f5110967259e2ed50e268d40b04058"
+    "tasks/READY/T069-C3-real-commons-caller.md": "8b8531fa58a3ed58721035b0bd2a68710be8c61d"
   },
   "state_contract": {
     "active_task": "T069",
@@ -145,10 +145,10 @@
     "scope": "finite Python evidence-codec acceptance only"
   },
   "lane_c_pending": {
-    "task": "T069-C3",
+    "task": "T069-C3-F1",
     "branch": "feat/T069-real-commons-caller",
-    "source_base": "288e32eb718f4c0ee3f0d3a2e206b52d753dda7c",
-    "status": "IMPLEMENTED_HOSTED_NATIVE_PENDING",
+    "source_base": "643678d67849b5520efd30484fe11f7c5723d876",
+    "status": "OWNERSHIP_CORRECTION_NATIVE_PENDING",
     "task_card": "tasks/READY/T069-C3-real-commons-caller.md",
     "prior_c2_acceptance": {
       "checkpoint": 6053667433,
@@ -158,6 +158,13 @@
       "owned_server_tests": 2
     },
     "scope": "Concrete user-driven Linux backend binary: owned model to real owned-Arti Commons backend, explicit selection and existing retained-file verification. Local compile/live execution NOT TESTED.",
-    "one_next_action": "Observe first exact-head rust-check:11 caller unit +3 binary tests on Linux, and C1/C2 regressions. Then prepare one admitted model/Tor caller generation; no new framework or historical laptop replay."
+    "one_next_action": "Observe corrected-source rust-check: original14 Linux caller cases plus3 new owner cleanup cases and affected C1/C2 regressions. No live generation before native acceptance.",
+    "prior_c3_failure": {
+      "source": "643678d67849b5520efd30484fe11f7c5723d876",
+      "run": 37748897723,
+      "job": 113216968810,
+      "checkpoint": 6055989520,
+      "error": "E0507 before all14 caller tests"
+    }
   }
 }
