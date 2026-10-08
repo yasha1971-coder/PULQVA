@@ -42,3 +42,18 @@ GO only for a future single bounded integration PREPARE with exact conflict/diff
 
 ## One next action
 Inspect PR85 vs PR88 changed-file overlap and compatibility at their exact heads, then create a conflict-free integration plan and test admission criteria; one integration generation only after preflight. Keep kernel, historical recovery/INDEX sealed hashes and global last_verified_commit unchanged. No build, workflow dispatch, merge, release or scheduler activation in this preparation task.
+
+## Agent-department integration review — PREPARE 2 (2026-10-08)
+
+Independent role-based reviews, not actual parallel hired staff:
+- Integration lead: PR85 head b81115a0e60bd4f0b934a42ec2a6693d6c6d6c25, base a3a934c6c04167ecb5b7874345bb590c4deb433b. PR88 head c4df7aa2d025fe46559626a267b263c15803fdb6, base df5ac954485920c49e422fdb1eb5e9d3dd43c648. Both remain draft/open. Their direct changed-file lists were inspected through GitHub PR files API.
+- Merge-conflict reviewer: exact overlap in PR85/PR88 changed-file lists: NEXT.md and recovery/INDEX.json. No direct overlap in the product code or workflow files in these two PR diffs; this does NOT prove their complete dependency graphs are compatible.
+- Build reviewer: PR85 touches apps/pulqva-desktop/src-tauri/src/main.rs, both FFmpeg workflows, sidecars/ffmpeg/SHA256SUMS, SOURCE_PROOF.json and VERSION. PR88 touches media workflow, evidence and readiness adapters. PR85 also touches PROJECT_STATE.json; PR88 does not.
+- QA reviewer: PR88's live PASS predates its later documentation commits, so a new combined commit cannot inherit that exact-head acceptance. Need fresh deterministic checks on the integrated head and one separately admitted scoped media generation only if required.
+- Release/security reviewer: never replace sealed recovery/INDEX.json wholesale; migrate/extend it with a versioned snapshot and independently verify SHA map. Keep Tor fail-closed and no-API-key kernel invariants. Do not claim a packaged release or Windows live E2E.
+
+Integration method decision: choose PR88 head as candidate parent, port only PR85's FFmpeg functional/pin changes after a file-by-file review. Manually reconcile NEXT.md and recovery/INDEX.json; reconcile PROJECT_STATE.json without erasing independent lane A evidence. Before any commit, verify source heads unchanged and inspect complete patches for overlapping semantic dependencies. Reject mismatched test conditions rather than explaining away mismatches. First combined build wave only after a deterministic preflight and one frozen integration generation.
+
+DONE: exact-head PR file inventory and overlap classification. PENDING: inspect PR85 functional patch and PR88 base inheritance, prepare one conflict-free integration generation. NOT TESTED: combined build, remux, Tor/media E2E, clean-machine ZIP. No code merge, dispatch, build, release or scheduler activation in this task.
+
+ONE NEXT ACTION: run source-level FFmpeg patch/consumer compatibility review against PR88's exact head; record each changed consumer and pin, then authorize or reject a single integration commit.
