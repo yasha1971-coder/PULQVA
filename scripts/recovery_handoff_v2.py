@@ -53,7 +53,7 @@ def validate(root: Path, manifest: dict, *, expected_head: str) -> dict:
             raise ValueError("invalid git identity")
     if target["commit"] != expected_head or git(root, "rev-parse", "HEAD^{tree}") != target["tree"]:
         raise ValueError("target commit/tree mismatch")
-    git(root, "merge-base", "--is-ancestor", parent["commit"], expected_head")
+    git(root, "merge-base", "--is-ancestor", parent["commit"], expected_head)
     if git(root, "rev-parse", parent["commit"] + ":recovery/INDEX.json") != parent["index_blob"]:
         raise ValueError("historical index blob mismatch")
     raw_parent = subprocess.check_output(
