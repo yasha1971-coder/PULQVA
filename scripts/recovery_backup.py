@@ -37,11 +37,26 @@ def main():
             if run('git', 'rev-parse', 'HEAD', cwd=restored).decode().strip() != head:
                 raise ValueError('restore checkout mismatch')
             fsck = run('git', 'fsck', '--full', cwd=restored)
-            result = run(sys.executable, 'scripts/recovery_guard.py', cwd=restored)
-            (out / 'restore-check.txt').write_bytes(verify + fsck + result)
-        receipt = {'protocol': 'pulqva-cold-restore-v1', 'source_checkout': head,
+            original = Path(temp) / 'original'
+            transition = Path(temp) / 'transition'
+            for destination, revision in (
+                (original, 'df5ac954485920c49e422fdb1eb5e9d3dd43c648'),
+                (transition, '3ca7a85ef5de3f9108cc3213da173a6f65356c87'),
+            ):
+                run('git', '-c', 'protocol.file.allow=always', 'clone',
+                    '--no-local', '--no-checkout', str(restored), str(destination))
+                run('git', '-C', str(destination), 'checkout', '--detach', revision)
+            original_v1 = run(sys.executable, 'scripts/recovery_guard.py', cwd=original)
+            transition_v1 = run(sys.executable, 'scripts/recovery_guard.py', cwd=transition)
+            handoff = run(sys.executable, '-B', 'scripts/recovery_handoff_v2.py',
+                          '--root', str(restored), '--expected-head', head,
+                          '--trusted-root', str(original),
+                          '--transition-root', str(transition), cwd=restored)
+            (out / 'restore-check.txt').write_bytes(
+                verify + fsck + original_v1 + transition_v1 + handoff)
+        receipt = {'protocol': 'pulqva-cold-restore-v2', 'source_checkout': head,
                    'snapshot_branch': branch, 'git_bundle_sha256': hashlib.sha256(bundle.read_bytes()).hexdigest(),
-                   'restore': 'PASS', 'restored_from': 'local bundle, no remote fetch',
+                   'restore': 'PASS', 'admission': 'v1-original+v1-transition+v2-target', 'restored_from': 'local bundle, no remote fetch',
                    'run_id': os.getenv('GITHUB_RUN_ID'), 'run_attempt': os.getenv('GITHUB_RUN_ATTEMPT'),
                    'coverage': 'all refs fetched into CI checkout; their reachable Git history; committed evidence',
                    'limitations': ['not all GitHub comments/reviews or Actions logs',
@@ -52,7 +67,7 @@ def main():
         (out / 'RESTORE.txt').write_text('PULQVA source and continuity backup. Not a runnable application.\n'
             'Verify PULQVA.bundle against git_bundle_sha256 in restore_receipt.json.\n'
             'git clone --branch ' + branch + ' PULQVA.bundle restored\n'
-            'cd restored\npython3 scripts/recovery_guard.py\nRead START_HERE.md.\n'
+            'cd restored\npython3 scripts/recovery_handoff_v2.py --help\nRead START_HERE.md.\n'
             'Do not push, merge or run model/network tests as part of recovery.\n')
         print(json.dumps(receipt, indent=2))
     finally:
