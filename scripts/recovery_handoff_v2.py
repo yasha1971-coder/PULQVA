@@ -53,14 +53,12 @@ def validate(root: Path, manifest: dict, *, expected_head: str) -> dict:
             raise ValueError("invalid git identity")
     if target["commit"] != expected_head or git(root, "rev-parse", "HEAD^{tree}") != target["tree"]:
         raise ValueError("target commit/tree mismatch")
-    if git(root, "merge-base", "--is-ancestor", parent["commit"], expected_head) != "":
-        # merge-base exits zero on success and prints nothing; checked separately below
-        raise ValueError("unexpected merge-base output")
+    git(root, "merge-base", "--is-ancestor", parent["commit"], expected_head")
     if git(root, "rev-parse", parent["commit"] + ":recovery/INDEX.json") != parent["index_blob"]:
         raise ValueError("historical index blob mismatch")
     raw_parent = subprocess.check_output(
         ["git", "-C", str(root), "show", parent["commit"] + ":recovery/INDEX.json"], timeout=20)
-    if hashlib.sha256(raw_parent).hexdigest() != parent["index_sha256"]:
+    if not isinstance(parent.get("index_sha256"), str) or not HEX64.fullmatch(parent["index_sha256"]) or hashlib.sha256(raw_parent).hexdigest() != parent["index_sha256"]:
         raise ValueError("historical index digest mismatch")
     files = target["files"]
     if not isinstance(files, dict) or set(files) != ALLOWED:
