@@ -27,7 +27,25 @@ jobs:
         run: python3 scripts/test_recovery_guard.py "$RUNNER_TEMP/pulqva-recovery/matrix_receipt.json"
 
       - name: Verify sealed continuation and retained evidence
-        run: python3 scripts/recovery_guard.py
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PULQVA_ADMITTED_CHECKOUT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export GIT_NO_REPLACE_OBJECTS=1 GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+          test "$(git rev-parse HEAD)" = "$PULQVA_ADMITTED_CHECKOUT"
+          trust="$(mktemp -d "$RUNNER_TEMP/continuity-history.XXXXXXXX")"
+          git -c protocol.file.allow=always clone --no-local --no-checkout . "$trust/original"
+          git -C "$trust/original" checkout --detach df5ac954485920c49e422fdb1eb5e9d3dd43c648
+          git -c protocol.file.allow=always clone --no-local --no-checkout . "$trust/transition"
+          git -C "$trust/transition" checkout --detach 3ca7a85ef5de3f9108cc3213da173a6f65356c87
+          python3 "$trust/original/scripts/recovery_guard.py"
+          python3 "$trust/transition/scripts/recovery_guard.py"
+          python3 -B scripts/recovery_handoff_v2.py \
+            --root "$GITHUB_WORKSPACE" --expected-head "$PULQVA_ADMITTED_CHECKOUT" \
+            --trusted-root "$trust/original" --transition-root "$trust/transition" \
+            > "$RUNNER_TEMP/pulqva-recovery/current-handoff.json"
 
       - name: Protect frozen kernel after v1 tag exists
         shell: bash
