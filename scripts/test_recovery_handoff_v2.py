@@ -49,6 +49,20 @@ CASES = [
     ("22", "uncommitted_evidence", "Dirty retained evidence not listed in the manifest is rejected", False),
     ("23", "float_schema", "Float schema 2.0 cannot substitute for integer schema 2", False),
     ("24", "injected_git_environment", "Injected GIT_DIR and replacement policy cannot redirect validation", True),
+    ("25", "transition_exact", "The independently pinned native INDEX transition is admitted", True),
+    ("26", "transition_missing", "The new INDEX cannot pass without explicit transition admission", False),
+    ("27", "transition_wrong_checkout", "Original checkpoint cannot impersonate the transition checkout", False),
+    ("28", "transition_dirty_index", "Dirty transition INDEX cannot mint policy", False),
+    ("29", "transition_dirty_guard", "Modified transition v1 guard is rejected", False),
+    ("30", "transition_rewrite_state", "Transition does not authorize state or authority rewrites", False),
+    ("31", "transition_new_evidence", "Newly admitted evidence is protected in descendants", False),
+    ("32", "transition_rewrite_index", "Further committed INDEX rewrite is not implicitly authorized", False),
+    ("33", "transition_self_checkout", "Candidate cannot serve as its own transition checkout", False),
+    ("34", "transition_next_change", "NEXT may evolve while original INDEX and policy remain unchanged", True),
+    ("35", "transition_kernel_rewrite", "A valid transition does not authorize Kernel changes", False),
+    ("36", "transition_parent_rewrite", "Manifest cannot substitute the transition for its original trust anchor", False),
+    ("37", "transition_index_rollback", "Candidate cannot roll its INDEX back after selecting the transition", False),
+    ("38", "transition_unrelated_descendant", "A pre-transition sibling cannot reuse the admitted envelope", False),
 ]
 
 
@@ -70,6 +84,8 @@ class HandoffContracts(unittest.TestCase):
         self.owned = Path(self.temp.name).resolve()
         self.trusted = self.owned / "trusted"
         self.root = self.owned / "candidate"
+        transition_case = "_transition_" in self._testMethodName
+        self.transition = self.owned / "transition" if transition_case else None
         self.env = h._env()
         self.env.update(GIT_AUTHOR_NAME="PULQVA synthetic fixture",
                         GIT_AUTHOR_EMAIL="fixture@example.invalid",
@@ -77,11 +93,13 @@ class HandoffContracts(unittest.TestCase):
                         GIT_COMMITTER_EMAIL="fixture@example.invalid",
                         GIT_AUTHOR_DATE="2026-10-09T00:00:00+00:00",
                         GIT_COMMITTER_DATE="2026-10-09T00:00:00+00:00")
-        for root in (self.trusted, self.root):
+        roots = (self.trusted, self.root) + ((self.transition,) if self.transition else ())
+        for root in roots:
             subprocess.run(["git", "-c", "protocol.file.allow=always", "clone", "--no-local",
                             "--no-checkout", str(HISTORY), str(root)], env=self.env,
                            check=True, capture_output=True, timeout=20)
-            self.cmd(root, "checkout", "--detach", h.TRUST_COMMIT)
+            revision = h.TRANSITION_COMMIT if transition_case and root != self.trusted else h.TRUST_COMMIT
+            self.cmd(root, "checkout", "--detach", revision)
         (self.root / "handoff-test-fixture.txt").write_text("synthetic descendant; not release\n")
         self.commit()
 
@@ -133,6 +151,36 @@ class HandoffContracts(unittest.TestCase):
             (self.trusted / "scripts/recovery_guard.py").write_text("print('PULQVA recovery guard: PASS')\n")
         if name == "uncommitted_evidence":
             (self.root / "recovery/evidence/g1-observation.json").write_text("{}")
+        if name == "transition_wrong_checkout":
+            self.cmd(self.transition, "checkout", "--detach", h.TRUST_COMMIT)
+        if name == "transition_dirty_index":
+            (self.transition / "recovery/INDEX.json").write_text("{broken")
+        if name == "transition_dirty_guard":
+            (self.transition / "scripts/recovery_guard.py").write_text("print('PULQVA recovery guard: PASS')")
+        if name == "transition_rewrite_state":
+            p = self.root / "PROJECT_STATE.json"; obj = h.load(p)
+            obj["phase"] = "release"; obj["execution_authorization"]["max_live_generations_per_cycle"] = 99
+            p.write_bytes(encode(obj)); self.commit()
+        if name == "transition_new_evidence":
+            (self.root / "recovery/evidence/accepted-g2c2-par01.zip").write_bytes(b"tampered")
+            self.commit()
+        if name == "transition_rewrite_index":
+            p = self.root / "recovery/INDEX.json"; obj = h.load(p)
+            obj["lane_a_pending"]["status"] = "RELEASE_ACCEPTED"
+            p.write_bytes(encode(obj)); self.commit()
+        if name == "transition_next_change":
+            with path.open("a") as f: f.write("\nONE NEXT ACTION: T069 pending handoff, no release.\n")
+            self.commit()
+        if name == "transition_kernel_rewrite":
+            (self.root / "kernel/CORE_CONTRACT.md").write_text("changed Kernel")
+            self.commit()
+        if name == "transition_index_rollback":
+            (self.root / "recovery/INDEX.json").write_bytes((self.trusted / "recovery/INDEX.json").read_bytes())
+            self.commit()
+        if name == "transition_unrelated_descendant":
+            self.cmd(self.root, "checkout", "--detach", h.TRUST_COMMIT)
+            (self.root / "recovery/INDEX.json").write_bytes((self.transition / "recovery/INDEX.json").read_bytes())
+            self.commit()
         m = self.manifest(); head = m["target"]["commit"]
         if name == "wrong_expected_head": head = "d" * 40
         if name == "wrong_target_commit": m["target"]["commit"] = "d" * 40
@@ -143,7 +191,9 @@ class HandoffContracts(unittest.TestCase):
         if name == "scope_escalation": m["scope"] = "release-accepted"
         if name == "self_parent": m["parent"]["commit"] = head
         if name == "float_schema": m["schema"] = 2.0
-        before = {str(p.name): self.cmd(p, "status", "--porcelain", "--untracked-files=all") for p in (self.root, self.trusted)}
+        if name == "transition_parent_rewrite": m["parent"]["commit"] = h.TRANSITION_COMMIT
+        observed_roots = (self.root, self.trusted) + ((self.transition,) if self.transition else ())
+        before = {str(p.name): self.cmd(p, "status", "--porcelain", "--untracked-files=all") for p in observed_roots}
         accepted = False; error = None; old_env = os.environ.copy()
         try:
             if name == "duplicate_json_key":
@@ -152,19 +202,21 @@ class HandoffContracts(unittest.TestCase):
             if name == "injected_git_environment":
                 os.environ.update(GIT_DIR=str(self.trusted / ".git"), GIT_NO_REPLACE_OBJECTS="0")
             result = h.validate(self.root, m, expected_head=head,
-                                trusted_root=None if name == "missing_trust" else self.trusted)
+                                trusted_root=None if name == "missing_trust" else self.trusted,
+                                transition_root=(None if name == "transition_missing" else
+                                                 self.root if name == "transition_self_checkout" else self.transition))
             accepted = result["status"] == "PASS"
         except (ValueError, subprocess.CalledProcessError) as exc:
             error = type(exc).__name__ + ": " + str(exc)
         finally:
             os.environ.clear(); os.environ.update(old_env)
-        after = {str(p.name): self.cmd(p, "status", "--porcelain", "--untracked-files=all") for p in (self.root, self.trusted)}
+        after = {str(p.name): self.cmd(p, "status", "--porcelain", "--untracked-files=all") for p in observed_roots}
         out = os.environ.get("PULQVA_PROBE_OUT")
         if out:
             persist(Path(out) / "fixture.json", encode({"case": name, "manifest": m,
                     "expected_acceptance": expected, "observed_acceptance": accepted,
                     "rejection": error, "before": before, "after": after,
-                    "trusted_commit": h.TRUST_COMMIT, "real_git": True, "mocked": False}))
+                    "trusted_commit": h.TRUST_COMMIT, "transition_commit": h.TRANSITION_COMMIT if self.transition else None, "real_git": True, "mocked": False}))
             persist(Path(out) / "target.patch", self.cmd(self.root, "diff", "--binary", h.TRUST_COMMIT, "HEAD").encode())
         self.assertEqual(before, after, "validator mutated a checkout")
         self.assertEqual(accepted, expected, error or "unexpected acceptance")
@@ -194,7 +246,7 @@ def matrix(out: Path) -> int:
                 "attempt": os.environ.get("GITHUB_RUN_ATTEMPT"), "components": components,
                 "run_id_reason": "local execution unless supplied by CI", "job_id_reason": "numeric job ID unavailable to collector",
                 "attempt_reason": "local execution unless supplied by CI"}
-    plan = {"protocol": "pulqva-evidence-boundary-v1", "boundary": "T069-HV2-independent-trust-correction",
+    plan = {"protocol": "pulqva-evidence-boundary-v1", "boundary": "T069-HV2-reviewed-index-transition",
             "generation_id": str(uuid.uuid4()), "identity": identity,
             "environment": {"os": platform.platform(), "arch": platform.machine(), "toolchain": platform.python_version() + " / " + h.git(HISTORY, "--version")},
             "isolation": {"status": "verified", "strategy": "Fresh child, HOME/TMPDIR, original-history checkout and target per probe; owned fixture mutations only before validate", "evidence_refs": ["fixture-provenance.json"]},
@@ -237,7 +289,7 @@ def matrix(out: Path) -> int:
         for k, p in paths.items(): final["components"][k]["sha256"] = sha(p)
         receipt = recorder.close(final, early_exit_reason="collector interrupted")
         receipt["limitations"] += ["Real original-history descendant fixtures, not the current PR93 handoff or product E2E.",
-                "Historical INDEX/state transitions are intentionally rejected until independently reviewed; original v1 gate remains in effect."]
+                "Only the pinned native INDEX transition is admitted; no general state migration, release or v1 gate replacement."]
         persist(out / "matrix_receipt.json", canonical(receipt) + b"\n")
     result = verify(json.loads((out / "manifest.json").read_text()), json.loads((out / "matrix_receipt.json").read_text()))
     persist(out / "readback.json", canonical({"result": result, "matrix_sha256": sha(out / "matrix_receipt.json"), "probes": len(receipt["probes"])}) + b"\n")
