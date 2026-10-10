@@ -15,7 +15,7 @@ pub struct SessionChoice {
     pub locator: String,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SessionError { Empty, TooMany, Duplicate, Expired, Unknown, ForeignChoice, QueryMismatch }
+pub enum SessionError { Empty, TooMany, Duplicate, Expired, Unknown, ForeignChoice, QueryMismatch, EntropyUnavailable }
 
 struct Entry {
     query: String,
@@ -24,10 +24,9 @@ struct Entry {
 }
 pub struct DiscoverySessions {
     entries: HashMap<String, Entry>,
-    next: u64,
 }
 impl Default for DiscoverySessions {
-    fn default() -> Self { Self { entries: HashMap::new(), next: 0 } }
+    fn default() -> Self { Self { entries: HashMap::new() } }
 }
 impl DiscoverySessions {
     fn is_expired(created: Instant, now: Instant) -> bool {
@@ -53,8 +52,12 @@ impl DiscoverySessions {
                 self.entries.remove(&oldest);
             }
         }
-        self.next = self.next.checked_add(1).expect("session counter exhausted");
-        let id = format!("session-{:016x}", self.next);
+        let id = loop {
+            let mut random = [0u8; 32];
+            getrandom::fill(&mut random).map_err(|_| SessionError::EntropyUnavailable)?;
+            let token: String = random.iter().map(|byte| format!("{byte:02x}")).collect();
+            if !self.entries.contains_key(&token) { break token; }
+        };
         self.entries.insert(id.clone(), Entry { query: query.to_owned(), choices, created: Instant::now() });
         Ok(id)
     }
@@ -109,6 +112,16 @@ mod tests {
         }
         assert_eq!(sessions.entries.len(), MAX_SESSIONS);
         assert_eq!(sessions.select(&first, "q", "loc"), Err(SessionError::Unknown));
+    }
+    #[test]
+    fn session_tokens_are_unique_and_not_counters() {
+        let mut sessions = DiscoverySessions::default();
+        let a = sessions.insert("q", &[candidate("valid", "loc")]).unwrap();
+        let b = sessions.insert("q", &[candidate("valid", "loc")]).unwrap();
+        assert_eq!(a.len(), 64);
+        assert!(a.bytes().all(|b| b.is_ascii_hexdigit()));
+        assert_ne!(a, b);
+        assert_eq!(sessions.select(&a, "q", "loc").unwrap().locator, "loc");
     }
     #[test]
     fn unknown_session_rejected() {
