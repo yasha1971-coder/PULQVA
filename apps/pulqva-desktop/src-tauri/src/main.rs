@@ -18,6 +18,8 @@ mod ffmpeg_source;
 #[cfg(test)]
 mod ffmpeg_archive_compat;
 mod ytdlp_materialize;
+#[cfg(test)]
+mod discovery_session;
 
 use pulqva_core::{
     CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
