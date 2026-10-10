@@ -30,6 +30,9 @@ impl Default for DiscoverySessions {
     fn default() -> Self { Self { entries: HashMap::new(), next: 0 } }
 }
 impl DiscoverySessions {
+    fn is_expired(created: Instant, now: Instant) -> bool {
+        now.checked_duration_since(created).is_some_and(|age| age >= SESSION_TTL)
+    }
     pub fn insert(&mut self, query: &str, candidates: &[SearchCandidate]) -> Result<String, SessionError> {
         if candidates.is_empty() { return Err(SessionError::Empty); }
         if candidates.len() > MAX_CHOICES { return Err(SessionError::TooMany); }
@@ -44,7 +47,7 @@ impl DiscoverySessions {
             }
             choices.push(choice);
         }
-        self.entries.retain(|_, entry| entry.created.elapsed() < SESSION_TTL);
+        self.entries.retain(|_, entry| !Self::is_expired(entry.created, Instant::now()));
         if self.entries.len() >= MAX_SESSIONS {
             if let Some(oldest) = self.entries.iter().min_by_key(|(_, e)| e.created).map(|(k, _)| k.clone()) {
                 self.entries.remove(&oldest);
@@ -57,7 +60,7 @@ impl DiscoverySessions {
     }
     pub fn select(&self, id: &str, query: &str, locator: &str) -> Result<&SessionChoice, SessionError> {
         let entry = self.entries.get(id).ok_or(SessionError::Unknown)?;
-        if entry.created.elapsed() >= SESSION_TTL { return Err(SessionError::Expired); }
+        if Self::is_expired(entry.created, Instant::now()) { return Err(SessionError::Expired); }
         if entry.query != query { return Err(SessionError::QueryMismatch); }
         entry.choices.iter().find(|c| c.locator == locator).ok_or(SessionError::ForeignChoice)
     }
@@ -88,14 +91,14 @@ mod tests {
         assert_eq!(sessions.insert("q", &many), Err(SessionError::TooMany));
     }
     #[test]
-    fn expired_session_rejected() {
-        let mut sessions = DiscoverySessions::default();
-        let id = sessions.insert("q", &[candidate("valid", "loc")]).unwrap();
-        sessions.entries.get_mut(&id).unwrap().created = Instant::now();
-        let entry = sessions.entries.get(&id).unwrap();
-        assert!(entry.created.elapsed() < SESSION_TTL);
-        assert_eq!(sessions.select(&id, "q", "loc").unwrap().locator, "loc");
-
+    fn expiry_boundary_with_injected_monotonic_time() {
+        let now = Instant::now();
+        let before = now.checked_add(SESSION_TTL - Duration::from_nanos(1))
+            .expect("test clock supports forward duration");
+        let at = now.checked_add(SESSION_TTL).expect("test clock supports TTL");
+        assert!(!DiscoverySessions::is_expired(now, before));
+        assert!(DiscoverySessions::is_expired(now, at));
+        assert!(DiscoverySessions::is_expired(now, at + Duration::from_nanos(1)));
     }
     #[test]
     fn oldest_session_evicted_at_capacity() {
