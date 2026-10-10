@@ -69,6 +69,41 @@ mod tests {
     fn empty_rejected() {
         assert_eq!(DiscoverySessions::default().insert("query", &[]), Err(SessionError::Empty));
     }
+    fn candidate(title: &str, locator: &str) -> SearchCandidate {
+        SearchCandidate::new(title, locator).expect("valid fixture")
+    }
+    #[test]
+    fn exact_session_selection_and_foreign_choice() {
+        let mut sessions = DiscoverySessions::default();
+        let id = sessions.insert("bird song", &[candidate("bird", "commons:1")]).unwrap();
+        assert_eq!(sessions.select(&id, "bird song", "commons:1").unwrap().title, "bird");
+        assert_eq!(sessions.select(&id, "other", "commons:1"), Err(SessionError::QueryMismatch));
+        assert_eq!(sessions.select(&id, "bird song", "commons:2"), Err(SessionError::ForeignChoice));
+    }
+    #[test]
+    fn duplicate_and_oversize_rejected() {
+        let mut sessions = DiscoverySessions::default();
+        assert_eq!(sessions.insert("q", &[candidate("one","a"),candidate("two","a")]), Err(SessionError::Duplicate));
+        let many: Vec<_> = (0..=MAX_CHOICES).map(|i| candidate("valid", &format!("loc:{i}"))).collect();
+        assert_eq!(sessions.insert("q", &many), Err(SessionError::TooMany));
+    }
+    #[test]
+    fn expired_session_rejected() {
+        let mut sessions = DiscoverySessions::default();
+        let id = sessions.insert("q", &[candidate("valid", "loc")]).unwrap();
+        sessions.entries.get_mut(&id).unwrap().created = Instant::now() - SESSION_TTL;
+        assert_eq!(sessions.select(&id, "q", "loc"), Err(SessionError::Expired));
+    }
+    #[test]
+    fn oldest_session_evicted_at_capacity() {
+        let mut sessions = DiscoverySessions::default();
+        let first = sessions.insert("q", &[candidate("valid","loc")]).unwrap();
+        for i in 1..=MAX_SESSIONS {
+            sessions.insert("q", &[candidate("valid", &format!("loc:{i}"))]).unwrap();
+        }
+        assert_eq!(sessions.entries.len(), MAX_SESSIONS);
+        assert_eq!(sessions.select(&first, "q", "loc"), Err(SessionError::Unknown));
+    }
     #[test]
     fn unknown_session_rejected() {
         assert_eq!(DiscoverySessions::default().select("session-1", "q", "l"), Err(SessionError::Unknown));
