@@ -70,6 +70,10 @@ jobs:
           path: apps/pulqva-desktop/src-tauri/Cargo.lock
           if-no-files-found: error
 
+      - name: Verify frontend request-generation isolation
+        shell: bash
+        run: node --test apps/pulqva-desktop/frontend/test_async_generation.mjs
+
       - name: Compile Tauri desktop shell
         shell: bash
         run: |
