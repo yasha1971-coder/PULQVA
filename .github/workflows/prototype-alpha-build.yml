@@ -1,0 +1,113 @@
+name: prototype-alpha-build
+on:
+  pull_request:
+    paths:
+      - 'apps/pulqva-prototype/**'
+      - 'crates/pulqva-discovery/src/bin/pulqva-prototype.rs'
+      - '.github/workflows/prototype-alpha-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  candidate:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows-x86_64
+            suffix: .exe
+            arti: arti.exe
+            ytdlp: yt-dlp.exe
+          - os: ubuntu-24.04
+            platform: linux-x86_64
+            suffix: ''
+            arti: arti
+            ytdlp: yt-dlp_linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install pinned compiler
+        shell: bash
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Compile offline test executable and alpha binary without changing lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/alpha-build"
+          cargo +1.91.0 test --locked -p pulqva-discovery --bin pulqva-prototype --no-run --message-format=json > "$RUNNER_TEMP/alpha-build/events.json"
+          cargo +1.91.0 build --locked --release -p pulqva-discovery --bin pulqva-prototype
+          git diff --exit-code -- Cargo.lock
+      - name: Execute finite offline controls and retain original per-probe evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B apps/pulqva-prototype/ci_probe.py \
+            --build-events "$RUNNER_TEMP/alpha-build/events.json" \
+            --binary "target/release/pulqva-prototype${{ matrix.suffix }}" \
+            --out "$RUNNER_TEMP/alpha-evidence"
+      - name: Restore existing pinned Arti artifact; no Arti rebuild or Tor launch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run download 38062067309 --repo "$GITHUB_REPOSITORY" \
+            --name 'arti-identity-candidate-${{ matrix.platform }}' \
+            --dir "$RUNNER_TEMP/alpha-arti"
+          python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP'])
+          found = [p for p in (root/'alpha-arti').rglob('${{ matrix.arti }}') if p.is_file()]
+          assert len(found) == 1, 'Expected one exact Arti binary'
+          (root/'alpha-sidecars').mkdir(exist_ok=False)
+          shutil.copyfile(found[0], root/'alpha-sidecars'/'${{ matrix.arti }}')
+          PY
+      - name: Download exact already-pinned standalone yt-dlp for packaging only
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < sidecars/yt-dlp/VERSION)"
+          test "$VERSION" = '2026.08.19'
+          curl --fail --location --proto '=https' --retry 2 --max-time 120 \
+            --output "$RUNNER_TEMP/alpha-sidecars/${{ matrix.ytdlp }}" \
+            "https://github.com/yt-dlp/yt-dlp/releases/download/$VERSION/${{ matrix.ytdlp }}"
+      - name: Verify both pins, build per-OS ZIP and independently read back all members
+        shell: bash
+        env:
+          PULQVA_SOURCE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PULQVA_SOURCE"
+          python -B apps/pulqva-prototype/package.py \
+            --binary "target/release/pulqva-prototype${{ matrix.suffix }}" \
+            --arti "$RUNNER_TEMP/alpha-sidecars/${{ matrix.arti }}" \
+            --ytdlp "$RUNNER_TEMP/alpha-sidecars/${{ matrix.ytdlp }}" \
+            --platform '${{ matrix.platform }}' --source "$PULQVA_SOURCE" \
+            --out "$RUNNER_TEMP/alpha-package"
+      - name: Retain offline gate evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prototype-alpha-evidence-${{ matrix.platform }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/alpha-evidence/
+            ${{ runner.temp }}/alpha-build/events.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Retain engineering candidate; not a public release or privacy acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: prototype-alpha-candidate-${{ matrix.platform }}
+          path: ${{ runner.temp }}/alpha-package/*
+          if-no-files-found: error
+          retention-days: 30
