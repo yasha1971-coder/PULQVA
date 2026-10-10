@@ -48,6 +48,7 @@
 const invoke = window.__TAURI__.core.invoke;
 /** @type {CandidateSelection | null} */
 let currentSelection = null;
+let requestGeneration = 0;
 
 async function invokeAppStatus() {
   return invoke("app_status");
@@ -130,6 +131,7 @@ function renderCandidates(response) {
   const state = document.querySelector("#intent-state");
 
   currentSelection = null;
+  const generation = requestGeneration;
   list.replaceChildren();
   selectionPanel.hidden = true;
   downloadPlanPanel.hidden = true;
@@ -154,6 +156,7 @@ function renderCandidates(response) {
     select.className = "candidate-select";
     select.textContent = "Select";
     select.addEventListener("click", async () => {
+      if (generation !== requestGeneration) return;
       select.disabled = true;
       state.dataset.kind = "pending";
       state.textContent = "Validating candidate selection locally…";
@@ -164,10 +167,12 @@ function renderCandidates(response) {
           candidate.locator,
         );
 
+        if (generation !== requestGeneration) return;
         renderSelection(selection);
         state.dataset.kind = "success";
         state.textContent = "Candidate selected locally. Download is now available.";
       } catch (error) {
+        if (generation !== requestGeneration) return;
         const message =
           error && typeof error === "object" && "message" in error
             ? String(error.message)
@@ -239,6 +244,7 @@ function bindIntentForm() {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    const generation = ++requestGeneration;
     currentSelection = null;
     button.disabled = true;
     state.dataset.kind = "pending";
@@ -252,6 +258,7 @@ function bindIntentForm() {
       const submission = await invokeSubmitIntent(query.value);
       const candidates = await invokeLocalCandidates(submission.query);
 
+      if (generation !== requestGeneration) return;
       resultQuery.textContent = submission.query;
       resultStage.textContent = submission.stage;
       result.hidden = false;
@@ -260,6 +267,7 @@ function bindIntentForm() {
       state.dataset.kind = "success";
       state.textContent = `Intent accepted. ${candidates.candidates.length} local candidates ready.`;
     } catch (error) {
+      if (generation !== requestGeneration) return;
       const message =
         error && typeof error === "object" && "message" in error
           ? String(error.message)
