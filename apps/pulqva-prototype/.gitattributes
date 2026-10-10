@@ -1,0 +1,3 @@
+# Preserve the exact DOM-normalized bytes used by inline CSP hashes.
+# Windows checkout must not rewrite the embedded HTML to CRLF.
+index.html text eol=lf
