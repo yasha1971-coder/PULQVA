@@ -202,20 +202,24 @@ function bindDownloadAction() {
       return;
     }
 
+    const generation = requestGeneration;
+    const selection = currentSelection;
     button.disabled = true;
     state.dataset.kind = "pending";
     state.textContent = "Revalidating Download action locally…";
 
     try {
       const plan = await invokePlanDownload(
-        currentSelection.intentQuery,
-        currentSelection.locator,
+        selection.intentQuery,
+        selection.locator,
       );
 
+      if (generation !== requestGeneration || currentSelection !== selection) return;
       renderDownloadPlan(plan);
       state.dataset.kind = "success";
       state.textContent = "Download action validated. Backend media source is typed and ready; no transfer has started yet.";
     } catch (error) {
+      if (generation !== requestGeneration || currentSelection !== selection) return;
       const message =
         error && typeof error === "object" && "message" in error
           ? String(error.message)
