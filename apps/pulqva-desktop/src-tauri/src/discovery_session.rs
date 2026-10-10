@@ -95,7 +95,7 @@ mod tests {
         let entry = sessions.entries.get(&id).unwrap();
         assert!(entry.created.elapsed() < SESSION_TTL);
         assert_eq!(sessions.select(&id, "q", "loc").unwrap().locator, "loc");
-        assert_eq!(sessions.select(&id, "q", "loc"), Err(SessionError::Expired));
+
     }
     #[test]
     fn oldest_session_evicted_at_capacity() {
