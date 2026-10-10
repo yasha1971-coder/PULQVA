@@ -91,7 +91,7 @@ mod tests {
     fn expired_session_rejected() {
         let mut sessions = DiscoverySessions::default();
         let id = sessions.insert("q", &[candidate("valid", "loc")]).unwrap();
-        sessions.entries.get_mut(&id).unwrap().created = Instant::now() - SESSION_TTL;
+        sessions.entries.get_mut(&id).unwrap().created = Instant::now().checked_sub(SESSION_TTL).expect("test clock supports TTL");
         assert_eq!(sessions.select(&id, "q", "loc"), Err(SessionError::Expired));
     }
     #[test]
