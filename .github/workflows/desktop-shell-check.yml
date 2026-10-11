@@ -72,7 +72,7 @@ jobs:
 
       - name: Verify frontend request-generation isolation
         shell: bash
-        run: node --test apps/pulqva-desktop/frontend/test_async_generation.mjs
+        run: node --test apps/pulqva-desktop/frontend/test_async_generation.mjs apps/pulqva-desktop/frontend/test_prototype.mjs
 
       - name: Compile Tauri desktop shell
         shell: bash
