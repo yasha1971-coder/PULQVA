@@ -136,6 +136,30 @@ fn busy<T>(failure: TryLockError<T>) -> PrototypeError {
     }
 }
 
+// Explicit paths are supplied by the trusted host; neither the UI nor a remote
+// response can provide these values. The same backend journey can be exercised
+// without manufacturing a Tauri AppHandle in a native acceptance harness.
+#[derive(Clone, Debug)]
+struct PrototypeRuntimePaths {
+    resources: PathBuf,
+    app_data: PathBuf,
+    downloads: PathBuf,
+}
+impl PrototypeRuntimePaths {
+    fn from_app(app: &tauri::AppHandle) -> Result<Self, PrototypeError> {
+        Ok(Self {
+            resources: app.path().resource_dir()
+                .map_err(|_| error("package-missing", "Package resources unavailable."))?,
+            app_data: app.path().app_data_dir()
+                .map_err(|_| error("output-unavailable", "Application directory unavailable."))?,
+            downloads: app.path().download_dir()
+                .map_err(|_| error("output-unavailable", "Downloads directory unavailable."))?,
+        })
+    }
+}
+fn search_with_paths(query: String, paths: &PrototypeRuntimePaths) -> Result<Active, PrototypeError> {
+    search_impl(query, paths.resources.clone(), paths.app_data.clone())
+}
 fn search_impl(query: String, resources: PathBuf, app_data: PathBuf) -> Result<Active, PrototypeError> {
     let intent = validate_query(query)?;
     let mut directory = owned_child(&app_data.join("prototype-runtime"))?;
@@ -258,13 +282,12 @@ fn download_impl(active: &mut Active, index: usize, downloads: &Path) -> Result<
 pub async fn prototype_search(query: String, app: tauri::AppHandle,
     state: tauri::State<'_, PrototypeState>) -> Result<SearchView, PrototypeError> {
     validate_query(query.clone())?;
-    let resources = app.path().resource_dir().map_err(|_| error("package-missing", "Package resources unavailable."))?;
-    let app_data = app.path().app_data_dir().map_err(|_| error("output-unavailable", "Application directory unavailable."))?;
+    let paths = PrototypeRuntimePaths::from_app(&app)?;
     let engine = Arc::clone(&state.engine);
     tauri::async_runtime::spawn_blocking(move || {
         let mut engine = engine.try_lock().map_err(busy)?;
         if let Some(mut previous) = engine.active.take() { previous.close()?; }
-        let active = search_impl(query, resources, app_data)?;
+        let active = search_with_paths(query, &paths)?;
         let view = SearchView { session_id: active.id.clone(), query: active.choices.intent().query().to_owned(),
             source: "Wikimedia Commons", interpretation: "keyword-search-not-AI",
             candidates: active.search.last_results().iter().enumerate().map(|(index, media)| ChoiceView {
@@ -289,7 +312,7 @@ pub fn prototype_select(session_id: String, index: usize,
 #[tauri::command]
 pub async fn prototype_download(session_id: String, index: usize, app: tauri::AppHandle,
     state: tauri::State<'_, PrototypeState>) -> Result<FileView, PrototypeError> {
-    let downloads = app.path().download_dir().map_err(|_| error("output-unavailable", "Downloads directory unavailable."))?;
+    let paths = PrototypeRuntimePaths::from_app(&app)?;
     let engine = Arc::clone(&state.engine);
     tauri::async_runtime::spawn_blocking(move || {
         let mut engine = engine.try_lock().map_err(busy)?;
@@ -297,7 +320,7 @@ pub async fn prototype_download(session_id: String, index: usize, app: tauri::Ap
         active.authorize(&session_id, index)?;
         if active.selected != Some(index) { return Err(error("selection-required", "Choose this result before downloading.")); }
         let mut active = engine.active.take().ok_or_else(|| error("session-missing", "Search again."))?;
-        let outcome = download_impl(&mut active, index, &downloads);
+        let outcome = download_impl(&mut active, index, &paths.downloads);
         let cleanup = active.close();
         cleanup?;
         outcome
@@ -323,6 +346,17 @@ mod tests {
         assert!(validate_query("a".repeat(513)).is_err());
         assert!(validate_query("one\ntwo".into()).is_err());
         assert_eq!(validate_query("птицы".into()).unwrap().query(), "птицы");
+    }
+    #[test]
+    fn typed_runtime_paths_do_not_accept_frontend_input() {
+        let paths = PrototypeRuntimePaths {
+            resources: PathBuf::from("trusted-resources"),
+            app_data: PathBuf::from("trusted-app-data"),
+            downloads: PathBuf::from("trusted-downloads"),
+        };
+        assert_eq!(paths.resources, PathBuf::from("trusted-resources"));
+        assert_eq!(paths.app_data, PathBuf::from("trusted-app-data"));
+        assert_eq!(paths.downloads, PathBuf::from("trusted-downloads"));
     }
     #[test]
     fn ownership_token_has_fixed_safe_encoding() {
