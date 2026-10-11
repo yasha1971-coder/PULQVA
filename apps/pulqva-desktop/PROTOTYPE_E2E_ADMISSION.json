@@ -1,0 +1,65 @@
+{
+  "protocol": "pulqva-prototype-e2e-admission-v1",
+  "generation": "v01-live-prepare-20261011",
+  "source_sha": "9e7043d22dc1fc8ba6725d0639af4ede97e61adb",
+  "status": "PREPARED_NOT_EXECUTED",
+  "scope": "experimental Wikimedia Commons WebM <= 8 MiB, 2-10 choices; not full AI/Autopilot/v1",
+  "fixed_inputs": {
+    "query": "countdown",
+    "selection_index": 1,
+    "provider": "Wikimedia Commons",
+    "network": "Tor-only SOCKS5H",
+    "max_candidates": 10,
+    "max_media_bytes": 8388608,
+    "desktop_os": [
+      "windows-latest",
+      "ubuntu-24.04"
+    ],
+    "sidecars": "committed SHA256 pins, no runtime fetch",
+    "source": "exact Git SHA above"
+  },
+  "probes": [
+    {
+      "id": "E2E-01",
+      "expect": "Tor bootstrap 100% and verified SOCKS; no direct fallback",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "E2E-02",
+      "expect": "Real Commons response yields 2-10 validated WebM choices",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "E2E-03",
+      "expect": "Backend session ID binds index 1 to exact search; stale/foreign selection rejected",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "E2E-04",
+      "expect": "UI selection triggers backend download; saved file SHA256 independently read back",
+      "status": "NOT_TESTED"
+    },
+    {
+      "id": "E2E-05",
+      "expect": "Tor failure/child termination aborts all external operations; no direct DNS/HTTP egress observed",
+      "status": "NOT_TESTED"
+    }
+  ],
+  "acceptance": {
+    "require_all_pass": true,
+    "require_per_probe_raw_evidence": true,
+    "require_matrix_receipt": true,
+    "require_exact_source": true,
+    "require_independent_sha256": true,
+    "require_windows_and_linux": true,
+    "allow_mocked_results": false,
+    "allow_direct_network_fallback": false,
+    "allow_release_from_ci_green_alone": false
+  },
+  "limitations": [
+    "GitHub CI compilation and mocked IPC tests do not establish live UI E2E",
+    "No claim of full anonymity or complete OS egress containment",
+    "No release or dispatch authorization implied by this manifest"
+  ],
+  "next_action": "Implement one native, evidence-producing live prototype E2E harness and obtain explicit owner authorization before dispatch."
+}
