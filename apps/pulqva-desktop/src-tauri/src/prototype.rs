@@ -160,6 +160,26 @@ impl PrototypeRuntimePaths {
 fn search_with_paths(query: String, paths: &PrototypeRuntimePaths) -> Result<Active, PrototypeError> {
     search_impl(query, paths.resources.clone(), paths.app_data.clone())
 }
+// Native acceptance uses this exact backend path. It does not bypass Tor,
+// candidate provenance, selection, file verification, or runtime cleanup.
+// The caller supplies only trusted local paths, never remote URLs or commands.
+#[cfg(test)]
+fn run_native_journey_with_paths(
+    query: String,
+    index: usize,
+    paths: &PrototypeRuntimePaths,
+) -> Result<FileView, PrototypeError> {
+    let mut active = search_with_paths(query, paths)?;
+    let result = (|| {
+        active.authorize(&active.id.clone(), index)?;
+        active.alive()?;
+        active.selected = Some(index);
+        download_impl(&mut active, index, &paths.downloads)
+    })();
+    let cleanup = active.close();
+    cleanup?;
+    result
+}
 fn search_impl(query: String, resources: PathBuf, app_data: PathBuf) -> Result<Active, PrototypeError> {
     let intent = validate_query(query)?;
     let mut directory = owned_child(&app_data.join("prototype-runtime"))?;
@@ -357,6 +377,16 @@ mod tests {
         assert_eq!(paths.resources, PathBuf::from("trusted-resources"));
         assert_eq!(paths.app_data, PathBuf::from("trusted-app-data"));
         assert_eq!(paths.downloads, PathBuf::from("trusted-downloads"));
+    }
+    #[test]
+    fn native_journey_rejects_invalid_query_before_network_or_filesystem() {
+        let paths = PrototypeRuntimePaths {
+            resources: PathBuf::from("resources-not-accessed"),
+            app_data: PathBuf::from("app-data-not-accessed"),
+            downloads: PathBuf::from("downloads-not-accessed"),
+        };
+        let result = run_native_journey_with_paths("bad\\nquery".to_owned(), 1, &paths);
+        assert!(matches!(result, Err(PrototypeError { code: "invalid-query", .. })));
     }
     #[test]
     fn ownership_token_has_fixed_safe_encoding() {
