@@ -385,7 +385,7 @@ mod tests {
             app_data: PathBuf::from("app-data-not-accessed"),
             downloads: PathBuf::from("downloads-not-accessed"),
         };
-        let result = run_native_journey_with_paths("bad\\nquery".to_owned(), 1, &paths);
+        let result = run_native_journey_with_paths("bad\nquery".to_owned(), 1, &paths);
         assert!(matches!(result, Err(PrototypeError { code: "invalid-query", .. })));
     }
     #[test]
