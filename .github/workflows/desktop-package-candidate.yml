@@ -2,6 +2,11 @@ name: desktop-package-candidate
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - proto/v0.1-source-admission
+    paths:
+      - ".github/workflows/desktop-package-candidate.yml"
 
 permissions:
   contents: read
