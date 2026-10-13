@@ -131,7 +131,7 @@ jobs:
                   out.append(line)
           if found!=1:
               raise SystemExit(f"expected exactly one Linux Arti manifest entry, got {found}")
-          path.write_text("\\n".join(out)+"\\n")
+          path.write_text("\n".join(out)+"\n")
           print(f"Linux Arti manifest bound to this locked source build: {sys.argv[1]}")
           PY
 
