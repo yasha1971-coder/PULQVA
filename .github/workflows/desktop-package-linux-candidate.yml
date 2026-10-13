@@ -28,7 +28,7 @@ jobs:
           sudo apt-get install --yes --no-install-recommends \
             build-essential curl file pkg-config libssl-dev \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf \
-            libgtk-3-dev libayatana-appindicator3-1
+            libgtk-3-dev libayatana-appindicator3-1 zip unzip
 
       - name: Install pinned Rust
         run: |
@@ -120,15 +120,15 @@ jobs:
           test -x "$app"
           install -m 0755 "$app" "$RUNNER_TEMP/pulqva-linux-portable/PULQVA"
 
-      - name: Create candidate tarball and verify clean extraction
+      - name: Create candidate ZIP and verify clean extraction
         run: |
           set -euo pipefail
           root="$RUNNER_TEMP/pulqva-linux-portable"
-          tarball="$RUNNER_TEMP/PULQVA-linux-x86_64-portable-candidate.tar.gz"
-          tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner -czf "$tarball" -C "$root" .
+          zipfile="$RUNNER_TEMP/PULQVA-linux-x86_64-portable-candidate.zip"
+          (cd "$root" && zip -X -q -r "$zipfile" .)
           verify="$RUNNER_TEMP/pulqva-linux-clean-extract"
           mkdir -p "$verify"
-          tar -xzf "$tarball" -C "$verify"
+          unzip -q "$zipfile" -d "$verify"
           diff -u <(cd "$root" && find . -type f -printf '%P\n' | sort) <(cd "$verify" && find . -type f -printf '%P\n' | sort)
           app_sha="$(sha256sum "$verify/PULQVA" | awk '{print $1}')"
           arti_sha="$(sha256sum "$verify/sidecars/arti/linux-x86_64/arti" | awk '{print $1}')"
@@ -140,8 +140,8 @@ jobs:
           arti_version="$(tr -d '\r\n' < sidecars/arti/linux-x86_64/VERSION)"
           "$verify/sidecars/arti/linux-x86_64/arti" --version | grep -Eq "arti ${arti_version}([[:space:]]|$)"
           test "$("$verify/sidecars/yt-dlp/linux-x86_64/yt-dlp" --version)" = "2026.08.19"
-          echo "PULQVA_LINUX_TARBALL_CONTENTS_PASS app=$app_sha arti=$arti_sha ytdlp=$ytdlp_sha ffmpeg_archive=$ffmpeg_sha"
-          python3 - "$tarball" "$app_sha" "$arti_sha" "$ytdlp_sha" "$ffmpeg_sha" "$(git rev-parse HEAD)" <<'PY'
+          echo "PULQVA_LINUX_ZIP_CONTENTS_PASS app=$app_sha arti=$arti_sha ytdlp=$ytdlp_sha ffmpeg_archive=$ffmpeg_sha"
+          python3 - "$zipfile" "$app_sha" "$arti_sha" "$ytdlp_sha" "$ffmpeg_sha" "$(git rev-parse HEAD)" <<'PY'
           import hashlib,json,pathlib,sys
           p=pathlib.Path(sys.argv[1])
           h=hashlib.sha256(p.read_bytes()).hexdigest()
@@ -156,9 +156,9 @@ jobs:
             "arti_sha256":sys.argv[3],
             "ytdlp_sha256":sys.argv[4],
             "ffmpeg_archive_sha256":sys.argv[5],
-            "archive_sha256":h,
-            "archive_bytes":p.stat().st_size,
-            "archive_content_validation":"PASS",
+            "zip_sha256":h,
+            "zip_bytes":p.stat().st_size,
+            "zip_content_validation":"PASS",
             "live_e2e":"NOT_RUN",
             "clean_linux_launch":"NOT_RUN"
           }
@@ -171,7 +171,7 @@ jobs:
         with:
           name: pulqva-linux-x86_64-portable-candidate-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/PULQVA-linux-x86_64-portable-candidate.tar.gz
+            ${{ runner.temp }}/PULQVA-linux-x86_64-portable-candidate.zip
             ${{ runner.temp }}/pulqva-linux-portable-receipt.json
           if-no-files-found: error
           retention-days: 14
