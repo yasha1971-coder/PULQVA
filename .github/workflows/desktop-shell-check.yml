@@ -72,7 +72,11 @@ jobs:
 
       - name: Verify frontend request-generation isolation
         shell: bash
-        run: node --test apps/pulqva-desktop/frontend/test_async_generation.mjs
+        run: node --test apps/pulqva-desktop/frontend/test_async_generation.mjs apps/pulqva-desktop/frontend/test_prototype.mjs
+
+      - name: Verify frozen prototype E2E admission preflight (NOT live)
+        shell: bash
+        run: python -m unittest discover -s tools/ci -p test_prototype_e2e_admission.py -v
 
       - name: Compile Tauri desktop shell
         shell: bash

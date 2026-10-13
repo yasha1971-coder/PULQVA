@@ -1,0 +1,206 @@
+name: desktop-package-candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - proto/v0.1-source-admission
+    paths:
+      - ".github/workflows/desktop-package-candidate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package-windows-candidate:
+    runs-on: windows-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install pinned Rust
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          rustup toolchain install 1.91.0 --profile minimal
+          if ((rustc +1.91.0 --version).Split()[1] -ne '1.91.0') { throw 'wrong rustc' }
+          if ((cargo +1.91.0 --version).Split()[1] -ne '1.91.0') { throw 'wrong cargo' }
+
+      - name: Restore authenticated Windows compiler environment for Arti
+        shell: pwsh
+        timeout-minutes: 25
+        run: ./scripts/restore_arti_windows_compiler.ps1
+
+      - name: Build and authenticate pinned Arti
+        shell: pwsh
+        timeout-minutes: 65
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content sidecars/arti/VERSION -Raw).Trim()
+          if ($version -ne '2.6.0') { throw "Unexpected Arti version: $version" }
+          $root = Join-Path $env:RUNNER_TEMP 'pulqva-arti-root'
+          $target = Join-Path $env:RUNNER_TEMP 'pulqva-arti-target'
+          Remove-Item -Recurse -Force $root,$target -ErrorAction SilentlyContinue
+          $sysroot = (rustc +1.91.0 --print sysroot).Trim()
+          $lld = Join-Path $sysroot 'lib/rustlib/x86_64-pc-windows-msvc/bin/rust-lld.exe'
+          if (!(Test-Path -LiteralPath $lld)) { throw 'Pinned rust-lld missing' }
+          $env:CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER = $lld
+          $map = (Join-Path $env:RUNNER_TEMP 'arti-link.map').Replace('\','/')
+          $env:RUSTFLAGS = "-C linker-flavor=lld-link -C link-arg=/Brepro -C link-arg=/DEBUG:NONE -C link-arg=/MAP:$map"
+          $env:CARGO_INCREMENTAL = '0'
+          cargo +1.91.0 install arti --version $version --locked --features static-sqlite --root $root --target-dir $target
+          if ($LASTEXITCODE -ne 0) { throw 'Arti build failed' }
+          $arti = Join-Path $root 'bin/arti.exe'
+          if (!(Test-Path -LiteralPath $arti)) { throw 'Arti executable missing' }
+          $actual = (Get-FileHash -LiteralPath $arti -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expected = ((Get-Content sidecars/arti/SHA256SUMS | Where-Object { $_ -match '\swindows-x86_64/arti\.exe$' } | Select-Object -First 1) -split '\s+')[0]
+          if (!$expected -or $actual -ne $expected) { throw "Arti identity mismatch: expected=$expected actual=$actual" }
+          & $arti --version
+          if ($LASTEXITCODE -ne 0) { throw 'Arti CLI validation failed' }
+          "PULQVA_ARTI_IDENTITY_PASS sha256=$actual" | Write-Output
+
+      - name: Download and authenticate pinned yt-dlp
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content sidecars/yt-dlp/VERSION -Raw).Trim()
+          if ($version -ne '2026.08.19') { throw "Unexpected yt-dlp version: $version" }
+          $asset = 'yt-dlp.exe'
+          $expected = ((Get-Content sidecars/yt-dlp/SHA256SUMS | Where-Object { $_ -match '\syt-dlp\.exe$' } | Select-Object -First 1) -split '\s+')[0]
+          $path = Join-Path $env:RUNNER_TEMP $asset
+          curl.exe --fail --location --retry 3 --retry-delay 2 --output $path "https://github.com/yt-dlp/yt-dlp/releases/download/$version/$asset"
+          if ($LASTEXITCODE -ne 0) { throw 'yt-dlp download failed' }
+          $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+          if (!$expected -or $actual -ne $expected) { throw "yt-dlp identity mismatch: expected=$expected actual=$actual" }
+          $cli = (& $path --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $cli -ne $version) { throw "yt-dlp CLI version mismatch: $cli" }
+
+      - name: Download and authenticate pinned FFmpeg archive
+        shell: pwsh
+        timeout-minutes: 20
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $proof = Get-Content sidecars/ffmpeg/SOURCE_PROOF.json -Raw | ConvertFrom-Json
+          $asset = @($proof.artifacts | Where-Object { $_.platform -eq 'windows-x86_64' })
+          if ($asset.Count -ne 1) { throw 'Expected one pinned Windows FFmpeg archive' }
+          $item = $asset[0]
+          $manifest = @(Get-Content sidecars/ffmpeg/SHA256SUMS | Where-Object { $_ -match [regex]::Escape($item.asset) })
+          if ($manifest.Count -ne 1 -or (($manifest[0] -split '\s+')[0]) -ne $item.sha256) { throw 'FFmpeg source proof disagrees with SHA256SUMS' }
+          $archive = Join-Path $env:RUNNER_TEMP $item.asset
+          curl.exe --fail --location --retry 3 --retry-delay 2 --output $archive $item.url
+          if ($LASTEXITCODE -ne 0) { throw 'FFmpeg archive download failed' }
+          if ((Get-Item -LiteralPath $archive).Length -ne [int64]$item.size_bytes) { throw 'FFmpeg archive size mismatch' }
+          $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $item.sha256) { throw "FFmpeg archive identity mismatch: $actual" }
+
+      - name: Stage only pinned runtime resources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $resource = Join-Path $env:RUNNER_TEMP 'pulqva-portable/sidecars'
+          $null = New-Item -ItemType Directory -Force (Join-Path $resource 'arti/windows-x86_64')
+          $null = New-Item -ItemType Directory -Force (Join-Path $resource 'yt-dlp/windows-x86_64')
+          $null = New-Item -ItemType Directory -Force (Join-Path $resource 'ffmpeg/windows-x86_64')
+          Copy-Item (Join-Path $env:RUNNER_TEMP 'pulqva-arti-root/bin/arti.exe') (Join-Path $resource 'arti/windows-x86_64/arti.exe')
+          Copy-Item (Join-Path $env:RUNNER_TEMP 'yt-dlp.exe') (Join-Path $resource 'yt-dlp/windows-x86_64/yt-dlp.exe')
+          $proof = Get-Content sidecars/ffmpeg/SOURCE_PROOF.json -Raw | ConvertFrom-Json
+          $item = @($proof.artifacts | Where-Object { $_.platform -eq 'windows-x86_64' })[0]
+          Copy-Item (Join-Path $env:RUNNER_TEMP $item.asset) (Join-Path $resource ("ffmpeg/windows-x86_64/" + $item.asset))
+          $sourceSha = (git rev-parse HEAD).Trim()
+          @(
+            'PULQVA experimental portable candidate',
+            "Source commit: $sourceSha",
+            'This is not a verified release. Live Tor/search/download E2E and clean-Windows launch acceptance have not yet been performed.',
+            'Requires Microsoft Edge WebView2 Runtime on the target Windows installation.',
+            'Do not use as evidence of anonymity or production readiness.'
+          ) | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'pulqva-portable/README-FIRST.txt')
+
+      - name: Compile exact desktop source
+        shell: pwsh
+        timeout-minutes: 25
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cargo +1.91.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml --target-dir (Join-Path $env:RUNNER_TEMP 'pulqva-desktop-target')
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop release build failed' }
+          $exe = Join-Path $env:RUNNER_TEMP 'pulqva-desktop-target/release/pulqva-desktop.exe'
+          if (!(Test-Path -LiteralPath $exe)) { throw 'Desktop executable missing' }
+          Copy-Item $exe (Join-Path $env:RUNNER_TEMP 'pulqva-portable/PULQVA.exe')
+          $sha = (Get-FileHash -LiteralPath (Join-Path $env:RUNNER_TEMP 'pulqva-portable/PULQVA.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+          "PULQVA_DESKTOP_EXE_SHA256=$sha" | Write-Output
+          $env:PULQVA_SOURCE_SHA = (git rev-parse HEAD).Trim()
+
+      - name: Create candidate ZIP and digest receipt
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'pulqva-portable'
+          $zip = Join-Path $env:RUNNER_TEMP 'PULQVA-windows-portable-candidate.zip'
+          if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+          Compress-Archive -Path (Join-Path $root '*') -DestinationPath $zip -CompressionLevel NoCompression
+
+          $verify = Join-Path $env:RUNNER_TEMP 'pulqva-portable-clean-extract'
+          if (Test-Path -LiteralPath $verify) { Remove-Item -LiteralPath $verify -Recurse -Force }
+          Expand-Archive -LiteralPath $zip -DestinationPath $verify
+          $proof = Get-Content sidecars/ffmpeg/SOURCE_PROOF.json -Raw | ConvertFrom-Json
+          $ffmpegItem = @($proof.artifacts | Where-Object { $_.platform -eq 'windows-x86_64' })[0]
+          $expectedFiles = @(
+            'PULQVA.exe',
+            'README-FIRST.txt',
+            'sidecars/arti/windows-x86_64/arti.exe',
+            'sidecars/yt-dlp/windows-x86_64/yt-dlp.exe',
+            "sidecars/ffmpeg/windows-x86_64/$($ffmpegItem.asset)"
+          ) | Sort-Object
+          $actualFiles = @(Get-ChildItem -LiteralPath $verify -File -Recurse | ForEach-Object {
+            $_.FullName.Substring($verify.Length).TrimStart('\') -replace '\\','/'
+          } | Sort-Object)
+          if (Compare-Object -ReferenceObject $expectedFiles -DifferenceObject $actualFiles) {
+            throw "ZIP contents do not match the exact portable file allowlist: $($actualFiles -join ', ')"
+          }
+          $arti = Join-Path $verify 'sidecars/arti/windows-x86_64/arti.exe'
+          $ytdlp = Join-Path $verify 'sidecars/yt-dlp/windows-x86_64/yt-dlp.exe'
+          $ffmpeg = Join-Path $verify "sidecars/ffmpeg/windows-x86_64/$($ffmpegItem.asset)"
+          $artiExpected = ((Get-Content sidecars/arti/SHA256SUMS | Where-Object { $_ -match '\swindows-x86_64/arti\.exe$' } | Select-Object -First 1) -split '\s+')[0]
+          $ytdlpExpected = ((Get-Content sidecars/yt-dlp/SHA256SUMS | Where-Object { $_ -match '\syt-dlp\.exe$' } | Select-Object -First 1) -split '\s+')[0]
+          $appSha = (Get-FileHash -LiteralPath (Join-Path $verify 'PULQVA.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+          $artiSha = (Get-FileHash -LiteralPath $arti -Algorithm SHA256).Hash.ToLowerInvariant()
+          $ytdlpSha = (Get-FileHash -LiteralPath $ytdlp -Algorithm SHA256).Hash.ToLowerInvariant()
+          $ffmpegSha = (Get-FileHash -LiteralPath $ffmpeg -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($artiSha -ne $artiExpected -or $ytdlpSha -ne $ytdlpExpected -or $ffmpegSha -ne $ffmpegItem.sha256) {
+            throw 'Clean-extracted ZIP sidecar identity mismatch'
+          }
+          if ((& $arti --version | Out-String).Trim() -notmatch '2\.6\.0') { throw 'Packaged Arti CLI check failed' }
+          if ((& $ytdlp --version | Out-String).Trim() -ne '2026.08.19') { throw 'Packaged yt-dlp CLI check failed' }
+          Write-Output "PULQVA_PORTABLE_ZIP_CONTENTS_PASS app=$appSha arti=$artiSha ytdlp=$ytdlpSha ffmpeg_archive=$ffmpegSha"
+
+          $receipt = [ordered]@{
+            schema = 1
+            status = 'BUILT_NOT_VERIFIED'
+            source_sha = (git rev-parse HEAD).Trim()
+            app_sha256 = $appSha
+            arti_sha256 = $artiSha
+            ytdlp_sha256 = $ytdlpSha
+            ffmpeg_archive_sha256 = $ffmpegSha
+            zip_sha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+            zip_bytes = (Get-Item -LiteralPath $zip).Length
+            zip_content_validation = 'PASS'
+            live_e2e = 'NOT_RUN'
+            clean_windows_launch = 'NOT_RUN'
+            webview2_self_contained = $false
+          }
+          $receipt | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'pulqva-portable-receipt.json')
+          $receipt | ConvertTo-Json
+          if ($receipt.zip_bytes -le 0) { throw 'ZIP is empty' }
+
+      - name: Upload portable candidate and receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-windows-portable-candidate-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/PULQVA-windows-portable-candidate.zip
+            ${{ runner.temp }}/pulqva-portable-receipt.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

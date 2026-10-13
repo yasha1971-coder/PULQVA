@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PULQVA — экспериментальный прототип</title>
+<link rel="stylesheet" href="./style.css"><script src="./prototype.js" defer></script>
+</head>
+<body><main class="shell">
+<section class="hero"><div class="mark" aria-hidden="true">P</div><div>
+<p class="eyebrow">PULQVA · experimental preview</p><h1>Запрос → выбор → файл</h1>
+<p>Экспериментальный поиск Wikimedia Commons: видео WebM до 8 МиБ. Не готовый релиз v0.1.</p>
+<p>Поиск по словам, без ИИ и Autopilot. Наличие Tor-маршрута не является гарантией полной анонимности.</p>
+</div></section>
+<section class="intent-card">
+<form id="prototype-form"><label for="prototype-query">Что найти?</label>
+<input id="prototype-query" name="query" maxlength="512" required autocomplete="off" placeholder="Например: countdown">
+<button id="prototype-search" type="submit">Найти через Tor</button></form>
+<p id="prototype-status" role="status" aria-live="polite">Для поиска необходимы проверенные компоненты в пакете приложения.</p>
+<ol id="prototype-choices" class="candidate-list"></ol>
+<section id="prototype-selection" hidden><h2 id="prototype-selected-title"></h2>
+<button id="prototype-download" type="button" disabled>Скачать выбранное</button></section>
+<section id="prototype-file" hidden><h2>Файл сохранён и проверен</h2>
+<p id="prototype-file-title"></p><p>Путь: <code id="prototype-file-path"></code></p>
+<p>Размер: <span id="prototype-file-size"></span> байт</p><p>SHA-256: <code id="prototype-file-sha"></code></p>
+<p>Хеш подтверждает сохранённые байты, а не безопасность содержимого или личность автора.</p></section>
+<button id="prototype-clear" type="button">Очистить сессию и остановить Tor</button>
+</section><p class="footnote">Файл не открывается автоматически. Запросы не передаются облачному ИИ. Результаты берутся из сетевого поиска, а не из демонстрационного списка. Пока идёт операция, закрытие окна откладывается до её завершения.</p>
+</main></body></html>

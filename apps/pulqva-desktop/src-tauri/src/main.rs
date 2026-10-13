@@ -19,6 +19,7 @@ mod ffmpeg_source;
 mod ffmpeg_archive_compat;
 mod ytdlp_materialize;
 mod discovery_session;
+mod prototype;
 
 use pulqva_core::{
     CORE_CRATE_READY, SearchCandidate, SearchCandidateError, SearchIntent, SearchIntentError,
@@ -52,6 +53,10 @@ const T024_MEDIA_SOURCE_URL: &str =
 const T024_PROOF_LOCATOR: &str = "local:test:candidate:official-live";
 const DEFAULT_TOR_SOCKS_PORT: u16 = 19050;
 const DEFAULT_TOR_READY_TIMEOUT_SECS: u64 = 30;
+#[cfg(target_os = "linux")]
+const ARTI_SIDECAR_VERSION: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/arti/linux-x86_64/VERSION"));
+#[cfg(not(target_os = "linux"))]
 const ARTI_SIDECAR_VERSION: &str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/arti/VERSION"));
 const ARTI_SIDECAR_SHA256SUMS: &str =
@@ -2189,13 +2194,23 @@ async fn download_completed_file(
 
 fn main() {
     tauri::Builder::default()
+        .manage(prototype::PrototypeState::default())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if !window.state::<prototype::PrototypeState>().close_window() { api.prevent_close(); }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             app_status,
             submit_intent,
             list_local_candidates,
             select_local_candidate,
             plan_local_download,
-            download_completed_file
+            download_completed_file,
+            prototype::prototype_search,
+            prototype::prototype_select,
+            prototype::prototype_download,
+            prototype::prototype_clear
         ])
         .run(tauri::generate_context!())
         .expect("PULQVA desktop shell failed to start");
