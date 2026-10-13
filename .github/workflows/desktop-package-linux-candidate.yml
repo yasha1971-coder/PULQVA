@@ -111,6 +111,30 @@ jobs:
           Do not use as evidence of anonymity or production readiness.
           EOF
 
+      - name: Bind built Arti identity into Linux app manifest
+        run: |
+          set -euo pipefail
+          arti="$RUNNER_TEMP/pulqva-arti-root/bin/arti"
+          actual="$(sha256sum "$arti" | awk '{print $1}')"
+          python3 - "$actual" <<'PY'
+          import pathlib,sys
+          path=pathlib.Path("sidecars/arti/SHA256SUMS")
+          lines=path.read_text().splitlines()
+          found=0
+          out=[]
+          for line in lines:
+              fields=line.split()
+              if len(fields)==2 and fields[1]=="linux-x86_64/arti":
+                  out.append(f"{sys.argv[1]}  linux-x86_64/arti")
+                  found+=1
+              else:
+                  out.append(line)
+          if found!=1:
+              raise SystemExit(f"expected exactly one Linux Arti manifest entry, got {found}")
+          path.write_text("\\n".join(out)+"\\n")
+          print(f"Linux Arti manifest bound to this locked source build: {sys.argv[1]}")
+          PY
+
       - name: Compile exact desktop source
         timeout-minutes: 25
         run: |
