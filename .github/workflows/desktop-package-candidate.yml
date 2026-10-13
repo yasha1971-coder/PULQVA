@@ -157,58 +157,8 @@ jobs:
           $arti = Join-Path $verify 'resources/sidecars/arti/windows-x86_64/arti.exe'
           $ytdlp = Join-Path $verify 'resources/sidecars/yt-dlp/windows-x86_64/yt-dlp.exe'
           $ffmpeg = Join-Path $verify "resources/sidecars/ffmpeg/windows-x86_64/$($ffmpegItem.asset)"
-          $artiExpected = ((Get-Content sidecars/arti/SHA256SUMS | Where-Object { $_ -match '\\swindows-x86_64/arti\\.exe
-            schema = 1
-            status = 'BUILT_NOT_VERIFIED'
-            source_sha = (git rev-parse HEAD).Trim()
-            app_sha256 = (Get-FileHash -LiteralPath (Join-Path $root 'PULQVA.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
-            zip_sha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-            zip_bytes = (Get-Item -LiteralPath $zip).Length
-            live_e2e = 'NOT_RUN'
-            clean_windows_launch = 'NOT_RUN'
-            webview2_self_contained = $false
-          }
-          $receipt | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'pulqva-portable-receipt.json')
-          $receipt | ConvertTo-Json
-          if ($receipt.zip_bytes -le 0) { throw 'ZIP is empty' }
-
-      - name: Upload portable candidate and receipt
-        uses: actions/upload-artifact@v4
-        with:
-          name: pulqva-windows-portable-candidate-${{ github.sha }}
-          path: |
-            ${{ runner.temp }}/PULQVA-windows-portable-candidate.zip
-            ${{ runner.temp }}/pulqva-portable-receipt.json
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
- } | Select-Object -First 1) -split '\\s+')[0]
-          $ytdlpExpected = ((Get-Content sidecars/yt-dlp/SHA256SUMS | Where-Object { $_ -match '\\syt-dlp\\.exe
-            schema = 1
-            status = 'BUILT_NOT_VERIFIED'
-            source_sha = (git rev-parse HEAD).Trim()
-            app_sha256 = (Get-FileHash -LiteralPath (Join-Path $root 'PULQVA.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
-            zip_sha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-            zip_bytes = (Get-Item -LiteralPath $zip).Length
-            live_e2e = 'NOT_RUN'
-            clean_windows_launch = 'NOT_RUN'
-            webview2_self_contained = $false
-          }
-          $receipt | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'pulqva-portable-receipt.json')
-          $receipt | ConvertTo-Json
-          if ($receipt.zip_bytes -le 0) { throw 'ZIP is empty' }
-
-      - name: Upload portable candidate and receipt
-        uses: actions/upload-artifact@v4
-        with:
-          name: pulqva-windows-portable-candidate-${{ github.sha }}
-          path: |
-            ${{ runner.temp }}/PULQVA-windows-portable-candidate.zip
-            ${{ runner.temp }}/pulqva-portable-receipt.json
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
- } | Select-Object -First 1) -split '\\s+')[0]
+          $artiExpected = ((Get-Content sidecars/arti/SHA256SUMS | Where-Object { $_ -match '\swindows-x86_64/arti\.exe$' } | Select-Object -First 1) -split '\s+')[0]
+          $ytdlpExpected = ((Get-Content sidecars/yt-dlp/SHA256SUMS | Where-Object { $_ -match '\syt-dlp\.exe$' } | Select-Object -First 1) -split '\s+')[0]
           $appSha = (Get-FileHash -LiteralPath (Join-Path $verify 'PULQVA.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
           $artiSha = (Get-FileHash -LiteralPath $arti -Algorithm SHA256).Hash.ToLowerInvariant()
           $ytdlpSha = (Get-FileHash -LiteralPath $ytdlp -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -216,7 +166,7 @@ jobs:
           if ($artiSha -ne $artiExpected -or $ytdlpSha -ne $ytdlpExpected -or $ffmpegSha -ne $ffmpegItem.sha256) {
             throw 'Clean-extracted ZIP sidecar identity mismatch'
           }
-          if ((& $arti --version | Out-String).Trim() -notmatch '2\\.6\\.0') { throw 'Packaged Arti CLI check failed' }
+          if ((& $arti --version | Out-String).Trim() -notmatch '2\.6\.0') { throw 'Packaged Arti CLI check failed' }
           if ((& $ytdlp --version | Out-String).Trim() -ne '2026.08.19') { throw 'Packaged yt-dlp CLI check failed' }
           Write-Output "PULQVA_PORTABLE_ZIP_CONTENTS_PASS app=$appSha arti=$artiSha ytdlp=$ytdlpSha ffmpeg_archive=$ffmpegSha"
 
@@ -224,9 +174,13 @@ jobs:
             schema = 1
             status = 'BUILT_NOT_VERIFIED'
             source_sha = (git rev-parse HEAD).Trim()
-            app_sha256 = (Get-FileHash -LiteralPath (Join-Path $root 'PULQVA.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+            app_sha256 = $appSha
+            arti_sha256 = $artiSha
+            ytdlp_sha256 = $ytdlpSha
+            ffmpeg_archive_sha256 = $ffmpegSha
             zip_sha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
             zip_bytes = (Get-Item -LiteralPath $zip).Length
+            zip_content_validation = 'PASS'
             live_e2e = 'NOT_RUN'
             clean_windows_launch = 'NOT_RUN'
             webview2_self_contained = $false
@@ -238,10 +192,10 @@ jobs:
       - name: Upload portable candidate and receipt
         uses: actions/upload-artifact@v4
         with:
-          name: pulqva-windows-portable-candidate-${{ github.sha }}
+          name: pulqva-windows-portable-candidate-\${{ github.sha }}
           path: |
-            ${{ runner.temp }}/PULQVA-windows-portable-candidate.zip
-            ${{ runner.temp }}/pulqva-portable-receipt.json
+            \${{ runner.temp }}/PULQVA-windows-portable-candidate.zip
+            \${{ runner.temp }}/pulqva-portable-receipt.json
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
