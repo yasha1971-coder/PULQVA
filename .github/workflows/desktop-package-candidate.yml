@@ -100,7 +100,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $resource = Join-Path $env:RUNNER_TEMP 'pulqva-portable/resources/sidecars'
+          $resource = Join-Path $env:RUNNER_TEMP 'pulqva-portable/sidecars'
           $null = New-Item -ItemType Directory -Force (Join-Path $resource 'arti/windows-x86_64')
           $null = New-Item -ItemType Directory -Force (Join-Path $resource 'yt-dlp/windows-x86_64')
           $null = New-Item -ItemType Directory -Force (Join-Path $resource 'ffmpeg/windows-x86_64')
@@ -149,9 +149,9 @@ jobs:
           $expectedFiles = @(
             'PULQVA.exe',
             'README-FIRST.txt',
-            'resources/sidecars/arti/windows-x86_64/arti.exe',
-            'resources/sidecars/yt-dlp/windows-x86_64/yt-dlp.exe',
-            "resources/sidecars/ffmpeg/windows-x86_64/$($ffmpegItem.asset)"
+            'sidecars/arti/windows-x86_64/arti.exe',
+            'sidecars/yt-dlp/windows-x86_64/yt-dlp.exe',
+            "sidecars/ffmpeg/windows-x86_64/$($ffmpegItem.asset)"
           ) | Sort-Object
           $actualFiles = @(Get-ChildItem -LiteralPath $verify -File -Recurse | ForEach-Object {
             $_.FullName.Substring($verify.Length).TrimStart('\') -replace '\\','/'
@@ -159,9 +159,9 @@ jobs:
           if (Compare-Object -ReferenceObject $expectedFiles -DifferenceObject $actualFiles) {
             throw "ZIP contents do not match the exact portable file allowlist: $($actualFiles -join ', ')"
           }
-          $arti = Join-Path $verify 'resources/sidecars/arti/windows-x86_64/arti.exe'
-          $ytdlp = Join-Path $verify 'resources/sidecars/yt-dlp/windows-x86_64/yt-dlp.exe'
-          $ffmpeg = Join-Path $verify "resources/sidecars/ffmpeg/windows-x86_64/$($ffmpegItem.asset)"
+          $arti = Join-Path $verify 'sidecars/arti/windows-x86_64/arti.exe'
+          $ytdlp = Join-Path $verify 'sidecars/yt-dlp/windows-x86_64/yt-dlp.exe'
+          $ffmpeg = Join-Path $verify "sidecars/ffmpeg/windows-x86_64/$($ffmpegItem.asset)"
           $artiExpected = ((Get-Content sidecars/arti/SHA256SUMS | Where-Object { $_ -match '\swindows-x86_64/arti\.exe$' } | Select-Object -First 1) -split '\s+')[0]
           $ytdlpExpected = ((Get-Content sidecars/yt-dlp/SHA256SUMS | Where-Object { $_ -match '\syt-dlp\.exe$' } | Select-Object -First 1) -split '\s+')[0]
           $appSha = (Get-FileHash -LiteralPath (Join-Path $verify 'PULQVA.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
