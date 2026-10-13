@@ -192,10 +192,10 @@ jobs:
       - name: Upload portable candidate and receipt
         uses: actions/upload-artifact@v4
         with:
-          name: pulqva-windows-portable-candidate-\${{ github.sha }}
+          name: pulqva-windows-portable-candidate-${{ github.sha }}
           path: |
-            \${{ runner.temp }}/PULQVA-windows-portable-candidate.zip
-            \${{ runner.temp }}/pulqva-portable-receipt.json
+            ${{ runner.temp }}/PULQVA-windows-portable-candidate.zip
+            ${{ runner.temp }}/pulqva-portable-receipt.json
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
