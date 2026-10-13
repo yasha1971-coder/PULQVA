@@ -389,6 +389,63 @@ mod tests {
         assert!(matches!(result, Err(PrototypeError { code: "invalid-query", .. })));
     }
     #[test]
+    #[ignore = "live network acceptance requires an explicitly authorized workflow dispatch"]
+    fn authorized_live_native_journey_emits_bounded_receipt() {
+        use std::io::Write;
+
+        let source_sha = std::env::var("PULQVA_SOURCE_SHA")
+            .expect("PULQVA_SOURCE_SHA must identify the exact tested Git commit");
+        assert_eq!(source_sha.len(), 40, "source SHA must be a full Git SHA");
+        assert!(source_sha.bytes().all(|byte| byte.is_ascii_hexdigit()),
+            "source SHA must be lowercase or uppercase hexadecimal");
+
+        let paths = PrototypeRuntimePaths {
+            resources: PathBuf::from(std::env::var_os("PULQVA_E2E_RESOURCES")
+                .expect("PULQVA_E2E_RESOURCES must point to staged pinned sidecars")),
+            app_data: PathBuf::from(std::env::var_os("PULQVA_E2E_APP_DATA")
+                .expect("PULQVA_E2E_APP_DATA must be a new isolated directory")),
+            downloads: PathBuf::from(std::env::var_os("PULQVA_E2E_DOWNLOADS")
+                .expect("PULQVA_E2E_DOWNLOADS must be a new isolated directory")),
+        };
+        let receipt_path = PathBuf::from(std::env::var_os("PULQVA_E2E_RECEIPT")
+            .expect("PULQVA_E2E_RECEIPT must name a new receipt path"));
+
+        let file = run_native_journey_with_paths("countdown".to_owned(), 1, &paths)
+            .expect("real native Tor → Commons search → selected file journey must pass");
+        assert!(file.byte_size > 0 && file.byte_size <= MAX_MEDIA_BYTES);
+        assert_eq!(sha256_file(Path::new(&file.file_path)).expect("independent file readback"), file.sha256);
+        let metadata = fs::symlink_metadata(&file.file_path).expect("saved file metadata");
+        assert!(metadata.is_file() && !metadata.file_type().is_symlink());
+        assert_eq!(metadata.len(), file.byte_size);
+
+        let receipt = serde_json::json!({
+            "schema": 1,
+            "scope": "live-native-prototype-request-choice-file",
+            "status": "PASS",
+            "source_sha": source_sha,
+            "platform": std::env::consts::OS,
+            "provider": "Wikimedia Commons",
+            "query": "countdown",
+            "selected_index": 1,
+            "tor_required": true,
+            "direct_fallback_allowed": false,
+            "file_name": Path::new(&file.file_path).file_name().and_then(|n| n.to_str()).unwrap_or("selected.webm"),
+            "byte_size": file.byte_size,
+            "sha256": file.sha256,
+            "independent_saved_file_readback": true,
+            "absolute_anonymity_claimed": false
+        });
+        let bytes = serde_json::to_vec_pretty(&receipt).expect("serialize receipt");
+        assert!(bytes.len() <= 16 * 1024, "receipt exceeds fixed evidence bound");
+        let mut output = std::fs::OpenOptions::new().write(true).create_new(true)
+            .open(&receipt_path).expect("receipt path must be new and exclusively created");
+        output.write_all(&bytes).expect("write receipt");
+        output.write_all(b"\\n").expect("terminate receipt");
+        output.sync_all().expect("sync receipt");
+        println!("PULQVA_LIVE_NATIVE_JOURNEY_OK source_sha={source_sha} bytes={}", file.byte_size);
+    }
+
+    #[test]
     fn ownership_token_has_fixed_safe_encoding() {
         let a = token().unwrap(); let b = token().unwrap();
         assert_eq!(a.len(), 64); assert_ne!(a,b);
