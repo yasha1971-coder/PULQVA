@@ -52,7 +52,7 @@ jobs:
           actual="$(sha256sum "$arti" | awk '{print $1}')"
           version_output="$("$arti" --version)"
           printf '%s\n' "$version_output"
-          printf '%s\n' "$version_output" | grep -Eq "arti ${version}([[:space:]]|$)"
+          printf '%s\n' "$version_output" | grep -Eiq "^arti ${version}([[:space:]]|$)"
           echo "PULQVA_ARTI_SOURCE_BUILD_PASS version=$version sha256=$actual cargo_locked=true"
 
       - name: Download and authenticate pinned yt-dlp
@@ -162,7 +162,7 @@ jobs:
           test "$ytdlp_sha" = "$(awk '$2=="yt-dlp_linux"{print $1}' sidecars/yt-dlp/SHA256SUMS)"
           test "$ffmpeg_sha" = "$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["sha256"])')"
           arti_version="$(tr -d '\r\n' < sidecars/arti/linux-x86_64/VERSION)"
-          "$verify/sidecars/arti/linux-x86_64/arti" --version | grep -Eq "arti ${arti_version}([[:space:]]|$)"
+          "$verify/sidecars/arti/linux-x86_64/arti" --version | grep -Eiq "^arti ${arti_version}([[:space:]]|$)"
           test "$("$verify/sidecars/yt-dlp/linux-x86_64/yt-dlp" --version)" = "2026.08.19"
           echo "PULQVA_LINUX_ZIP_CONTENTS_PASS app=$app_sha arti=$arti_sha ytdlp=$ytdlp_sha ffmpeg_archive=$ffmpeg_sha"
           python3 - "$zipfile" "$app_sha" "$arti_sha" "$ytdlp_sha" "$ffmpeg_sha" "$(git rev-parse HEAD)" <<'PY'
