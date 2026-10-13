@@ -418,24 +418,30 @@ mod tests {
         assert!(metadata.is_file() && !metadata.file_type().is_symlink());
         assert_eq!(metadata.len(), file.byte_size);
 
-        let receipt = serde_json::json!({
-            "schema": 1,
-            "scope": "live-native-prototype-request-choice-file",
-            "status": "PASS",
-            "source_sha": source_sha,
-            "platform": std::env::consts::OS,
-            "provider": "Wikimedia Commons",
-            "query": "countdown",
-            "selected_index": 1,
-            "tor_required": true,
-            "direct_fallback_allowed": false,
-            "file_name": Path::new(&file.file_path).file_name().and_then(|n| n.to_str()).unwrap_or("selected.webm"),
-            "byte_size": file.byte_size,
-            "sha256": file.sha256,
-            "independent_saved_file_readback": true,
-            "absolute_anonymity_claimed": false
-        });
-        let bytes = serde_json::to_vec_pretty(&receipt).expect("serialize receipt");
+        // Dynamic receipt fields are restricted to hex digests, a fixed OS token,
+        // and a bounded integer; no remote/user-controlled strings are serialized.
+        let bytes = format!(
+            concat!(
+                "{{\n",
+                "  \"schema\": 1,\n",
+                "  \"scope\": \"live-native-prototype-request-choice-file\",\n",
+                "  \"status\": \"PASS\",\n",
+                "  \"source_sha\": \"{}\",\n",
+                "  \"platform\": \"{}\",\n",
+                "  \"provider\": \"Wikimedia Commons\",\n",
+                "  \"query\": \"countdown\",\n",
+                "  \"selected_index\": 1,\n",
+                "  \"tor_required\": true,\n",
+                "  \"direct_fallback_allowed\": false,\n",
+                "  \"file_name\": \"selected.webm\",\n",
+                "  \"byte_size\": {},\n",
+                "  \"sha256\": \"{}\",\n",
+                "  \"independent_saved_file_readback\": true,\n",
+                "  \"absolute_anonymity_claimed\": false\n",
+                "}}\n"
+            ),
+            source_sha, std::env::consts::OS, file.byte_size, file.sha256
+        ).into_bytes();
         assert!(bytes.len() <= 16 * 1024, "receipt exceeds fixed evidence bound");
         let mut output = std::fs::OpenOptions::new().write(true).create_new(true)
             .open(&receipt_path).expect("receipt path must be new and exclusively created");
