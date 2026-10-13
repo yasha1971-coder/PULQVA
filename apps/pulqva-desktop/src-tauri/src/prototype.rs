@@ -440,7 +440,7 @@ mod tests {
         let mut output = std::fs::OpenOptions::new().write(true).create_new(true)
             .open(&receipt_path).expect("receipt path must be new and exclusively created");
         output.write_all(&bytes).expect("write receipt");
-        output.write_all(b"\\n").expect("terminate receipt");
+        output.write_all(b"\n").expect("terminate receipt");
         output.sync_all().expect("sync receipt");
         println!("PULQVA_LIVE_NATIVE_JOURNEY_OK source_sha={source_sha} bytes={}", file.byte_size);
     }
