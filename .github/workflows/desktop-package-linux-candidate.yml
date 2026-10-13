@@ -73,7 +73,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, pathlib
+          import json, pathlib, os
           proof=json.loads(pathlib.Path("sidecars/ffmpeg/SOURCE_PROOF.json").read_text())
           items=[x for x in proof["artifacts"] if x["platform"]=="linux-x86_64"]
           assert len(items)==1, "Expected exactly one pinned Linux FFmpeg archive"
@@ -81,7 +81,7 @@ jobs:
           sums=pathlib.Path("sidecars/ffmpeg/SHA256SUMS").read_text().splitlines()
           matches=[line.split()[0] for line in sums if item["asset"] in line]
           assert matches==[item["sha256"]], "FFmpeg source proof disagrees with SHA256SUMS"
-          pathlib.Path("$RUNNER_TEMP/ffmpeg-meta.json").write_text(json.dumps(item))
+          pathlib.Path(os.environ["RUNNER_TEMP"], "ffmpeg-meta.json").write_text(json.dumps(item))
           PY
           asset="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["asset"])')"
           url="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["url"])')"
