@@ -41,19 +41,19 @@ jobs:
         timeout-minutes: 65
         run: |
           set -euo pipefail
-          version="$(tr -d '\r\n' < sidecars/arti/VERSION)"
-          test "$version" = "2.6.0"
+          version="$(tr -d '\r\n' < sidecars/arti/linux-x86_64/VERSION)"
+          test "$version" = "2.7.0"
           root="$RUNNER_TEMP/pulqva-arti-root"
           target="$RUNNER_TEMP/pulqva-arti-target"
           rm -rf "$root" "$target"
           CARGO_INCREMENTAL=0 cargo +1.91.0 install arti --version "$version" --locked --features static-sqlite --root "$root" --target-dir "$target"
           arti="$root/bin/arti"
           test -x "$arti"
-          expected="$(awk '$2=="linux-x86_64/arti"{print $1}' sidecars/arti/SHA256SUMS)"
           actual="$(sha256sum "$arti" | awk '{print $1}')"
-          test -n "$expected" && test "$actual" = "$expected" || { echo "Arti identity mismatch: expected=$expected actual=$actual"; exit 1; }
-          "$arti" --version
-          echo "PULQVA_ARTI_IDENTITY_PASS sha256=$actual"
+          version_output="$("$arti" --version)"
+          printf '%s\n' "$version_output"
+          printf '%s\n' "$version_output" | grep -Eq "arti ${version}([[:space:]]|$)"
+          echo "PULQVA_ARTI_SOURCE_BUILD_PASS version=$version sha256=$actual cargo_locked=true"
 
       - name: Download and authenticate pinned yt-dlp
         run: |
@@ -135,10 +135,10 @@ jobs:
           ytdlp_sha="$(sha256sum "$verify/sidecars/yt-dlp/linux-x86_64/yt-dlp" | awk '{print $1}')"
           ffmpeg_asset="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["asset"])')"
           ffmpeg_sha="$(sha256sum "$verify/sidecars/ffmpeg/linux-x86_64/$ffmpeg_asset" | awk '{print $1}')"
-          test "$arti_sha" = "$(awk '$2=="linux-x86_64/arti"{print $1}' sidecars/arti/SHA256SUMS)"
           test "$ytdlp_sha" = "$(awk '$2=="yt-dlp_linux"{print $1}' sidecars/yt-dlp/SHA256SUMS)"
           test "$ffmpeg_sha" = "$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["sha256"])')"
-          "$verify/sidecars/arti/linux-x86_64/arti" --version
+          arti_version="$(tr -d '\r\n' < sidecars/arti/linux-x86_64/VERSION)"
+          "$verify/sidecars/arti/linux-x86_64/arti" --version | grep -Eq "arti ${arti_version}([[:space:]]|$)"
           test "$("$verify/sidecars/yt-dlp/linux-x86_64/yt-dlp" --version)" = "2026.08.19"
           echo "PULQVA_LINUX_TARBALL_CONTENTS_PASS app=$app_sha arti=$arti_sha ytdlp=$ytdlp_sha ffmpeg_archive=$ffmpeg_sha"
           python3 - "$tarball" "$app_sha" "$arti_sha" "$ytdlp_sha" "$ffmpeg_sha" "$(git rev-parse HEAD)" <<'PY'
@@ -151,6 +151,8 @@ jobs:
             "platform":"linux-x86_64",
             "source_sha":sys.argv[6],
             "app_sha256":sys.argv[2],
+            "arti_version":"2.7.0",
+            "arti_build_provenance":"crates.io arti package; --locked; Cargo package checksums; binary hash records this exact build, not a pre-published upstream binary",
             "arti_sha256":sys.argv[3],
             "ytdlp_sha256":sys.argv[4],
             "ffmpeg_archive_sha256":sys.argv[5],
