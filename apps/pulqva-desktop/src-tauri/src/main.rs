@@ -53,6 +53,10 @@ const T024_MEDIA_SOURCE_URL: &str =
 const T024_PROOF_LOCATOR: &str = "local:test:candidate:official-live";
 const DEFAULT_TOR_SOCKS_PORT: u16 = 19050;
 const DEFAULT_TOR_READY_TIMEOUT_SECS: u64 = 30;
+#[cfg(target_os = "linux")]
+const ARTI_SIDECAR_VERSION: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/arti/linux-x86_64/VERSION"));
+#[cfg(not(target_os = "linux"))]
 const ARTI_SIDECAR_VERSION: &str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../sidecars/arti/VERSION"));
 const ARTI_SIDECAR_SHA256SUMS: &str =
