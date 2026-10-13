@@ -33,9 +33,9 @@ jobs:
       - name: Install pinned Rust
         run: |
           set -euo pipefail
-          rustup toolchain install 1.91.0 --profile minimal
-          test "$(rustc +1.91.0 --version | awk '{print $2}')" = "1.91.0"
-          test "$(cargo +1.91.0 --version | awk '{print $2}')" = "1.91.0"
+          rustup toolchain install 1.92.0 --profile minimal
+          test "$(rustc +1.92.0 --version | awk '{print $2}')" = "1.92.0"
+          test "$(cargo +1.92.0 --version | awk '{print $2}')" = "1.92.0"
 
       - name: Build and authenticate pinned Arti
         timeout-minutes: 65
@@ -46,7 +46,7 @@ jobs:
           root="$RUNNER_TEMP/pulqva-arti-root"
           target="$RUNNER_TEMP/pulqva-arti-target"
           rm -rf "$root" "$target"
-          CARGO_INCREMENTAL=0 cargo +1.91.0 install arti --version "$version" --locked --features static-sqlite --root "$root" --target-dir "$target"
+          CARGO_INCREMENTAL=0 cargo +1.92.0 install arti --version "$version" --locked --features static-sqlite --root "$root" --target-dir "$target"
           arti="$root/bin/arti"
           test -x "$arti"
           actual="$(sha256sum "$arti" | awk '{print $1}')"
@@ -139,7 +139,7 @@ jobs:
         timeout-minutes: 25
         run: |
           set -euo pipefail
-          cargo +1.91.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml --target-dir "$RUNNER_TEMP/pulqva-desktop-target"
+          cargo +1.92.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml --target-dir "$RUNNER_TEMP/pulqva-desktop-target"
           app="$RUNNER_TEMP/pulqva-desktop-target/release/pulqva-desktop"
           test -x "$app"
           install -m 0755 "$app" "$RUNNER_TEMP/pulqva-linux-portable/PULQVA"
