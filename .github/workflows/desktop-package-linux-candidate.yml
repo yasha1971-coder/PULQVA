@@ -1,0 +1,176 @@
+name: desktop-package-linux-candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - proto/v0.1-source-admission
+    paths:
+      - ".github/workflows/desktop-package-linux-candidate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  package-linux-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install Linux desktop build dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential curl file pkg-config libssl-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf \
+            libgtk-3-dev libayatana-appindicator3-1
+
+      - name: Install pinned Rust
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.91.0 --profile minimal
+          test "$(rustc +1.91.0 --version | awk '{print $2}')" = "1.91.0"
+          test "$(cargo +1.91.0 --version | awk '{print $2}')" = "1.91.0"
+
+      - name: Build and authenticate pinned Arti
+        timeout-minutes: 65
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < sidecars/arti/VERSION)"
+          test "$version" = "2.6.0"
+          root="$RUNNER_TEMP/pulqva-arti-root"
+          target="$RUNNER_TEMP/pulqva-arti-target"
+          rm -rf "$root" "$target"
+          CARGO_INCREMENTAL=0 cargo +1.91.0 install arti --version "$version" --locked --features static-sqlite --root "$root" --target-dir "$target"
+          arti="$root/bin/arti"
+          test -x "$arti"
+          expected="$(awk '$2=="linux-x86_64/arti"{print $1}' sidecars/arti/SHA256SUMS)"
+          actual="$(sha256sum "$arti" | awk '{print $1}')"
+          test -n "$expected" && test "$actual" = "$expected" || { echo "Arti identity mismatch: expected=$expected actual=$actual"; exit 1; }
+          "$arti" --version
+          echo "PULQVA_ARTI_IDENTITY_PASS sha256=$actual"
+
+      - name: Download and authenticate pinned yt-dlp
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < sidecars/yt-dlp/VERSION)"
+          test "$version" = "2026.08.19"
+          asset="yt-dlp_linux"
+          expected="$(awk '$2=="yt-dlp_linux"{print $1}' sidecars/yt-dlp/SHA256SUMS)"
+          path="$RUNNER_TEMP/$asset"
+          curl --fail --location --retry 3 --retry-delay 2 --output "$path" "https://github.com/yt-dlp/yt-dlp/releases/download/$version/$asset"
+          actual="$(sha256sum "$path" | awk '{print $1}')"
+          test -n "$expected" && test "$actual" = "$expected" || { echo "yt-dlp identity mismatch"; exit 1; }
+          chmod 0755 "$path"
+          test "$("$path" --version)" = "$version"
+
+      - name: Download and authenticate pinned FFmpeg archive
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib
+          proof=json.loads(pathlib.Path("sidecars/ffmpeg/SOURCE_PROOF.json").read_text())
+          items=[x for x in proof["artifacts"] if x["platform"]=="linux-x86_64"]
+          assert len(items)==1, "Expected exactly one pinned Linux FFmpeg archive"
+          item=items[0]
+          sums=pathlib.Path("sidecars/ffmpeg/SHA256SUMS").read_text().splitlines()
+          matches=[line.split()[0] for line in sums if item["asset"] in line]
+          assert matches==[item["sha256"]], "FFmpeg source proof disagrees with SHA256SUMS"
+          pathlib.Path("$RUNNER_TEMP/ffmpeg-meta.json").write_text(json.dumps(item))
+          PY
+          asset="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["asset"])')"
+          url="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["url"])')"
+          expected="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["sha256"])')"
+          size="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["size_bytes"])')"
+          archive="$RUNNER_TEMP/$asset"
+          curl --fail --location --retry 3 --retry-delay 2 --output "$archive" "$url"
+          test "$(stat -c %s "$archive")" = "$size"
+          test "$(sha256sum "$archive" | awk '{print $1}')" = "$expected"
+
+      - name: Stage pinned runtime resources
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/pulqva-linux-portable"
+          mkdir -p "$root/sidecars/arti/linux-x86_64" "$root/sidecars/yt-dlp/linux-x86_64" "$root/sidecars/ffmpeg/linux-x86_64"
+          install -m 0755 "$RUNNER_TEMP/pulqva-arti-root/bin/arti" "$root/sidecars/arti/linux-x86_64/arti"
+          install -m 0755 "$RUNNER_TEMP/yt-dlp_linux" "$root/sidecars/yt-dlp/linux-x86_64/yt-dlp"
+          asset="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["asset"])')"
+          install -m 0644 "$RUNNER_TEMP/$asset" "$root/sidecars/ffmpeg/linux-x86_64/$asset"
+          source_sha="$(git rev-parse HEAD)"
+          cat > "$root/README-FIRST.txt" <<EOF
+          PULQVA experimental portable Linux candidate
+          Source commit: $source_sha
+          Architecture: Linux x86_64
+          This is not a verified release. Live Tor/search/download E2E and clean-Linux launch acceptance have not yet been performed.
+          Requires compatible GTK 3, WebKit2GTK 4.1, and desktop runtime libraries on the target system.
+          Do not use as evidence of anonymity or production readiness.
+          EOF
+
+      - name: Compile exact desktop source
+        timeout-minutes: 25
+        run: |
+          set -euo pipefail
+          cargo +1.91.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml --target-dir "$RUNNER_TEMP/pulqva-desktop-target"
+          app="$RUNNER_TEMP/pulqva-desktop-target/release/pulqva-desktop"
+          test -x "$app"
+          install -m 0755 "$app" "$RUNNER_TEMP/pulqva-linux-portable/PULQVA"
+
+      - name: Create candidate tarball and verify clean extraction
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/pulqva-linux-portable"
+          tarball="$RUNNER_TEMP/PULQVA-linux-x86_64-portable-candidate.tar.gz"
+          tar --sort=name --mtime='UTC 2020-01-01' --owner=0 --group=0 --numeric-owner -czf "$tarball" -C "$root" .
+          verify="$RUNNER_TEMP/pulqva-linux-clean-extract"
+          mkdir -p "$verify"
+          tar -xzf "$tarball" -C "$verify"
+          diff -u <(cd "$root" && find . -type f -printf '%P\n' | sort) <(cd "$verify" && find . -type f -printf '%P\n' | sort)
+          app_sha="$(sha256sum "$verify/PULQVA" | awk '{print $1}')"
+          arti_sha="$(sha256sum "$verify/sidecars/arti/linux-x86_64/arti" | awk '{print $1}')"
+          ytdlp_sha="$(sha256sum "$verify/sidecars/yt-dlp/linux-x86_64/yt-dlp" | awk '{print $1}')"
+          ffmpeg_asset="$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["asset"])')"
+          ffmpeg_sha="$(sha256sum "$verify/sidecars/ffmpeg/linux-x86_64/$ffmpeg_asset" | awk '{print $1}')"
+          test "$arti_sha" = "$(awk '$2=="linux-x86_64/arti"{print $1}' sidecars/arti/SHA256SUMS)"
+          test "$ytdlp_sha" = "$(awk '$2=="yt-dlp_linux"{print $1}' sidecars/yt-dlp/SHA256SUMS)"
+          test "$ffmpeg_sha" = "$(python3 -c 'import json,os; print(json.load(open(os.environ["RUNNER_TEMP"]+"/ffmpeg-meta.json"))["sha256"])')"
+          "$verify/sidecars/arti/linux-x86_64/arti" --version
+          test "$("$verify/sidecars/yt-dlp/linux-x86_64/yt-dlp" --version)" = "2026.08.19"
+          echo "PULQVA_LINUX_TARBALL_CONTENTS_PASS app=$app_sha arti=$arti_sha ytdlp=$ytdlp_sha ffmpeg_archive=$ffmpeg_sha"
+          python3 - "$tarball" "$app_sha" "$arti_sha" "$ytdlp_sha" "$ffmpeg_sha" "$(git rev-parse HEAD)" <<'PY'
+          import hashlib,json,pathlib,sys
+          p=pathlib.Path(sys.argv[1])
+          h=hashlib.sha256(p.read_bytes()).hexdigest()
+          receipt={
+            "schema":1,
+            "status":"BUILT_NOT_VERIFIED",
+            "platform":"linux-x86_64",
+            "source_sha":sys.argv[6],
+            "app_sha256":sys.argv[2],
+            "arti_sha256":sys.argv[3],
+            "ytdlp_sha256":sys.argv[4],
+            "ffmpeg_archive_sha256":sys.argv[5],
+            "archive_sha256":h,
+            "archive_bytes":p.stat().st_size,
+            "archive_content_validation":"PASS",
+            "live_e2e":"NOT_RUN",
+            "clean_linux_launch":"NOT_RUN"
+          }
+          pathlib.Path(str(p.parent/"pulqva-linux-portable-receipt.json")).write_text(json.dumps(receipt,indent=2)+"\n")
+          print(json.dumps(receipt,indent=2))
+          PY
+
+      - name: Upload Linux portable candidate and receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-linux-x86_64-portable-candidate-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/PULQVA-linux-x86_64-portable-candidate.tar.gz
+            ${{ runner.temp }}/pulqva-linux-portable-receipt.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
