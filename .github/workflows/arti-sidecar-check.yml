@@ -109,6 +109,28 @@ jobs:
         shell: pwsh
         run: ./scripts/arti_windows_inputs.ps1
 
+      - name: Fingerprint Windows native objects and archives
+        if: always() && runner.os == 'Windows' && hashFiles('tools/ci/arti_windows_repro_fingerprint.py') != ''
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $target = Join-Path $env:RUNNER_TEMP 'pulqva-arti-target'
+          $receipt = Join-Path $env:RUNNER_TEMP 'arti-native-object-fingerprint.json'
+          if (Test-Path -LiteralPath $target -PathType Container) {
+            python tools/ci/arti_windows_repro_fingerprint.py $target $receipt
+          } else {
+            throw 'Arti target directory missing; cannot produce native-object fingerprint'
+          }
+
+      - name: Preserve Windows native object fingerprint
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: arti-windows-object-fingerprint
+          path: ${{ runner.temp }}/arti-native-object-fingerprint.json
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Preserve Windows linker and input diagnostics
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
