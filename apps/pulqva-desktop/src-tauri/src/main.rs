@@ -2218,6 +2218,13 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    // Independent pins: catch a wrong platform manifest selection instead of
+    // deriving the expected value from the production version under test.
+    #[cfg(target_os = "linux")]
+    const EXPECTED_ARTI_SIDECAR_VERSION: &str = "2.7.0";
+    #[cfg(not(target_os = "linux"))]
+    const EXPECTED_ARTI_SIDECAR_VERSION: &str = "2.6.0";
+
     use super::{
         AppRuntimeLayout, BundledSidecarKind, DEFAULT_TOR_READY_TIMEOUT_SECS,
         DEFAULT_TOR_SOCKS_PORT, DownloadActionError, DownloadPreflightInputs, T024_MEDIA_SOURCE_URL,
@@ -2757,7 +2764,7 @@ mod tests {
             assert!(!item.source_resource.is_absolute());
         }
 
-        assert_eq!(plan.items[0].identity.version, "2.6.0");
+        assert_eq!(plan.items[0].identity.version, EXPECTED_ARTI_SIDECAR_VERSION);
         assert_eq!(plan.items[1].identity.version, "2026.08.19");
         assert_eq!(plan.items[2].identity.version, "n9.0.2-17-g2a571b6068");
         assert_eq!(
@@ -2855,7 +2862,7 @@ mod tests {
         assert_eq!(resolved.items[0].kind, BundledSidecarKind::Arti);
         assert_eq!(resolved.items[1].kind, BundledSidecarKind::YtDlp);
         assert_eq!(resolved.items[2].kind, BundledSidecarKind::Ffmpeg);
-        assert_eq!(resolved.items[0].identity.version, "2.6.0");
+        assert_eq!(resolved.items[0].identity.version, EXPECTED_ARTI_SIDECAR_VERSION);
         assert_eq!(resolved.items[1].identity.version, "2026.08.19");
         assert_eq!(resolved.items[2].identity.version, "n9.0.2-17-g2a571b6068");
         assert!(!root.exists());
