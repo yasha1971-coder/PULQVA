@@ -1,5 +1,4 @@
 {
-  "tor_diagnostics_candidate": {"status":"WIP_NATIVE_UNIT_TESTS_PASS_CI_PENDING","opt_in":"PULQVA_TOR_DIAGNOSTICS=1","scope":"enum-only bounded stderr trace; cleanup before diagnostic I/O; unchanged readiness gate","local_tests":"4 passed on Windows against real privacy library","integration_tests":"pending CI","usb":"unchanged"},
   "project": "PULQVA",
   "state_schema": 1,
   "kernel_version": "1.0.0",
