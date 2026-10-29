@@ -140,3 +140,33 @@ jobs:
           name: ffmpeg-compat-reference-${{ matrix.os }}
           path: ${{ runner.temp }}/ffmpeg-compat-reference.json
           if-no-files-found: warn
+
+  tor-diagnostics-unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust
+        shell: bash
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Test bounded diagnostic formatter against real privacy crate
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/tor-diagnostics-unit"
+          mkdir -p "$out"
+          export CARGO_MANIFEST_DIR="$GITHUB_WORKSPACE/crates/pulqva-privacy"
+          rustc +1.91.0 --edition=2024 --crate-name pulqva_privacy --crate-type rlib crates/pulqva-privacy/src/lib.rs -o "$out/libpulqva_privacy.rlib" 2>&1 | tee "$out/privacy-compile.txt"
+          rustc +1.91.0 --edition=2024 --test apps/pulqva-desktop/src-tauri/src/tor_diagnostics.rs --extern "pulqva_privacy=$out/libpulqva_privacy.rlib" -o "$out/diagnostics-tests.exe" 2>&1 | tee "$out/diagnostics-compile.txt"
+          "$out/diagnostics-tests.exe" --test-threads=1 2>&1 | tee "$out/test-results.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tor-diagnostics-unit-${{ matrix.os }}
+          path: ${{ runner.temp }}/tor-diagnostics-unit/*.txt
+          if-no-files-found: error
+          retention-days: 14
