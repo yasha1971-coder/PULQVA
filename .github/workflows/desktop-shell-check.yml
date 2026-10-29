@@ -180,7 +180,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
-      CARGO_TARGET_DIR: ${{ runner.temp }}/pr98-diagnostic-target
       PULQVA_FROZEN_SOURCE: b217e0816f217ca1e65b63283dcb4cd0ab0ac79a
     steps:
       - uses: actions/checkout@v4
@@ -203,12 +202,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - name: Build diagnostic app without rebuilding sidecars
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/pr98-diagnostic-target
         shell: bash
         run: |
           set -euo pipefail
           cargo +1.91.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml
           git diff --exit-code
       - name: Bind binary to source, workflow and effective input manifests
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/pr98-diagnostic-target
         shell: python
         run: |
           import hashlib, json, os, pathlib, shutil, subprocess
