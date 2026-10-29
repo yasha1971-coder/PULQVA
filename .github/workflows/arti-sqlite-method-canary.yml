@@ -1,0 +1,27 @@
+name: SQLite method canary
+on:
+  push:
+    branches: ['ci/arti-sqlite-method-canary']
+permissions:
+  contents: read
+jobs:
+  method:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore authenticated compiler
+        shell: pwsh
+        run: ./scripts/restore_arti_windows_compiler.ps1
+      - name: SQLite object controls only
+        shell: pwsh
+        timeout-minutes: 8
+        run: python -B tools/ci/arti_sqlite_method_canary.py
+      - name: Preserve complete method evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arti-sqlite-method-canary
+          path: ${{ runner.temp }}/pulqva-sqlite-canary
+          if-no-files-found: error
+          retention-days: 90

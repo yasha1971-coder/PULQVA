@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "status": "PREPARED_NOT_EXECUTED",
+  "boundary": "SQLite object method controls; no full Arti",
+  "source_sha": "122f95df6ffd268910c05621cf4f4ab1c3d8989a",
+  "compiler": "Existing64-file authenticated MSVC14.51.36231 restore",
+  "source_crate_sha256": "b1f111c8c41e7c61a49cd34e44c7619462967221a6443b0ec299e0ac30cfb9b1",
+  "probes": [
+    "unchanged_a",
+    "unchanged_b",
+    "positive_define"
+  ],
+  "expected": {
+    "unchanged_object_equal": true,
+    "positive_define_changes_object": true,
+    "cleanup_each_owned_job": true
+  },
+  "limits": [
+    "Not production feature equivalence",
+    "Not historical SDK root-cause proof",
+    "No comprehensive loaded-DLL trace"
+  ],
+  "next": "Observe canary before any full Arti run; if controls fail, close method failure rather than tune production pin."
+}
