@@ -48,3 +48,14 @@ coordinator through the first real request -> choice -> file fixture.
 Do not add a clearnet fallback. Do not fetch Tor at application runtime. Do not mark
 T068 complete until the selected real file and typed receipt exist and the Tor-unavailable
 negative path still fails closed.
+
+## Local owner environment note — 2026-10-29 (documentation only)
+
+See [owner environment and manual launch report](decisions/OWNER_ENVIRONMENT_2026-10-29.md).
+The owner reports manual PULQVA launches on Windows and WSL, existing development
+tools, Ollama 0.40.4 and a downloaded local model of unknown identity. These reports
+do not add independent launch, privacy or E2E acceptance evidence. Historical tool
+availability statements in older local copies are not a current laptop inventory.
+This note does not change the active development routing, product task, CI evidence
+or verified baseline above. Identifying the model or launch package is only a
+possible later diagnostic and is not a replacement for the current GitHub task.
