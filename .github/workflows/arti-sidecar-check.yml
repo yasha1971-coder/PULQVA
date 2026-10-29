@@ -18,10 +18,12 @@ jobs:
             platform: linux-x86_64
             executable: arti
             feature_args: ""
+            native_inputs: not-applicable
           - os: windows-latest
             platform: windows-x86_64
             executable: arti.exe
             feature_args: "--features static-sqlite"
+            native_inputs: restored
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -52,11 +54,16 @@ jobs:
         shell: pwsh
         run: ./scripts/restore_arti_windows_compiler.ps1
 
+      - name: Select one native input factor and preserve both tree manifests
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/arti_native_input_experiment.ps1 -NativeInputs '${{ matrix.native_inputs }}'
+
       - name: Preserve compiler restoration receipt even on failure
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: arti-windows-compiler-restoration
+          name: arti-windows-compiler-restoration${{ matrix.native_inputs == 'runner' && '-runner-native-inputs' || '' }}
           path: ${{ runner.temp }}/pulqva-vs18101-recovery/restoration_receipt.json
           if-no-files-found: error
           retention-days: 30
@@ -104,6 +111,26 @@ jobs:
           echo "PULQVA_ARTI_BIN=$ARTI_BIN" >> "$GITHUB_ENV"
           echo "PULQVA_ARTI_VERSION=$ARTI_VERSION" >> "$GITHUB_ENV"
 
+      - name: Preserve exact registry source and Cargo lock identity
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $registry=Join-Path $env:USERPROFILE '.cargo/registry'
+          $records=@()
+          foreach($pattern in @('src/*/arti-2.6.0/Cargo.lock','cache/*/arti-2.6.0.crate')){
+            $files=@(Get-ChildItem -Path (Join-Path $registry $pattern) -File)
+            if($files.Count -ne 1){throw 'Arti registry source/lock missing or ambiguous'}
+            $records += [ordered]@{kind=$pattern;size=$files[0].Length;sha256=(Get-FileHash -LiteralPath $files[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
+          }
+          $records | ConvertTo-Json | Set-Content -LiteralPath "$env:RUNNER_TEMP/arti-registry-source-lock.json" -Encoding utf8
+
+      - name: Enforce qualified Windows source and security feature boundary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python tools/ci/arti_qualification_guard.py --target "$env:RUNNER_TEMP/pulqva-arti-target" --registry-receipt "$env:RUNNER_TEMP/arti-registry-source-lock.json" --qualification sidecars/arti/WINDOWS_IDENTITY_QUALIFICATION.json --output "$env:RUNNER_TEMP/arti-security-qualification.json"
+
       - name: Inventory Windows native build inputs
         if: always() && runner.os == 'Windows'
         shell: pwsh
@@ -126,7 +153,7 @@ jobs:
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: arti-windows-object-fingerprint
+          name: arti-windows-object-fingerprint${{ matrix.native_inputs == 'runner' && '-runner-native-inputs' || '' }}
           path: ${{ runner.temp }}/arti-native-object-fingerprint.json
           if-no-files-found: warn
           retention-days: 30
@@ -135,11 +162,14 @@ jobs:
         if: always() && runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: arti-windows-build-diagnostics
+          name: arti-windows-build-diagnostics${{ matrix.native_inputs == 'runner' && '-runner-native-inputs' || '' }}
           path: |
             ${{ runner.temp }}/arti-link.map
             ${{ runner.temp }}/arti-native-inputs.json
             ${{ runner.temp }}/arti-selected-compiler.json
+            ${{ runner.temp }}/arti-native-input-experiment.json
+            ${{ runner.temp }}/arti-registry-source-lock.json
+            ${{ runner.temp }}/arti-security-qualification.json
             ${{ runner.temp }}/pulqva-arti-target/release/build/liblzma-sys-*/output
           if-no-files-found: error
           retention-days: 30
@@ -248,7 +278,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: arti-identity-candidate-${{ matrix.platform }}
+          name: arti-identity-candidate-${{ matrix.platform }}${{ matrix.native_inputs == 'runner' && '-runner-native-inputs' || '' }}
           path: |
             ${{ env.PULQVA_ARTI_BIN }}
             ${{ runner.temp }}/arti-identity-${{ matrix.platform }}.txt

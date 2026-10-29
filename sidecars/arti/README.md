@@ -63,3 +63,13 @@ CI evidence.
 
 The sidecar check may execute `arti --version` and `arti help proxy` only as local CLI proof. It
 does not bootstrap Tor or make a Tor network connection.
+
+## Qualified Windows identity migration, 2026-10-30
+
+The current candidate identity is `ab592becfcd446742e7af59aaed20720b391f26b770fa34a0065259448c870ad`.
+The earlier identities above remain historical evidence. See
+`WINDOWS_IDENTITY_QUALIFICATION.json` and
+`decisions/ARTI_WINDOWS_IDENTITY_QUALIFICATION_2026-10-30.md` for provenance,
+known-advisory applicability and limits. The promotion requires its own exact-head
+CI; the full executable SHA gate remains mandatory. Source/lock and compiled
+security-sensitive feature exclusions are now checked before identity acceptance.

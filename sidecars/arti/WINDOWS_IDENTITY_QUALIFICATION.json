@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "utc": "2026-10-29T21:19:04.259466+00:00",
+  "pr": 100,
+  "head": "122f95df6ffd268910c05621cf4f4ab1c3d8989a",
+  "target": "x86_64-pc-windows-msvc",
+  "security_result": "PASS_SCOPED_KNOWN_ADVISORY_APPLICABILITY",
+  "candidate_sha256": "ab592becfcd446742e7af59aaed20720b391f26b770fa34a0065259448c870ad",
+  "findings": [
+    {
+      "id": "GHSA-qwgh-2vcv-g2f7",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Advisory mechanism requires inline cursor overwrite. Observed compiled block-buffer 0.10.4 has separate pos:u8 field, not inline cursor. Uncompiled 0.12.1 is outside reported affected range."
+    },
+    {
+      "id": "RUSTSEC-2023-0071",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Marvin RSA private-key decryption oracle absent: four inverse consumers reviewed; RSA signing/verification/key encoding only. Encrypted SSH private-key decoding uses symmetric cipher, not RSA PKCS1v15 decryption."
+    },
+    {
+      "id": "RUSTSEC-2024-0436",
+      "status": "MAINTENANCE_DEBT",
+      "evidence": "Maintenance advisory for compile-time paste macro, not a reported runtime vulnerability; retained as maintenance debt."
+    },
+    {
+      "id": "RUSTSEC-2026-0385",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Only inverse consumer universal-hash::verify calls CtEq on byte arrays through cmov; Choice bool conversion uses black_box; no affected mask calls; Windows x64 excludes 32-bit u128 issue."
+    },
+    {
+      "id": "RUSTSEC-2026-0386",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected tokio::io::unix::AsyncFd is not compiled on Windows."
+    },
+    {
+      "id": "RUSTSEC-2026-0391",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Codec creates owned Decoder::new, not borrowed with_context; no cross-request borrowed context reuse."
+    },
+    {
+      "id": "RUSTSEC-2026-0395",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected experimental APIs absent from sole inverse consumer and experimental feature not enabled."
+    },
+    {
+      "id": "RUSTSEC-2026-0396",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected seekable API absent from sole inverse consumer and seekable feature not enabled; input constructed with InBuffer::around."
+    },
+    {
+      "id": "RUSTSEC-2026-0397",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Only output constructor uses written_len() as OutBuffer position. WriteBuffer already-initialized written prefix excludes a gap beyond initialized bytes."
+    },
+    {
+      "id": "RUSTSEC-2026-0398",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected seekable API absent from sole inverse consumer and seekable feature not enabled; input constructed with InBuffer::around."
+    },
+    {
+      "id": "RUSTSEC-2026-0399",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected experimental APIs absent from sole inverse consumer and experimental feature not enabled."
+    },
+    {
+      "id": "RUSTSEC-2026-0400",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Owned streaming-only codec; no mixed one-shot dictionary methods on unfinished streaming contexts."
+    },
+    {
+      "id": "RUSTSEC-2026-0401",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "No dictionary-training API used by sole inverse consumer; zdict_builder feature disabled."
+    },
+    {
+      "id": "RUSTSEC-2026-0402",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected experimental APIs absent from sole inverse consumer and experimental feature not enabled."
+    },
+    {
+      "id": "RUSTSEC-2026-0403",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Complete inverse feature chain disables default features: compression-codecs -> zstd -> zstd-safe -> zstd-sys; no legacy feature enabled. Required malformed legacy-frame decoder absent."
+    },
+    {
+      "id": "RUSTSEC-2026-0404",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected experimental APIs absent from sole inverse consumer and experimental feature not enabled."
+    },
+    {
+      "id": "RUSTSEC-2026-0405",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected seekable API absent from sole inverse consumer and seekable feature not enabled; input constructed with InBuffer::around."
+    },
+    {
+      "id": "RUSTSEC-2026-0406",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "zstdmt feature disabled; no multithreaded context or NbWorkers reachable in compiled codec."
+    },
+    {
+      "id": "RUSTSEC-2026-0410",
+      "status": "NOT_AFFECTED_FOR_QUALIFIED_WINDOWS_RECIPE",
+      "evidence": "Affected allocator shim is wasm32 only; target is x86_64-pc-windows-msvc."
+    }
+  ],
+  "source_crate_sha256": "6c2d88fb27c29401cac3d384ef7c3998915192b9e08fda9823e02ca7d578be2e",
+  "rsa_decrypt_review": [
+    {
+      "file": "ssh-key-fork-arti-0.6.7/src/private.rs",
+      "line": 36,
+      "text": "//! let decrypted_key = encrypted_key.decrypt(password)?;"
+    },
+    {
+      "file": "ssh-key-fork-arti-0.6.7/src/private.rs",
+      "line": 355,
+      "text": "self.cipher.decrypt(&key, &iv, &mut buffer, self.auth_tag)?;"
+    }
+  ],
+  "limitations": [
+    "Static checksum-verified dependency/call/feature review; not a proof of absence of all vulnerabilities.",
+    "Not a live Tor/MVP or Linux security acceptance.",
+    "Re-review required on any source/lock/feature/target change.",
+    "Old SDK byte-changing input remains unproven; stable current provenance/replay evidence is separate."
+  ],
+  "cargo_lock_sha256": "939d35880fcb517cce8de9588d9f4b1cc2eb1aa548b88f0a1569da67ba1a0567",
+  "prior_sha256": "9245c7b5f71391238539bf2d78a492453cae66f978cf8e479039a26f1667f3df",
+  "byte_size": 19624960,
+  "independent_jobs": [
+    123635868309,
+    123663848878,
+    123663848481
+  ],
+  "production_replay": {
+    "run": 40951808158,
+    "head": "c96cfc70543eea762a6bc9d33a9f95acb593782d",
+    "job": 123721585206,
+    "sqlite_object_sha256": "78baee9501df02656726f9d37fb8af49ee6465c8589d46c94c502bbb20a7800e"
+  },
+  "promoted_ci_status": "PENDING"
+}
