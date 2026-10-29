@@ -24,11 +24,6 @@ jobs:
             executable: arti.exe
             feature_args: "--features static-sqlite"
             native_inputs: restored
-          - os: windows-latest
-            platform: windows-x86_64
-            executable: arti.exe
-            feature_args: "--features static-sqlite"
-            native_inputs: runner
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -130,6 +125,12 @@ jobs:
           }
           $records | ConvertTo-Json | Set-Content -LiteralPath "$env:RUNNER_TEMP/arti-registry-source-lock.json" -Encoding utf8
 
+      - name: Enforce qualified Windows source and security feature boundary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python tools/ci/arti_qualification_guard.py --target "$env:RUNNER_TEMP/pulqva-arti-target" --registry-receipt "$env:RUNNER_TEMP/arti-registry-source-lock.json" --qualification sidecars/arti/WINDOWS_IDENTITY_QUALIFICATION.json --output "$env:RUNNER_TEMP/arti-security-qualification.json"
+
       - name: Inventory Windows native build inputs
         if: always() && runner.os == 'Windows'
         shell: pwsh
@@ -168,6 +169,7 @@ jobs:
             ${{ runner.temp }}/arti-selected-compiler.json
             ${{ runner.temp }}/arti-native-input-experiment.json
             ${{ runner.temp }}/arti-registry-source-lock.json
+            ${{ runner.temp }}/arti-security-qualification.json
             ${{ runner.temp }}/pulqva-arti-target/release/build/liblzma-sys-*/output
           if-no-files-found: error
           retention-days: 30
