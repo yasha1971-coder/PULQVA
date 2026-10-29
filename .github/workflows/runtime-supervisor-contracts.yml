@@ -1,0 +1,29 @@
+name: Runtime supervisor contracts
+on:
+  pull_request:
+    paths:
+      - 'tools/ci/matrix_receipt.py'
+      - 'tools/ci/*runtime*.py'
+      - '.github/workflows/runtime-supervisor-contracts.yml'
+  push:
+    branches: ['fix/mvp-runtime-supervisor-admission']
+    paths:
+      - 'tools/ci/matrix_receipt.py'
+      - 'tools/ci/*runtime*.py'
+      - '.github/workflows/runtime-supervisor-contracts.yml'
+permissions:
+  contents: read
+jobs:
+  contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Existing receipt contracts
+        run: python -B -m unittest discover -s tools/ci -p test_matrix_receipt.py -v
+      - name: Admission and synthetic supervisor contracts
+        run: python -B -m unittest discover -s tools/ci -p "test_runtime*.py" -v

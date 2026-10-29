@@ -338,6 +338,71 @@ def write_exclusive(path: Path, value: dict) -> None:
         output.flush()
 
 
+
+class AdmissionWindow:
+    """Pure admission policy; caller must enforce deadlines and own process cleanup."""
+    def __init__(self, session_deadline, clock, *, readiness=90, capture=10, cleanup=20):
+        import math
+        require(all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                    and math.isfinite(v) and v > 0
+                    for v in (session_deadline, readiness, capture, cleanup)),
+                'invalid runtime budget')
+        self.deadline, self.clock = session_deadline, clock
+        self.readiness, self.capture, self.cleanup = readiness, capture, cleanup
+        self.submitted_at = None
+
+    def acknowledge_submission(self):
+        require(self.submitted_at is None, 'duplicate query submission')
+        now = self.clock()
+        import math
+        require(isinstance(now, (int, float)) and not isinstance(now, bool)
+                and math.isfinite(now) and now >= 0, 'invalid monotonic timestamp')
+        require(self.deadline - now >= self.readiness + self.capture + self.cleanup,
+                'insufficient time before query submission')
+        self.submitted_at = now
+        return now + self.readiness
+
+    def outcome(self, *, route_ready=False):
+        require(self.submitted_at is not None, 'submission not acknowledged')
+        now = self.clock()
+        import math
+        require(isinstance(now, (int, float)) and not isinstance(now, bool)
+                and math.isfinite(now) and now >= self.submitted_at,
+                'invalid monotonic timestamp')
+        if now >= self.deadline - self.cleanup:
+            return 'HARNESS_INTERRUPTED'
+        if route_ready:
+            return 'READY'
+        if now >= self.submitted_at + self.readiness:
+            return 'READINESS_WINDOW_EXPIRED'
+        return 'PENDING'
+
+
+class PersistedMatrix:
+    """Existing codec with exclusive pre-run plan and exception-safe closeout.
+
+    Does not launch/kill processes or authenticate collector observations.
+    A cleanup probe must be measured by the caller; missing data stays incomplete.
+    """
+    def __init__(self, plan, directory):
+        require(plan['probes'][-1]['id'] == 'CLEANUP', 'cleanup must be declared last')
+        self.recorder = MatrixRecorder(plan)
+        self.plan = self.recorder.manifest()
+        self.directory = Path(directory)
+        self.receipt = None
+
+    def __enter__(self):
+        write_exclusive(self.directory / 'manifest.json', self.plan)
+        return self.recorder
+
+    def __exit__(self, kind, value, traceback):
+        if kind is not None:
+            self.recorder.fail_closed('collector_exception')
+        self.receipt = self.recorder.close(
+            self.plan['identity'], early_exit_reason='collector_exit_before_probe')
+        write_exclusive(self.directory / 'matrix_receipt.json', self.receipt)
+        return False
+
 def main() -> int:
     import sys
     try:
@@ -352,3 +417,4 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
