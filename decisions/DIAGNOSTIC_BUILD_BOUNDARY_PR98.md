@@ -33,3 +33,20 @@ through a separate evidence-supported correction, without editing existing USB.
 Then run the predeclared GUI/readiness/countdown matrix sequentially per OS using
 owner's existing bounded-launch authorization. Never click Download. Reserve time
 for graceful close, child reaping, PID/session and TCP/UDP checks and checkpoint.
+
+## Artifact-export correction
+
+Run40878061471 successfully built both app binaries, but blanket post-build
+status cleanliness rejected untracked outputs before upload. Pinned tauri-build
+2.6.3 and tauri-utils2.9.3 explicitly write gen/schemas JSON in the source tree.
+This is generated output, not a license to permit changed source inputs.
+
+The build driver and immutable source now have separate checkout roots. Before
+build, all tracked source bytes are snapshotted; after build every tracked path
+and raw SHA256 must still match. Only four exact platform schema JSON paths are
+accepted as untracked outputs, with symlinks, invalid JSON, oversized files and
+unknown names rejected. Generated hashes and guard/snapshot identity enter the
+receipt. Six local probes passed; the symlink probe was skipped by Windows
+privilege constraints and remains required on Linux CI. No app-source, pin or
+lock change is made. Lost runner-local binaries require a new build wave; the
+old successful compile is preserved as evidence, not relabelled as an artifact.

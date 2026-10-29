@@ -179,12 +179,21 @@ jobs:
         os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: source
     env:
       PULQVA_FROZEN_SOURCE: b217e0816f217ca1e65b63283dcb4cd0ab0ac79a
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
+          path: driver
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
           ref: b217e0816f217ca1e65b63283dcb4cd0ab0ac79a
+          path: source
           persist-credentials: false
       - name: Assert frozen source and clean input tree
         shell: bash
@@ -192,6 +201,10 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$PULQVA_FROZEN_SOURCE"
           test -z "$(git status --porcelain)"
+          python ../driver/tools/ci/diagnostic_input_guard.py snapshot . "$RUNNER_TEMP/pr98-input-snapshot.json"
+      - name: Test strict tracked-input and generated-output guard
+        shell: bash
+        run: python ../driver/tools/ci/test_diagnostic_input_guard.py
       - name: Install pinned Rust
         shell: bash
         run: rustup toolchain install 1.91.0 --profile minimal
@@ -214,12 +227,15 @@ jobs:
           CARGO_TARGET_DIR: ${{ runner.temp }}/pr98-diagnostic-target
         shell: python
         run: |
-          import hashlib, json, os, pathlib, shutil, subprocess
-          root = pathlib.Path(os.environ["GITHUB_WORKSPACE"])
+          import hashlib, json, os, pathlib, shutil, subprocess, sys
+          root = pathlib.Path(os.environ["GITHUB_WORKSPACE"]) / "source"
           sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
           assert sha == os.environ["PULQVA_FROZEN_SOURCE"]
-          assert not subprocess.check_output(["git", "status", "--porcelain"], text=True).strip()
           windows = os.environ["RUNNER_OS"] == "Windows"
+          platform = "windows" if windows else "linux"
+          guard = root.parent / "driver" / "tools" / "ci" / "diagnostic_input_guard.py"
+          baseline = pathlib.Path(os.environ["RUNNER_TEMP"]) / "pr98-input-snapshot.json"
+          input_report = json.loads(subprocess.check_output([sys.executable,str(guard),"verify",str(root),str(baseline),platform],text=True))
           suffix = ".exe" if windows else ""
           built = pathlib.Path(os.environ["CARGO_TARGET_DIR"]) / "release" / ("pulqva-desktop" + suffix)
           assert built.is_file()
@@ -229,7 +245,7 @@ jobs:
           shutil.copyfile(built, app)
           paths = ["Cargo.lock", "apps/pulqva-desktop/src-tauri/Cargo.lock", "sidecars/arti/VERSION", "sidecars/arti/SHA256SUMS", "sidecars/arti/linux-x86_64/VERSION", "sidecars/yt-dlp/VERSION", "sidecars/yt-dlp/SHA256SUMS", "sidecars/ffmpeg/VERSION", "sidecars/ffmpeg/SHA256SUMS"]
           manifests = {p: hashlib.sha256((root/p).read_bytes()).hexdigest() for p in paths if (root/p).is_file()}
-          receipt = dict(schema=1, status="BUILT_NOT_LIVE_VERIFIED", source_sha=sha, workflow_sha=os.environ["GITHUB_SHA"], workflow_ref=os.environ.get("GITHUB_WORKFLOW_REF"), run_id=os.environ["GITHUB_RUN_ID"], attempt=os.environ["GITHUB_RUN_ATTEMPT"], job=os.environ["GITHUB_JOB"], runner_os=os.environ["RUNNER_OS"], runner_arch=os.environ["RUNNER_ARCH"], rustc=subprocess.check_output(["rustc","+1.91.0","--version"],text=True).strip(), cargo=subprocess.check_output(["cargo","+1.91.0","--version"],text=True).strip(), build_flags="--release --locked", app=app.name, app_bytes=app.stat().st_size, app_sha256=hashlib.sha256(app.read_bytes()).hexdigest(), manifests=manifests, checkout_clean=True, source_overlay=None, bundled_sidecars=False, runtime_executed=False, diagnostics_opt_in="PULQVA_TOR_DIAGNOSTICS=1", linux_pairing="Before runtime verify compiled root Arti digest against chosen sidecar; historical Linux package used a manifest overlay not present in this exact-tree build.")
+          receipt = dict(schema=1, status="BUILT_NOT_LIVE_VERIFIED", source_sha=sha, workflow_sha=os.environ["GITHUB_SHA"], workflow_ref=os.environ.get("GITHUB_WORKFLOW_REF"), run_id=os.environ["GITHUB_RUN_ID"], attempt=os.environ["GITHUB_RUN_ATTEMPT"], job=os.environ["GITHUB_JOB"], runner_os=os.environ["RUNNER_OS"], runner_arch=os.environ["RUNNER_ARCH"], rustc=subprocess.check_output(["rustc","+1.91.0","--version"],text=True).strip(), cargo=subprocess.check_output(["cargo","+1.91.0","--version"],text=True).strip(), build_flags="--release --locked", app=app.name, app_bytes=app.stat().st_size, app_sha256=hashlib.sha256(app.read_bytes()).hexdigest(), manifests=manifests, checkout_clean_before_build=True, tracked_inputs_unchanged=True, generated_outputs=input_report['generated'], input_snapshot_sha256=hashlib.sha256(baseline.read_bytes()).hexdigest(), guard_sha256=hashlib.sha256(guard.read_bytes()).hexdigest(), source_overlay=None, bundled_sidecars=False, runtime_executed=False, diagnostics_opt_in="PULQVA_TOR_DIAGNOSTICS=1", linux_pairing="Before runtime verify compiled root Arti digest against chosen sidecar; historical Linux package used a manifest overlay not present in this exact-tree build.")
           (out/"build-receipt.json").write_text(json.dumps(receipt,indent=2)+"\n", encoding="utf-8")
           print(json.dumps(receipt,indent=2))
       - uses: actions/upload-artifact@v4
