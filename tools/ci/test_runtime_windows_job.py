@@ -10,11 +10,49 @@ import time
 import unittest
 from runtime_windows_job import WindowsJob
 
+
+def cleanup_owned_fixture(directory, *, clock=time.monotonic, sleep=time.sleep, timeout=4):
+    """Wait only for transient release of this test-owned TemporaryDirectory.
+
+    Job emptiness does not prove that Windows has released a cwd handle.
+    Never ignore a persistent cleanup failure or touch any other directory.
+    """
+    deadline=clock()+timeout
+    while True:
+        try:
+            directory.cleanup()
+            return
+        except PermissionError:
+            if clock()>=deadline:
+                raise
+            sleep(.02)
+
+class FixtureReleaseTests(unittest.TestCase):
+    def test_transient_permission_error_is_retried(self):
+        class Fixture:
+            calls=0
+            def cleanup(self):
+                self.calls+=1
+                if self.calls<3:raise PermissionError('synthetic release')
+        fixture=Fixture();now=[0]
+        cleanup_owned_fixture(fixture,clock=lambda:now[0],
+                              sleep=lambda delay:now.__setitem__(0,now[0]+delay))
+        self.assertEqual(fixture.calls,3)
+
+    def test_persistent_permission_error_remains_failure(self):
+        class Fixture:
+            def cleanup(self):raise PermissionError('synthetic still held')
+        now=[0]
+        with self.assertRaises(PermissionError):
+            cleanup_owned_fixture(Fixture(),clock=lambda:now[0],
+                sleep=lambda delay:now.__setitem__(0,now[0]+delay),timeout=.04)
+
+
 @unittest.skipUnless(os.name=='nt','Windows native job API')
 class WindowsJobTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(cleanup_owned_fixture, self.tmp)
         self.root=Path(self.tmp.name)
 
     def wait_for(self, fn, timeout=4):
