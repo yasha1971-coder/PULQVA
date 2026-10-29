@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "status": "PREPARED_NOT_EXECUTED",
+  "boundary": "Isolated production SQLite object reproduction through cc1.4.0",
+  "base": "806a0ec6c672b3143605e02dccfa5ae2998e5fa0",
+  "hypothesis": "Realcc builder and source/output naming account for difference from prior hand-built method object",
+  "expected_object_sha256": "78baee9501df02656726f9d37fb8af49ee6465c8589d46c94c502bbb20a7800e",
+  "positive_negative_method_predecessor": 40946845872,
+  "controls": [
+    "Verified crate/lock",
+    "Exactcc/find-msvc/shlex versions with active dependency checksum validation",
+    "Authenticated64-fileMSVC",
+    "Rust1.91",
+    "SameSDKfamily",
+    "No fullArti"
+  ],
+  "limitations": [
+    "Historical SDK still unknown",
+    "Exact old production argv not retained; reconstructed recipe is under test"
+  ],
+  "next": "Inspect receipt and object versus expected production digest; if mismatch compare command/COFF sections before another build"
+}

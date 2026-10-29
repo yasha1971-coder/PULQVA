@@ -1,0 +1,30 @@
+name: SQLite production object replay
+on:
+  push:
+    branches: ['ci/arti-sqlite-production-replay']
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pinned Rust
+        shell: pwsh
+        run: rustup toolchain install 1.91.0 --profile minimal
+      - name: Authenticated compiler
+        shell: pwsh
+        run: ./scripts/restore_arti_windows_compiler.ps1
+      - name: Replay only SQLite through original cc version
+        shell: pwsh
+        timeout-minutes: 8
+        run: python -B tools/ci/arti_sqlite_production_replay.py
+      - name: Preserve all replay evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arti-sqlite-production-replay
+          path: ${{ runner.temp }}/pulqva-sqlite-production-replay
+          if-no-files-found: error
+          retention-days: 90
