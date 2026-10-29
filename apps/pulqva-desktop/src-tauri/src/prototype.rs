@@ -197,10 +197,25 @@ fn search_impl(query: String, resources: PathBuf, app_data: PathBuf) -> Result<A
         TorSocksEndpoint::new(DEFAULT_TOR_SOCKS_PORT).map_err(DownloadActionError::from)?);
     let mut arti = launch_prepared_arti(prepare_arti_runtime(arti_plan).map_err(DownloadActionError::from)?)
         .map_err(DownloadActionError::from)?;
-    let ready = match verify_tor_readiness(&mut arti, Duration::from_secs(90)) {
+    let diagnostics = crate::tor_diagnostics::enabled(
+        std::env::var_os("PULQVA_TOR_DIAGNOSTICS").as_deref());
+    let (readiness, trace) = if diagnostics {
+        let (result, trace) = pulqva_privacy::verify_tor_readiness_observed(
+            &mut arti, Duration::from_secs(90));
+        (result, Some(trace))
+    } else {
+        (verify_tor_readiness(&mut arti, Duration::from_secs(90)), None)
+    };
+    let ready = match readiness {
         Ok(ready) => ready,
-        Err(_) => {
-            arti.stop_and_wait().map_err(|_| error("tor-cleanup-failed", "Tor shutdown could not be confirmed."))?;
+        Err(source) => {
+            let cleanup = arti.stop_and_wait();
+            if let Some(trace) = trace {
+                // Cleanup precedes diagnostic I/O; a failed sink cannot skip it.
+                let _ = crate::tor_diagnostics::write_failure(
+                    &mut std::io::stderr().lock(), &source, &trace, cleanup.is_ok());
+            }
+            cleanup.map_err(|_| error("tor-cleanup-failed", "Tor shutdown could not be confirmed."))?;
             return Err(error("tor-not-ready", "Tor could not establish the required route."));
         }
     };

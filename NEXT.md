@@ -14,3 +14,18 @@ Owner-dispatched workflow 37769355186, attempt 1, source 3ca7a85ef5de3f9108cc321
 Method rule: reject mismatched comparison conditions, verify method before costly run, freeze evidence generation, and make any correction in a separate generation. No blind reruns.
 
 ONE NEXT ACTION for lane A: reconcile its task/INDEX and relevant integration state against live heads before selecting a new technical milestone. Do not repeat the accepted live run. Keep unrelated lane and FFmpeg work isolated.
+
+## Owner-requested Tor diagnostics — 2026-10-29
+
+Separate diagnostic candidate: exact opt-in PULQVA_TOR_DIAGNOSTICS=1 emits only
+bounded, typed readiness metadata to stderr after stopping/waiting Arti on failure.
+No raw errors, paths, queries, route fallback, sidecar repinning or USB changes.
+Four native formatter tests passed on Windows against the real privacy crate.
+Full Cargo restore on exFAT failed setting adler2 mtime (OS error 87); lock unchanged.
+NEXT: inspect exact-head desktop-shell-check, including Windows/Linux diagnostic
+unit jobs and full desktop integration. Do not call native integration or live
+Tor verified before observed evidence. Active product tasks and verified anchor
+above remain unchanged. No prototype launch without separate owner approval;
+every later launch must include verified process/port CLEANUP. Diagnostic opt-in
+logs are local test evidence; retain only the owned test logs, then owner-approved
+removal after diagnosis. Default mode emits no new diagnostic trace.
