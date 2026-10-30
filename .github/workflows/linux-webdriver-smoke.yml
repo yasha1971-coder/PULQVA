@@ -21,7 +21,7 @@ jobs:
       - name: Install runner-only native GUI test tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth webkit2gtk-driver libwebkit2gtk-4.1-0 libayatana-appindicator3-1
+          sudo apt-get install -y xvfb xauth dbus-x11 at-spi2-core webkit2gtk-driver libwebkit2gtk-4.1-0 libayatana-appindicator3-1
           rustup toolchain install 1.92.0 --profile minimal
           cargo +1.92.0 install tauri-driver --version 2.0.6 --locked
       - uses: actions/download-artifact@v4
@@ -50,7 +50,7 @@ jobs:
           (root/"launch.json").write_text(json.dumps(manifest,indent=2))
       - name: Exercise real native window under independent guardian and Xvfb
         run: |
-          xvfb-run -a python3 -B tools/ci/linux_guardian.py "$RUNNER_TEMP/pulqva-wd/launch.json"
+          dbus-run-session -- xvfb-run -a python3 -B tools/ci/linux_guardian.py "$RUNNER_TEMP/pulqva-wd/launch.json"
           python3 - <<'PY'
           import json,os,pathlib
           r=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
