@@ -19,8 +19,11 @@ use crate::{
 #[derive(Debug)]
 pub struct RunningArti {
     child: Child,
-    plan: ArtiRuntimePlan,
+    plan: OwnedTorPlan,
 }
+
+#[derive(Debug)]
+enum OwnedTorPlan { Arti(ArtiRuntimePlan), Official(TorSocksEndpoint) }
 
 impl RunningArti {
     pub fn id(&self) -> u32 {
@@ -28,7 +31,7 @@ impl RunningArti {
     }
 
     pub(crate) fn endpoint(&self) -> TorSocksEndpoint {
-        self.plan.socks_endpoint()
+        match &self.plan { OwnedTorPlan::Arti(plan) => plan.socks_endpoint(), OwnedTorPlan::Official(endpoint) => *endpoint }
     }
 
     pub fn try_wait(&mut self) -> Result<Option<ExitStatus>, io::Error> {
@@ -44,16 +47,15 @@ impl RunningArti {
     /// child, and restarts the same executable/arguments. No shell or direct
     /// fallback is involved.
     pub(crate) fn activate_bootstrap(&mut self) -> Result<(), ArtiProcessError> {
-        let rendered = self
-            .plan
-            .render_bootstrap_config()
-            .map_err(ArtiProcessError::RenderConfig)?;
-
-        materialize_arti_config_bytes(self.plan.config_file(), rendered.as_bytes())
+        let plan = match &self.plan {
+            OwnedTorPlan::Arti(plan) => plan.clone(),
+            OwnedTorPlan::Official(_) => return Ok(()),
+        };
+        let rendered = plan.render_bootstrap_config().map_err(ArtiProcessError::RenderConfig)?;
+        materialize_arti_config_bytes(plan.config_file(), rendered.as_bytes())
             .map_err(ArtiProcessError::MaterializeConfig)?;
-
         let _ = self.stop_child()?;
-        self.child = spawn_plan(&self.plan)?;
+        self.child = spawn_plan(&plan)?;
         Ok(())
     }
 
@@ -100,7 +102,7 @@ pub fn launch_prepared_arti(
     let plan = prepared.plan().clone();
     let child = spawn_plan(&plan)?;
 
-    Ok(RunningArti { child, plan })
+    Ok(RunningArti { child, plan: OwnedTorPlan::Arti(plan) })
 }
 
 fn spawn_plan(plan: &ArtiRuntimePlan) -> Result<Child, ArtiProcessError> {
@@ -147,5 +149,38 @@ impl Error for ArtiProcessError {
             Self::MaterializeConfig(source) => Some(source),
             Self::Io { source, .. } => Some(source),
         }
+    }
+}
+
+/// Keep the owned handle/readiness supervision shared; official Tor boots once,
+/// while Arti retains its existing deferred activation protocol.
+pub fn launch_prepared_official_tor(
+    prepared: crate::PreparedOfficialTorRuntime,
+) -> Result<RunningArti, ArtiProcessError> {
+    let child = Command::new(&prepared.executable)
+        .arg("-f").arg(&prepared.config)
+        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+        .spawn().map_err(|source| ArtiProcessError::Io { operation: "spawn prepared official Tor", source })?;
+    Ok(RunningArti { child, plan: OwnedTorPlan::Official(prepared.endpoint) })
+}
+
+#[cfg(test)]
+mod official_lifecycle_tests {
+    use super::*;
+    #[test]
+    fn repeated_readiness_activation_keeps_same_owned_official_child() {
+        let child = Command::new(std::env::current_exe().unwrap()).arg("--list")
+            .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap();
+        let endpoint = TorSocksEndpoint::new(19050).unwrap();
+        let mut running = RunningArti { child, plan: OwnedTorPlan::Official(endpoint) };
+        let pid = running.id();
+        let first = running.activate_bootstrap();
+        let second = running.activate_bootstrap();
+        let same_child = running.id() == pid;
+        let same_endpoint = running.endpoint() == endpoint;
+        let stopped = running.stop_and_wait();
+        assert!(first.is_ok() && second.is_ok());
+        assert!(same_child && same_endpoint);
+        assert!(stopped.is_ok());
     }
 }

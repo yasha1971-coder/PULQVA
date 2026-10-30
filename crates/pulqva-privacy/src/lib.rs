@@ -12,6 +12,7 @@ mod arti_readiness;
 mod arti_ready;
 mod arti_runtime;
 mod official_tor_config;
+mod official_tor_prepared;
 #[cfg(test)]
 mod ffmpeg_real_proof;
 mod ffmpeg_completed;
@@ -33,6 +34,8 @@ pub use arti_readiness::{TorReadinessError, TorReadinessIoKind, TorReadinessLoop
 pub use arti_ready::ReadyTorTransport;
 pub use arti_runtime::ArtiRuntimePlan;
 pub use official_tor_config::render_official_tor_config;
+pub use official_tor_prepared::{PreparedOfficialTorRuntime, prepare_official_tor_runtime};
+pub use arti_launcher::launch_prepared_official_tor;
 pub use ffmpeg_completed::{CompletedFfmpegRemuxResult, FfmpegRemuxArtifactError};
 pub use ffmpeg_process::{FfmpegCompletionError, FfmpegProcessError, RunningFfmpeg, launch_ffmpeg_remux};
 pub use ffmpeg_remux::{FfmpegRemuxContainer, FfmpegRemuxPlan, FfmpegRemuxPlanError};
