@@ -220,11 +220,15 @@ fn search_impl(query: String, resources: PathBuf, app_data: PathBuf) -> Result<A
         }
     };
     let owned_arti = Arc::new(Mutex::new(Some(arti)));
+    let mut search_failure = None;
     let discovered = (|| {
         let transport = OwnedTorTransport { arti: Arc::clone(&owned_arti) };
         let mut search = CommonsSearch::new(transport, ready);
         let choices = request_choices(&mut search, intent.query())
-            .map_err(|_| error("search-failed", "No usable Commons results, or Tor search failed. No fallback was used."))?;
+            .map_err(|_| {
+                search_failure = search.last_error();
+                error("search-failed", "No usable Commons results, or Tor search failed. No fallback was used.")
+            })?;
         let mut sessions = discovery_session::DiscoverySessions::default();
         let id = sessions.insert(intent.query(), choices.candidates())
             .map_err(|_| error("session-failed", "Could not establish a bounded search session."))?;
@@ -238,9 +242,13 @@ fn search_impl(query: String, resources: PathBuf, app_data: PathBuf) -> Result<A
         }
         Err(failure) => {
             let mut owner = owned_arti.try_lock().map_err(busy)?;
-            if let Some(arti) = owner.take() {
-                arti.stop_and_wait().map_err(|_| error("tor-cleanup-failed", "Tor shutdown could not be confirmed."))?;
+            let cleanup = if let Some(arti) = owner.take() { arti.stop_and_wait().map(|_| ()) } else { Ok(()) };
+            if diagnostics && failure.code == "search-failed" {
+                // Existing opt-in sink; fixed enum only, after owned-child cleanup.
+                let _ = crate::tor_diagnostics::write_search_failure(
+                    &mut std::io::stderr().lock(), search_failure, cleanup.is_ok());
             }
+            cleanup.map_err(|_| error("tor-cleanup-failed", "Tor shutdown could not be confirmed."))?;
             Err(failure)
         }
     }

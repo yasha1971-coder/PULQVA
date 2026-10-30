@@ -1,129 +1,46 @@
-name: Linux native WebDriver smoke
+name: Linux search diagnostic candidate
 on:
-  pull_request:
-    paths:
-      - "tools/ci/tauri_webdriver_smoke.py"
-      - ".github/workflows/linux-webdriver-smoke.yml"
+  push:
+    branches: [diag/linux-search-category-20261030]
 permissions:
   contents: read
-  actions: read
 jobs:
-  window-input:
+  build-only:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Prepare evidence before any installation or build
-        run: |
-          mkdir "$RUNNER_TEMP/pulqva-wd"
-          python3 - <<'PY'
-          import json,pathlib,os,subprocess
-          out=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
-          sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
-          (out/"prebuild-plan.json").write_text(json.dumps({"source_sha":sha,"task":"Linux worker regression -> locked release -> real native GUI Tor E2E","runtime_executed":False,"kernel_pins_changes":"none committed","linux_arti_identity":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01"},indent=2))
-          PY
-      - name: Test actual capture environment boundary
-        run: python3 -m unittest discover -s tools/ci -p test_linux_capture_environment.py -v
-      - name: Install runner-only native GUI test tools
+      - name: Prepare evidence
+        run: mkdir -p evidence
+      - name: Existing Linux build prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth dbus-x11 at-spi2-core webkit2gtk-driver libwebkit2gtk-4.1-0 libayatana-appindicator3-1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libglib2.0-dev libssl-dev pkg-config build-essential
-          pkg-config --modversion glib-2.0 gobject-2.0 gtk+-3.0 webkit2gtk-4.1 | tee "$RUNNER_TEMP/pulqva-wd/build-prerequisites.log"
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev pkg-config build-essential libssl-dev
           rustup toolchain install 1.92.0 --profile minimal
-          cargo +1.92.0 install tauri-driver --version 2.0.6 --locked
-      - uses: actions/download-artifact@v4
-        with:
-          name: pulqva-linux-x86_64-portable-candidate-4618e013f55a5430ccba06f32b4a8f3b3e18eb83
-          run-id: 40968803164
-          github-token: ${{ github.token }}
-          path: accepted-input
-      - name: Test Linux command worker and build candidate with existing Linux identity binding
-        shell: bash
+      - name: Same accepted Linux Arti binding and diagnostic tests
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import pathlib,hashlib,json
+          import pathlib,hashlib,json,subprocess
           p=pathlib.Path("sidecars/arti/SHA256SUMS");before=p.read_bytes()
-          lines=before.decode().splitlines();asset="linux-x86_64/arti"
-          assert sum(len(v.split())==2 and v.split()[1]==asset for v in lines)==1
           pin="5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01"
-          after="\n".join(pin+"  "+asset if len(v.split())==2 and v.split()[1]==asset else v for v in lines)+"\n"
-          p.write_text(after)
-          pathlib.Path("linux-input-overlay.json").write_text(json.dumps({"path":str(p),"reason":"same accepted Linux Arti2.7 build binding; no new identity","before_sha256":hashlib.sha256(before).hexdigest(),"after_sha256":hashlib.sha256(p.read_bytes()).hexdigest(),"arti_sha256":pin},indent=2))
+          lines=before.decode().splitlines()
+          assert sum(len(x.split())==2 and x.split()[1]=="linux-x86_64/arti" for x in lines)==1
+          p.write_text("\n".join(pin+"  linux-x86_64/arti" if len(x.split())==2 and x.split()[1]=="linux-x86_64/arti" else x for x in lines)+"\n")
+          pathlib.Path("evidence/input.json").write_text(json.dumps({"source_sha":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),"arti_sha256":pin,"overlay_before":hashlib.sha256(before).hexdigest(),"overlay_after":hashlib.sha256(p.read_bytes()).hexdigest(),"gui_run":False},indent=2))
           PY
-          cargo +1.92.0 test --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml linux_backend_context_tests -- --nocapture 2>&1 | tee "$RUNNER_TEMP/pulqva-wd/build-worker-tests.log"
-          cargo +1.92.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml 2>&1 | tee "$RUNNER_TEMP/pulqva-wd/build-release.log"
-      - name: Stage exact accepted app without changing its source or pins
-        shell: python
-        run: |
-          import pathlib,zipfile,hashlib,json,os
-          archive=pathlib.Path("accepted-input/PULQVA-linux-x86_64-portable-candidate.zip")
-          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
-          assert root.is_dir();app=root/"bin/PULQVA";app.parent.mkdir()
-          with zipfile.ZipFile(archive) as z:
-            assert z.namelist().count("PULQVA")==1
-            app.write_bytes(pathlib.Path("apps/pulqva-desktop/src-tauri/target/release/pulqva-desktop").read_bytes())
-            identities={
-              "sidecars/arti/linux-x86_64/arti":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01",
-              "sidecars/yt-dlp/linux-x86_64/yt-dlp":"58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a",
-              "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz":"68ee646831adaae2495618346f3bba94ff207ff83bbd34d643e7004730d66269"}
-            for name,digest in identities.items():
-              assert z.namelist().count(name)==1
-              data=z.read(name);assert hashlib.sha256(data).hexdigest()==digest
-              target=root/"lib/PULQVA"/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
-              target.chmod(0o755 if name.endswith(("/arti","/yt-dlp")) else 0o644)
-          import subprocess
-          source_sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
-          receipt={"source_sha":source_sha,"app_sha256":hashlib.sha256(app.read_bytes()).hexdigest(),"app_bytes":app.stat().st_size,"build_flags":"--release --locked","source_overlay":json.loads(pathlib.Path("linux-input-overlay.json").read_text()),"runtime_executed":False,"unit_test":"linux_backend_context_tests"}
-          (root/"build-receipt.json").write_text(json.dumps(receipt,indent=2))
-          app.chmod(0o755)
-          product=json.loads(pathlib.Path("apps/pulqva-desktop/src-tauri/tauri.conf.json").read_text())["productName"]
-          assert product=="PULQVA"
-          resource_root=(app.parent/"../lib"/product).resolve(strict=True)
-          assert resource_root==(root/"lib/PULQVA").resolve()
-          verified={}
-          for name,digest in identities.items():
-            item=resource_root/name
-            assert item.is_file() and not item.is_symlink()
-            assert hashlib.sha256(item.read_bytes()).hexdigest()==digest
-            verified[name]=digest
-          (root/"resource-layout.json").write_text(json.dumps({"layout":"bin/PULQVA + lib/PULQVA/sidecars","resource_root":str(resource_root),"verified_members":verified},indent=2))
-          case=root/"case";case.mkdir()
-          env={k:str(root/k) for k in ["HOME","XDG_CONFIG_HOME","XDG_DATA_HOME","XDG_CACHE_HOME"]}
-          for v in env.values():pathlib.Path(v).mkdir(mode=0o700)
-          downloads=pathlib.Path(env["HOME"])/"Downloads";downloads.mkdir(mode=0o700)
-          (pathlib.Path(env["XDG_CONFIG_HOME"])/"user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="'+str(downloads)+'"'+chr(10))
-          env["TAURI_WEBVIEW_AUTOMATION"]="true";env["LIBGL_ALWAYS_SOFTWARE"]="1"
-          manifest=dict(directory=str(case),cwd=str(pathlib.Path.cwd()),argv=["python3","-B","tools/ci/tauri_webdriver_smoke.py",str(app),str(root/"gui")],log_limit=4194304,deadline_seconds=220,isolated_environment=env)
-          (root/"launch.json").write_text(json.dumps(manifest,indent=2))
-      - name: Exercise real native window under independent guardian and Xvfb
-        run: |
-          dbus-run-session -- xvfb-run -a python3 -B tools/ci/linux_guardian.py "$RUNNER_TEMP/pulqva-wd/launch.json"
-          python3 - <<'PY'
-          import json,os,pathlib
-          r=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
-          s=json.loads((r/"gui/smoke-receipt.json").read_text())
-          g=json.loads((r/"case/guard-result.json").read_text())
-          assert s["gui_window_input"]=="PASS" and s["real_tor_e2e"]=="PASS" and s["cleanup"]=="PASS"
-          assert g["cleanup_pass"] and not g["members_after"] and g["identities_gone"]
-          PY
+          cargo +1.92.0 test --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml tor_diagnostics -- --nocapture 2>&1 | tee evidence/tests.log
+          cargo +1.92.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml 2>&1 | tee evidence/build.log
+          cp apps/pulqva-desktop/src-tauri/target/release/pulqva-desktop evidence/PULQVA-diagnostic
+          sha256sum evidence/PULQVA-diagnostic > evidence/SHA256SUMS
+          git diff --exit-code -- Cargo.lock apps/pulqva-desktop/src-tauri/Cargo.lock kernel PROJECT_STATE.json NEXT.md
+          rustc +1.92.0 -Vv > evidence/rust.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: linux-native-webdriver-smoke-${{ github.event.pull_request.head.sha }}
-          path: |
-            ${{ runner.temp }}/pulqva-wd/prebuild-plan.json
-            ${{ runner.temp }}/pulqva-wd/build-*.log
-            ${{ runner.temp }}/pulqva-wd/gui/
-            ${{ runner.temp }}/pulqva-wd/case/
-            ${{ runner.temp }}/pulqva-wd/launch.json
-            ${{ runner.temp }}/pulqva-wd/resource-layout.json
-            ${{ runner.temp }}/pulqva-wd/build-receipt.json
-            ${{ runner.temp }}/pulqva-wd/bin/PULQVA
-            ${{ runner.temp }}/pulqva-wd/XDG_CONFIG_HOME/user-dirs.dirs
-            ${{ runner.temp }}/pulqva-wd/HOME/Downloads/
+          name: linux-search-diagnostic-${{ github.sha }}
+          path: evidence/
           if-no-files-found: error
           retention-days: 14
