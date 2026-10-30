@@ -16,6 +16,8 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+      - name: Test actual capture environment boundary
+        run: python3 -m unittest discover -s tools/ci -p test_linux_capture_environment.py -v
       - name: Install runner-only native GUI test tools
         run: |
           sudo apt-get update

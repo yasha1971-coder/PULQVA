@@ -1,9 +1,8 @@
 """Linux adaptation of the accepted bounded capture_child collector."""
 import json,os,pathlib,subprocess,sys,threading,time
 m=json.loads(pathlib.Path(sys.argv[1]).read_text());root=pathlib.Path(m["directory"])
-allowed={"PATH","LANG","LC_ALL","DISPLAY","WAYLAND_DISPLAY","XDG_RUNTIME_DIR","DBUS_SESSION_BUS_ADDRESS"}
-env={k:v for k,v in os.environ.items() if k in allowed}
-env.update(m.get("isolated_environment",{}));env["PULQVA_TOR_DIAGNOSTICS"]="1"
+from linux_capture_environment import capture_environment
+env=capture_environment(m)
 child=subprocess.Popen(m["argv"],cwd=m["cwd"],env=env,stdin=subprocess.DEVNULL,
  stdout=subprocess.PIPE,stderr=subprocess.PIPE,close_fds=True,start_new_session=True)
 (root/"child.json").open("x").write(json.dumps({"pid":child.pid,"environment_keys":sorted(env)}))
