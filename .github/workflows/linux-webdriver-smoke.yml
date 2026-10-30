@@ -40,13 +40,24 @@ jobs:
           with zipfile.ZipFile(archive) as z:
             assert z.namelist().count("PULQVA")==1
             app.write_bytes(z.read("PULQVA"))
+            identities={
+              "sidecars/arti/linux-x86_64/arti":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01",
+              "sidecars/yt-dlp/linux-x86_64/yt-dlp":"58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a",
+              "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz":"68ee646831adaae2495618346f3bba94ff207ff83bbd34d643e7004730d66269"}
+            for name,digest in identities.items():
+              assert z.namelist().count(name)==1
+              data=z.read(name);assert hashlib.sha256(data).hexdigest()==digest
+              target=root/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
+              target.chmod(0o755 if name.endswith(("/arti","/yt-dlp")) else 0o644)
           assert hashlib.sha256(app.read_bytes()).hexdigest()=="3ee8c8d56186f933f4abfbde9e81fc3b7ada56d363072bd4369001117c35649c"
           app.chmod(0o755)
           case=root/"case";case.mkdir()
           env={k:str(root/k) for k in ["HOME","XDG_CONFIG_HOME","XDG_DATA_HOME","XDG_CACHE_HOME"]}
           for v in env.values():pathlib.Path(v).mkdir(mode=0o700)
+          downloads=pathlib.Path(env["HOME"])/"Downloads";downloads.mkdir(mode=0o700)
+          (pathlib.Path(env["XDG_CONFIG_HOME"])/"user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="'+str(downloads)+'"\\n')
           env["TAURI_WEBVIEW_AUTOMATION"]="true";env["LIBGL_ALWAYS_SOFTWARE"]="1"
-          manifest=dict(directory=str(case),cwd=str(pathlib.Path.cwd()),argv=["python3","-B","tools/ci/tauri_webdriver_smoke.py",str(app),str(root/"gui")],log_limit=4194304,deadline_seconds=55,isolated_environment=env)
+          manifest=dict(directory=str(case),cwd=str(pathlib.Path.cwd()),argv=["python3","-B","tools/ci/tauri_webdriver_smoke.py",str(app),str(root/"gui")],log_limit=4194304,deadline_seconds=220,isolated_environment=env)
           (root/"launch.json").write_text(json.dumps(manifest,indent=2))
       - name: Exercise real native window under independent guardian and Xvfb
         run: |
@@ -56,7 +67,7 @@ jobs:
           r=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
           s=json.loads((r/"gui/smoke-receipt.json").read_text())
           g=json.loads((r/"case/guard-result.json").read_text())
-          assert s["gui_window_input"]=="PASS" and s["cleanup"]=="PASS"
+          assert s["gui_window_input"]=="PASS" and s["real_tor_e2e"]=="PASS" and s["cleanup"]=="PASS"
           assert g["cleanup_pass"] and not g["members_after"] and g["identities_gone"]
           PY
       - uses: actions/upload-artifact@v4
