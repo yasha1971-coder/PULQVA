@@ -1,0 +1,66 @@
+name: Linux native WebDriver smoke
+on:
+  pull_request:
+    paths:
+      - "tools/ci/tauri_webdriver_smoke.py"
+      - ".github/workflows/linux-webdriver-smoke.yml"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  window-input:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Install runner-only native GUI test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth webkit2gtk-driver libwebkit2gtk-4.1-0 libayatana-appindicator3-1
+          rustup toolchain install 1.92.0 --profile minimal
+          cargo +1.92.0 install tauri-driver --version 2.0.6 --locked
+      - uses: actions/download-artifact@v4
+        with:
+          name: pulqva-linux-x86_64-portable-candidate-4618e013f55a5430ccba06f32b4a8f3b3e18eb83
+          run-id: 40968803164
+          github-token: ${{ github.token }}
+          path: accepted-input
+      - name: Stage exact accepted app without changing its source or pins
+        shell: python
+        run: |
+          import pathlib,zipfile,hashlib,json,os
+          archive=pathlib.Path("accepted-input/PULQVA-linux-x86_64-portable-candidate.zip")
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
+          root.mkdir(exist_ok=False);app=root/"PULQVA"
+          with zipfile.ZipFile(archive) as z:
+            assert z.namelist().count("PULQVA")==1
+            app.write_bytes(z.read("PULQVA"))
+          assert hashlib.sha256(app.read_bytes()).hexdigest()=="3ee8c8d56186f933f4abfbde9e81fc3b7ada56d363072bd4369001117c35649c"
+          app.chmod(0o755)
+          case=root/"case";case.mkdir()
+          env={k:str(root/k) for k in ["HOME","XDG_CONFIG_HOME","XDG_DATA_HOME","XDG_CACHE_HOME"]}
+          for v in env.values():pathlib.Path(v).mkdir(mode=0o700)
+          env["TAURI_WEBVIEW_AUTOMATION"]="true";env["LIBGL_ALWAYS_SOFTWARE"]="1"
+          manifest=dict(directory=str(case),cwd=str(pathlib.Path.cwd()),argv=["python3","-B","tools/ci/tauri_webdriver_smoke.py",str(app),str(root/"gui")],log_limit=4194304,deadline_seconds=55,isolated_environment=env)
+          (root/"launch.json").write_text(json.dumps(manifest,indent=2))
+      - name: Exercise real native window under independent guardian and Xvfb
+        run: |
+          xvfb-run -a python3 -B tools/ci/linux_guardian.py "$RUNNER_TEMP/pulqva-wd/launch.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          r=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
+          s=json.loads((r/"gui/smoke-receipt.json").read_text())
+          g=json.loads((r/"case/guard-result.json").read_text())
+          assert s["gui_window_input"]=="PASS" and s["cleanup"]=="PASS"
+          assert g["cleanup_pass"] and not g["members_after"] and g["identities_gone"]
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-native-webdriver-smoke-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/pulqva-wd/
+          if-no-files-found: error
+          retention-days: 14
