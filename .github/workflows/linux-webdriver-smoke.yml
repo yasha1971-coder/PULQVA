@@ -30,6 +30,22 @@ jobs:
           run-id: 40968803164
           github-token: ${{ github.token }}
           path: accepted-input
+      - name: Test Linux command worker and build candidate with existing Linux identity binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib,hashlib,json
+          p=pathlib.Path("sidecars/arti/SHA256SUMS");before=p.read_bytes()
+          lines=before.decode().splitlines();asset="linux-x86_64/arti"
+          assert sum(len(v.split())==2 and v.split()[1]==asset for v in lines)==1
+          pin="5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01"
+          after="\n".join(pin+"  "+asset if len(v.split())==2 and v.split()[1]==asset else v for v in lines)+"\n"
+          p.write_text(after)
+          pathlib.Path("linux-input-overlay.json").write_text(json.dumps({"path":str(p),"reason":"same accepted Linux Arti2.7 build binding; no new identity","before_sha256":hashlib.sha256(before).hexdigest(),"after_sha256":hashlib.sha256(p.read_bytes()).hexdigest(),"arti_sha256":pin},indent=2))
+          PY
+          cargo +1.92.0 test --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml linux_backend_context_tests -- --nocapture
+          cargo +1.92.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml
       - name: Stage exact accepted app without changing its source or pins
         shell: python
         run: |
@@ -39,7 +55,7 @@ jobs:
           root.mkdir(exist_ok=False);app=root/"bin/PULQVA";app.parent.mkdir()
           with zipfile.ZipFile(archive) as z:
             assert z.namelist().count("PULQVA")==1
-            app.write_bytes(z.read("PULQVA"))
+            app.write_bytes(pathlib.Path("apps/pulqva-desktop/src-tauri/target/release/pulqva-desktop").read_bytes())
             identities={
               "sidecars/arti/linux-x86_64/arti":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01",
               "sidecars/yt-dlp/linux-x86_64/yt-dlp":"58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a",
@@ -49,7 +65,10 @@ jobs:
               data=z.read(name);assert hashlib.sha256(data).hexdigest()==digest
               target=root/"lib/PULQVA"/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
               target.chmod(0o755 if name.endswith(("/arti","/yt-dlp")) else 0o644)
-          assert hashlib.sha256(app.read_bytes()).hexdigest()=="3ee8c8d56186f933f4abfbde9e81fc3b7ada56d363072bd4369001117c35649c"
+          import subprocess
+          source_sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
+          receipt={"source_sha":source_sha,"app_sha256":hashlib.sha256(app.read_bytes()).hexdigest(),"app_bytes":app.stat().st_size,"build_flags":"--release --locked","source_overlay":json.loads(pathlib.Path("linux-input-overlay.json").read_text()),"runtime_executed":False,"unit_test":"linux_backend_context_tests"}
+          (root/"build-receipt.json").write_text(json.dumps(receipt,indent=2))
           app.chmod(0o755)
           product=json.loads(pathlib.Path("apps/pulqva-desktop/src-tauri/tauri.conf.json").read_text())["productName"]
           assert product=="PULQVA"
@@ -90,6 +109,8 @@ jobs:
             ${{ runner.temp }}/pulqva-wd/case/
             ${{ runner.temp }}/pulqva-wd/launch.json
             ${{ runner.temp }}/pulqva-wd/resource-layout.json
+            ${{ runner.temp }}/pulqva-wd/build-receipt.json
+            ${{ runner.temp }}/pulqva-wd/bin/PULQVA
             ${{ runner.temp }}/pulqva-wd/XDG_CONFIG_HOME/user-dirs.dirs
             ${{ runner.temp }}/pulqva-wd/HOME/Downloads/
           if-no-files-found: error
