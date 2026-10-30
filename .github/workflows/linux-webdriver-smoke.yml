@@ -10,18 +10,28 @@ permissions:
 jobs:
   window-input:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+      - name: Prepare evidence before any installation or build
+        run: |
+          mkdir "$RUNNER_TEMP/pulqva-wd"
+          python3 - <<'PY'
+          import json,pathlib,os,subprocess
+          out=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
+          sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
+          (out/"prebuild-plan.json").write_text(json.dumps({"source_sha":sha,"task":"Linux worker regression -> locked release -> real native GUI Tor E2E","runtime_executed":False,"kernel_pins_changes":"none committed","linux_arti_identity":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01"},indent=2))
+          PY
       - name: Test actual capture environment boundary
         run: python3 -m unittest discover -s tools/ci -p test_linux_capture_environment.py -v
       - name: Install runner-only native GUI test tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb xauth dbus-x11 at-spi2-core webkit2gtk-driver libwebkit2gtk-4.1-0 libayatana-appindicator3-1
+          sudo apt-get install -y xvfb xauth dbus-x11 at-spi2-core webkit2gtk-driver libwebkit2gtk-4.1-0 libayatana-appindicator3-1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libglib2.0-dev libssl-dev pkg-config build-essential
+          pkg-config --modversion glib-2.0 gobject-2.0 gtk+-3.0 webkit2gtk-4.1 | tee "$RUNNER_TEMP/pulqva-wd/build-prerequisites.log"
           rustup toolchain install 1.92.0 --profile minimal
           cargo +1.92.0 install tauri-driver --version 2.0.6 --locked
       - uses: actions/download-artifact@v4
@@ -44,15 +54,15 @@ jobs:
           p.write_text(after)
           pathlib.Path("linux-input-overlay.json").write_text(json.dumps({"path":str(p),"reason":"same accepted Linux Arti2.7 build binding; no new identity","before_sha256":hashlib.sha256(before).hexdigest(),"after_sha256":hashlib.sha256(p.read_bytes()).hexdigest(),"arti_sha256":pin},indent=2))
           PY
-          cargo +1.92.0 test --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml linux_backend_context_tests -- --nocapture
-          cargo +1.92.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml
+          cargo +1.92.0 test --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml linux_backend_context_tests -- --nocapture 2>&1 | tee "$RUNNER_TEMP/pulqva-wd/build-worker-tests.log"
+          cargo +1.92.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml 2>&1 | tee "$RUNNER_TEMP/pulqva-wd/build-release.log"
       - name: Stage exact accepted app without changing its source or pins
         shell: python
         run: |
           import pathlib,zipfile,hashlib,json,os
           archive=pathlib.Path("accepted-input/PULQVA-linux-x86_64-portable-candidate.zip")
           root=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
-          root.mkdir(exist_ok=False);app=root/"bin/PULQVA";app.parent.mkdir()
+          assert root.is_dir();app=root/"bin/PULQVA";app.parent.mkdir()
           with zipfile.ZipFile(archive) as z:
             assert z.namelist().count("PULQVA")==1
             app.write_bytes(pathlib.Path("apps/pulqva-desktop/src-tauri/target/release/pulqva-desktop").read_bytes())
@@ -105,6 +115,8 @@ jobs:
         with:
           name: linux-native-webdriver-smoke-${{ github.event.pull_request.head.sha }}
           path: |
+            ${{ runner.temp }}/pulqva-wd/prebuild-plan.json
+            ${{ runner.temp }}/pulqva-wd/build-*.log
             ${{ runner.temp }}/pulqva-wd/gui/
             ${{ runner.temp }}/pulqva-wd/case/
             ${{ runner.temp }}/pulqva-wd/launch.json
