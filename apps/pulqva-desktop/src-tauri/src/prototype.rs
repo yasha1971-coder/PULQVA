@@ -185,18 +185,24 @@ fn search_impl(query: String, resources: PathBuf, app_data: PathBuf) -> Result<A
     let mut directory = owned_child(&app_data.join("prototype-runtime"))?;
     let layout = AppRuntimeLayout::new(&directory.0)?;
     let plan = build_bundled_sidecar_materialization_plan(&layout)?;
-    let plan = validate_packaged_sidecar_sources(resolve_bundled_sidecar_sources(resources, plan)?)?;
+    let plan = validate_packaged_sidecar_sources(resolve_bundled_sidecar_sources(resources.clone(), plan)?)?;
     let (layout, ytdlp) = prepare_materialized_ytdlp_prelaunch(layout, &plan, |p,r,a| {
         ytdlp_materialize::materialize_verified_ytdlp(p,r,a).map(|v| v.path().to_path_buf())
     })?;
+    #[cfg(windows)]
+    let mut arti = crate::official_tor_host::launch(&resources, layout.root())?;
+    #[cfg(not(windows))]
+    let mut arti = {
     let (layout, arti_path) = prepare_materialized_arti_prelaunch(layout, &plan, |p,r,a| {
         arti_materialize::materialize_verified_arti(p,r,a).map(|v| v.path().to_path_buf())
     })?;
     let arti_plan = ArtiRuntimePlan::new(arti_path, layout.tor_config_file()?,
         layout.tor_cache_dir()?, layout.tor_state_dir()?,
         TorSocksEndpoint::new(DEFAULT_TOR_SOCKS_PORT).map_err(DownloadActionError::from)?);
-    let mut arti = launch_prepared_arti(prepare_arti_runtime(arti_plan).map_err(DownloadActionError::from)?)
+    let arti = launch_prepared_arti(prepare_arti_runtime(arti_plan).map_err(DownloadActionError::from)?)
         .map_err(DownloadActionError::from)?;
+        arti
+    };
     let diagnostics = crate::tor_diagnostics::enabled(
         std::env::var_os("PULQVA_TOR_DIAGNOSTICS").as_deref());
     let (readiness, trace) = if diagnostics {

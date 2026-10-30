@@ -20,6 +20,8 @@ mod ffmpeg_archive_compat;
 mod ytdlp_materialize;
 mod discovery_session;
 mod prototype;
+#[cfg(windows)]
+mod official_tor_host;
 mod tor_diagnostics;
 
 use pulqva_core::{
