@@ -3,10 +3,28 @@ import base64,json,pathlib,sys,time,urllib.request,subprocess,hashlib,socket,os
 from runtime_linux_job import LinuxOwnedJob
 app=pathlib.Path(sys.argv[1]).resolve();out=pathlib.Path(sys.argv[2]);out.mkdir(exist_ok=False)
 job=LinuxOwnedJob();session=None;receipt={"gui_window_input":"FAIL","real_results":"NOT_TESTED","explicit_choice":"NOT_TESTED","real_tor_e2e":"NOT_TESTED"}
-def call(method,path,value=None):
- data=None if value is None else json.dumps(value).encode()
- req=urllib.request.Request("http://127.0.0.1:4444"+path,data=data,method=method,headers={"Content-Type":"application/json"})
- with urllib.request.urlopen(req,timeout=12) as r:return json.load(r)["value"]
+from webdriver_protocol import RecordedProtocol,verify_second_choice
+def native_health():
+ from runtime_linux_job import _identity
+ rows=[]
+ for pid,tick in job.members():
+  try:
+   raw=pathlib.Path("/proc/"+str(pid)+"/stat").read_text()
+   fields=raw[raw.rfind(")")+2:].split()
+   rows.append({"pid":pid,"starttime":tick,"comm":pathlib.Path("/proc/"+str(pid)+"/comm").read_text().strip(),"state":fields[0],"exit_code":int(fields[49]) if len(fields)>49 else None})
+  except (FileNotFoundError,ProcessLookupError):pass
+ return {"driver_returncode":None if job.process is None else job.process.poll(),"owned":rows}
+protocol=RecordedProtocol(out/"commands.jsonl",health=native_health)
+call=protocol.call
+from matrix_receipt import MatrixRecorder,PROTOCOL,write_exclusive
+import platform,uuid
+def object_identity():
+ components={k:{"status":"not_applicable","sha256":None,"reason":"No LLM in this public GUI test"} for k in ["model","prompt","schema"]}
+ for k,b in {"runtime":app.read_bytes(),"evaluator":pathlib.Path(__file__).read_bytes()+pathlib.Path(__file__).with_name("webdriver_protocol.py").read_bytes(),"fixtures":b"countdown;second GUI result;public WebM <=8388608","flags":b"native wry;readiness95;download70;guardian220;socks5h;no fallback"}.items():components[k]={"status":"captured","sha256":hashlib.sha256(b).hexdigest()}
+ return {"source_sha":"ef9f2bd10374a109e40d9e21bc729d73e06221de","checkout_sha":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),"run_id":os.environ.get("GITHUB_RUN_ID"),"job_id":None,"job_id_reason":"GitHub provides job name, numeric job ID independently recorded by observer","attempt":os.environ.get("GITHUB_RUN_ATTEMPT"),"components":components}
+identity=object_identity()
+plan={"protocol":PROTOCOL,"boundary":"one frozen Linux GUI request-choice-file plus owned cleanup","generation_id":str(uuid.uuid4()),"identity":identity,"environment":{"os":platform.platform(),"arch":platform.machine(),"toolchain":"Tauri WebDriver2.0.6/WebKit2.52.6"},"isolation":{"status":"verified","strategy":"new hosted runner and exclusive empty HOME/XDG/Downloads before single GUI launch","evidence_refs":["../launch.json","../resource-layout.json"]},"probes":[{"id":"GUI_E2E","hypothesis":"exact app delivers new public file through real GUI and Tor","invariant_set":["Tor-only","fail-closed","exact-second-choice","file-readback"],"expected":"real GUI query >=2 results then second choice and new <=8MiB verified file","depends_on":[]},{"id":"CLEANUP","hypothesis":"owned processes and listening/bound sockets absent after run","invariant_set":["owned-only","no-live-owned-pid","no-listener-or-bound-udp"],"expected":"all current owned PID identities gone and no listener/bound UDP4444/4445/19050","depends_on":[]}]}
+write_exclusive(out/"manifest.json",plan);matrix=MatrixRecorder(plan);boundary_started=time.monotonic()
 try:
  with (out/"driver.log").open("xb") as log:
   driver=job.launch(["tauri-driver","--port","4444","--native-port","4445"],stdout=log,stderr=subprocess.STDOUT)
@@ -49,13 +67,17 @@ try:
    time.sleep(.3)
   receipt["real_results"]="PASS";receipt["result_count"]=len(choices)
   receipt["results_text"]=text("#prototype-choices");picture("02-real-results.png")
+  expected_title=text("#prototype-choices li:nth-child(2) strong")
   click("#prototype-choices li:nth-child(2) button")
   choice_deadline=time.monotonic()+8
   while not call("GET",prefix+"/element/"+find("#prototype-download")+"/enabled"):
    if time.monotonic()>choice_deadline:raise TimeoutError("GUI choice not accepted")
    time.sleep(.1)
+  selected_title=text("#prototype-selected-title")
+  verify_second_choice(expected_title,selected_title,call("GET",prefix+"/element/"+find("#prototype-selection")+"/displayed"),call("GET",prefix+"/element/"+find("#prototype-download")+"/enabled"))
+  receipt["selected_title"]=selected_title
   receipt["explicit_choice"]="PASS";receipt["selected_index"]=1
-  receipt["selected_title"]=text("#prototype-selected-title");picture("03-explicit-choice.png")
+  picture("03-explicit-choice.png")
   click("#prototype-download");download_deadline=time.monotonic()+70
   while not call("GET",prefix+"/element/"+find("#prototype-file")+"/displayed"):
    if time.monotonic()>download_deadline:raise TimeoutError("GUI file delivery deadline")
@@ -71,7 +93,14 @@ try:
   receipt["file"]={"path":str(path),"bytes":size,"sha256":actual}
   receipt["real_tor_e2e"]="PASS";picture("04-file-sha.png")
 
+except Exception as error:
+ receipt["original_error_type"]=type(error).__name__
+ receipt["failure_stage"]="native_GUI_command_or_acceptance"
+ (out/"failure-health.json").write_text(json.dumps(native_health(),indent=2))
+ raise
 finally:
+ e2e_duration=(time.monotonic()-boundary_started)*1000
+ cleanup_started=time.monotonic()
  if session:
   try:call("DELETE","/session/"+session)
   except Exception:pass
@@ -89,4 +118,7 @@ finally:
  receipt["cleanup"]="PASS" if clean and not job.members() and receipt["independent_identity_absence"] and not live_ports else "FAIL"
  receipt["cleanup_note"]="TCP TIME_WAIT retained explicitly; acceptance requires no live owned PID/listener or bound UDP socket."
  (out/"smoke-receipt.json").write_text(json.dumps(receipt,indent=2))
+ matrix.record("GUI_E2E",result="PASS" if receipt["real_tor_e2e"]=="PASS" else "ERROR",duration_ms=e2e_duration,observed=receipt.copy(),evidence_refs=["smoke-receipt.json","commands.jsonl"],reason=None if receipt["real_tor_e2e"]=="PASS" else receipt.get("original_error_type","early_exit"))
+ matrix.record("CLEANUP",result=receipt["cleanup"],duration_ms=(time.monotonic()-cleanup_started)*1000,observed={"identity_absence":receipt["independent_identity_absence"],"live_ports":live_ports},evidence_refs=["smoke-receipt.json"])
+ write_exclusive(out/"matrix_receipt.json",matrix.close(object_identity(),early_exit_reason="GUI_failure"))
 print(json.dumps(receipt));assert receipt["gui_window_input"]=="PASS" and receipt["real_tor_e2e"]=="PASS" and receipt["cleanup"]=="PASS"

@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - "tools/ci/tauri_webdriver_smoke.py"
+      - "tools/ci/webdriver_protocol.py"
+      - "tools/ci/test_webdriver_protocol.py"
       - ".github/workflows/linux-webdriver-smoke.yml"
 permissions:
   contents: read
@@ -25,12 +27,18 @@ jobs:
           sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
           (out/"prebuild-plan.json").write_text(json.dumps({"source_sha":sha,"task":"Linux worker regression -> locked release -> real native GUI Tor E2E","runtime_executed":False,"kernel_pins_changes":"none committed","linux_arti_identity":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01"},indent=2))
           PY
+      - name: Require matched runner condition before expensive preparation
+        run: |
+          test "$ImageVersion" = "20261025.353.1"
+      - name: Validate protocol method before installations or GUI
+        run: python3 -m unittest discover -s tools/ci -p test_webdriver_protocol.py -v
       - name: Test actual capture environment boundary
         run: python3 -m unittest discover -s tools/ci -p test_linux_capture_environment.py -v
       - name: Install runner-only native GUI test tools
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb xauth dbus-x11 at-spi2-core webkit2gtk-driver libwebkit2gtk-4.1-0 libayatana-appindicator3-1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libglib2.0-dev libssl-dev pkg-config build-essential
+          test "$(dpkg-query -W -f='${Version}' webkit2gtk-driver)" = "2.52.6-0ubuntu0.24.04.1"
           pkg-config --modversion glib-2.0 gobject-2.0 gtk+-3.0 webkit2gtk-4.1 | tee "$RUNNER_TEMP/pulqva-wd/build-prerequisites.log"
           rustup toolchain install 1.92.0 --profile minimal
           cargo +1.92.0 install tauri-driver --version 2.0.6 --locked
@@ -40,22 +48,13 @@ jobs:
           run-id: 40968803164
           github-token: ${{ github.token }}
           path: accepted-input
-      - name: Test Linux command worker and build candidate with existing Linux identity binding
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import pathlib,hashlib,json
-          p=pathlib.Path("sidecars/arti/SHA256SUMS");before=p.read_bytes()
-          lines=before.decode().splitlines();asset="linux-x86_64/arti"
-          assert sum(len(v.split())==2 and v.split()[1]==asset for v in lines)==1
-          pin="5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01"
-          after="\n".join(pin+"  "+asset if len(v.split())==2 and v.split()[1]==asset else v for v in lines)+"\n"
-          p.write_text(after)
-          pathlib.Path("linux-input-overlay.json").write_text(json.dumps({"path":str(p),"reason":"same accepted Linux Arti2.7 build binding; no new identity","before_sha256":hashlib.sha256(before).hexdigest(),"after_sha256":hashlib.sha256(p.read_bytes()).hexdigest(),"arti_sha256":pin},indent=2))
-          PY
-          cargo +1.92.0 test --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml linux_backend_context_tests -- --nocapture 2>&1 | tee "$RUNNER_TEMP/pulqva-wd/build-worker-tests.log"
-          cargo +1.92.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml 2>&1 | tee "$RUNNER_TEMP/pulqva-wd/build-release.log"
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: "12950413611"
+          merge-multiple: true
+          run-id: 40994630169
+          github-token: ${{ github.token }}
+          path: accepted-app
       - name: Stage exact accepted app without changing its source or pins
         shell: python
         run: |
@@ -65,7 +64,9 @@ jobs:
           assert root.is_dir();app=root/"bin/PULQVA";app.parent.mkdir()
           with zipfile.ZipFile(archive) as z:
             assert z.namelist().count("PULQVA")==1
-            app.write_bytes(pathlib.Path("apps/pulqva-desktop/src-tauri/target/release/pulqva-desktop").read_bytes())
+            data=pathlib.Path("accepted-app/bin/PULQVA").read_bytes()
+            assert hashlib.sha256(data).hexdigest()=="6f224bbb8abc2af4a35af139a77dd308b0f057dffcaf035ae4af75e52e0a76e3"
+            app.write_bytes(data)
             identities={
               "sidecars/arti/linux-x86_64/arti":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01",
               "sidecars/yt-dlp/linux-x86_64/yt-dlp":"58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a",
@@ -77,7 +78,11 @@ jobs:
               target.chmod(0o755 if name.endswith(("/arti","/yt-dlp")) else 0o644)
           import subprocess
           source_sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
-          receipt={"source_sha":source_sha,"app_sha256":hashlib.sha256(app.read_bytes()).hexdigest(),"app_bytes":app.stat().st_size,"build_flags":"--release --locked","source_overlay":json.loads(pathlib.Path("linux-input-overlay.json").read_text()),"runtime_executed":False,"unit_test":"linux_backend_context_tests"}
+          receipt=json.loads(pathlib.Path("accepted-app/build-receipt.json").read_text())
+          assert receipt["source_sha"]=="ef9f2bd10374a109e40d9e21bc729d73e06221de"
+          assert receipt["app_sha256"]==hashlib.sha256(app.read_bytes()).hexdigest()
+          receipt["harness_source_sha"]=source_sha
+          receipt["app_rebuilt"]=False
           (root/"build-receipt.json").write_text(json.dumps(receipt,indent=2))
           app.chmod(0o755)
           product=json.loads(pathlib.Path("apps/pulqva-desktop/src-tauri/tauri.conf.json").read_text())["productName"]
@@ -109,6 +114,10 @@ jobs:
           g=json.loads((r/"case/guard-result.json").read_text())
           assert s["gui_window_input"]=="PASS" and s["real_tor_e2e"]=="PASS" and s["cleanup"]=="PASS"
           assert g["cleanup_pass"] and not g["members_after"] and g["identities_gone"]
+          import sys
+          sys.path.insert(0,"tools/ci")
+          from matrix_receipt import verify
+          assert verify(json.loads((r/"gui/manifest.json").read_text()),json.loads((r/"gui/matrix_receipt.json").read_text()))=="PASS"
           PY
       - uses: actions/upload-artifact@v4
         if: always()
