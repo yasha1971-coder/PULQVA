@@ -1,5 +1,5 @@
 import unittest
-from runner_image_gate import require_match,image_identity
+from runner_image_gate import require_match,image_identity,require_consistent_identity
 def sample(version="20261025.353.1",image="ubuntu-24.04"):
  return [{"group":"Operating System","detail":"Ubuntu\\n24.04.5\\nLTS"},{"group":"Runner Image","detail":"Image: "+image+"\n Version: "+version+"\n Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md\n Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353"}]
 class GateTests(unittest.TestCase):
@@ -19,4 +19,12 @@ class GateTests(unittest.TestCase):
   with self.assertRaises(ValueError):image_identity({})
  def test_missing_version_fails(self):
   with self.assertRaises(ValueError):image_identity([{"group":"Runner Image","detail":"Image: ubuntu-24.04"}])
+class ConsistencyTests(unittest.TestCase):
+ def test_same_identity(self):require_consistent_identity(sample(),"20261025.353.1")
+ def test_actual_observed_contradiction_rejected(self):
+  with self.assertRaises(ValueError):require_consistent_identity(sample(),"20261026.354.1")
+ def test_missing_environment_rejected(self):
+  with self.assertRaises(ValueError):require_consistent_identity(sample(),None)
+ def test_empty_environment_rejected(self):
+  with self.assertRaises(ValueError):require_consistent_identity(sample(),"")
 if __name__=="__main__":unittest.main()

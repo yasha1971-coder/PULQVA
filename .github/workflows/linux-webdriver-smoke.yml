@@ -32,7 +32,22 @@ jobs:
       - name: Qualify image measurement before using it
         run: python3 -m unittest discover -s tools/ci -p test_runner_image_gate.py -v
       - name: Require exact canonical runner metadata before GUI
-        run: python3 tools/ci/runner_image_gate.py --metadata /imagegeneration/imagedata.json --output "$RUNNER_TEMP/pulqva-wd/runner-condition.json" --expected-image ubuntu-24.04 --expected-version 20261025.353.1
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,os,subprocess,hashlib,platform,shlex
+          out=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd/runner-provenance.json"
+          data={"environment":{k:os.environ.get(k) for k in ("ImageOS","ImageVersion")},"kernel":platform.release(),"architecture":platform.machine(),"etc_environment":{},"files":{}}
+          for token in shlex.split(pathlib.Path("/etc/environment").read_text()):
+            key,sep,value=token.partition("=")
+            if sep and key in ("ImageOS","ImageVersion"):data["etc_environment"][key]=value
+          for name in ("/imagegeneration/imagedata.json","/etc/os-release"):
+            p=pathlib.Path(name);b=p.read_bytes()
+            data["files"][name]={"sha256":hashlib.sha256(b).hexdigest(),"text":b.decode(),"mtime_ns":p.stat().st_mtime_ns}
+          data["system_packages"]=subprocess.check_output(["dpkg-query","-W","-f=${Package}=${Version}\\n","libc6","python3","bash","systemd"],text=True).splitlines()
+          out.write_text(json.dumps(data,indent=2))
+          print(json.dumps(data,indent=2))
+          PY
+          python3 tools/ci/runner_image_gate.py --metadata /imagegeneration/imagedata.json --output "$RUNNER_TEMP/pulqva-wd/runner-condition.json" --expected-image ubuntu-24.04 --expected-version 20261025.353.1
       - name: Validate protocol method before installations or GUI
         run: python3 -m unittest discover -s tools/ci -p test_webdriver_protocol.py -v
       - name: Test actual capture environment boundary
@@ -129,6 +144,7 @@ jobs:
           path: |
             ${{ runner.temp }}/pulqva-wd/prebuild-plan.json
             ${{ runner.temp }}/pulqva-wd/runner-condition.json
+            ${{ runner.temp }}/pulqva-wd/runner-provenance.json
             ${{ runner.temp }}/pulqva-wd/build-*.log
             ${{ runner.temp }}/pulqva-wd/gui/
             ${{ runner.temp }}/pulqva-wd/case/
