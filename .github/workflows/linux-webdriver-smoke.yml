@@ -36,7 +36,7 @@ jobs:
           import pathlib,zipfile,hashlib,json,os
           archive=pathlib.Path("accepted-input/PULQVA-linux-x86_64-portable-candidate.zip")
           root=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
-          root.mkdir(exist_ok=False);app=root/"PULQVA"
+          root.mkdir(exist_ok=False);app=root/"bin/PULQVA";app.parent.mkdir()
           with zipfile.ZipFile(archive) as z:
             assert z.namelist().count("PULQVA")==1
             app.write_bytes(z.read("PULQVA"))
@@ -47,10 +47,21 @@ jobs:
             for name,digest in identities.items():
               assert z.namelist().count(name)==1
               data=z.read(name);assert hashlib.sha256(data).hexdigest()==digest
-              target=root/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
+              target=root/"lib/PULQVA"/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
               target.chmod(0o755 if name.endswith(("/arti","/yt-dlp")) else 0o644)
           assert hashlib.sha256(app.read_bytes()).hexdigest()=="3ee8c8d56186f933f4abfbde9e81fc3b7ada56d363072bd4369001117c35649c"
           app.chmod(0o755)
+          product=json.loads(pathlib.Path("apps/pulqva-desktop/src-tauri/tauri.conf.json").read_text())["productName"]
+          assert product=="PULQVA"
+          resource_root=(app.parent/"../lib"/product).resolve(strict=True)
+          assert resource_root==(root/"lib/PULQVA").resolve()
+          verified={}
+          for name,digest in identities.items():
+            item=resource_root/name
+            assert item.is_file() and not item.is_symlink()
+            assert hashlib.sha256(item.read_bytes()).hexdigest()==digest
+            verified[name]=digest
+          (root/"resource-layout.json").write_text(json.dumps({"layout":"bin/PULQVA + lib/PULQVA/sidecars","resource_root":str(resource_root),"verified_members":verified},indent=2))
           case=root/"case";case.mkdir()
           env={k:str(root/k) for k in ["HOME","XDG_CONFIG_HOME","XDG_DATA_HOME","XDG_CACHE_HOME"]}
           for v in env.values():pathlib.Path(v).mkdir(mode=0o700)
@@ -78,6 +89,7 @@ jobs:
             ${{ runner.temp }}/pulqva-wd/gui/
             ${{ runner.temp }}/pulqva-wd/case/
             ${{ runner.temp }}/pulqva-wd/launch.json
+            ${{ runner.temp }}/pulqva-wd/resource-layout.json
             ${{ runner.temp }}/pulqva-wd/XDG_CONFIG_HOME/user-dirs.dirs
             ${{ runner.temp }}/pulqva-wd/HOME/Downloads/
           if-no-files-found: error
