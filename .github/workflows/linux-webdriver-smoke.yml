@@ -4,6 +4,8 @@ on:
     paths:
       - "tools/ci/tauri_webdriver_smoke.py"
       - "tools/ci/webdriver_protocol.py"
+      - "tools/ci/runner_image_gate.py"
+      - "tools/ci/test_runner_image_gate.py"
       - "tools/ci/test_webdriver_protocol.py"
       - ".github/workflows/linux-webdriver-smoke.yml"
 permissions:
@@ -27,9 +29,10 @@ jobs:
           sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
           (out/"prebuild-plan.json").write_text(json.dumps({"source_sha":sha,"task":"Linux worker regression -> locked release -> real native GUI Tor E2E","runtime_executed":False,"kernel_pins_changes":"none committed","linux_arti_identity":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01"},indent=2))
           PY
-      - name: Require matched runner condition before expensive preparation
-        run: |
-          test "$ImageVersion" = "20261025.353.1"
+      - name: Qualify image measurement before using it
+        run: python3 -m unittest discover -s tools/ci -p test_runner_image_gate.py -v
+      - name: Require exact canonical runner metadata before GUI
+        run: python3 tools/ci/runner_image_gate.py --metadata /imagegeneration/imagedata.json --output "$RUNNER_TEMP/pulqva-wd/runner-condition.json" --expected-image ubuntu-24.04 --expected-version 20261025.353.1
       - name: Validate protocol method before installations or GUI
         run: python3 -m unittest discover -s tools/ci -p test_webdriver_protocol.py -v
       - name: Test actual capture environment boundary
@@ -125,6 +128,7 @@ jobs:
           name: linux-native-webdriver-smoke-${{ github.event.pull_request.head.sha }}
           path: |
             ${{ runner.temp }}/pulqva-wd/prebuild-plan.json
+            ${{ runner.temp }}/pulqva-wd/runner-condition.json
             ${{ runner.temp }}/pulqva-wd/build-*.log
             ${{ runner.temp }}/pulqva-wd/gui/
             ${{ runner.temp }}/pulqva-wd/case/
