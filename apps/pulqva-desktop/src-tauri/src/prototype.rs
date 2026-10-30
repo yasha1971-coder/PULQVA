@@ -221,7 +221,7 @@ fn search_impl(query: String, resources: PathBuf, app_data: PathBuf) -> Result<A
     };
     let owned_arti = Arc::new(Mutex::new(Some(arti)));
     let mut search_failure = None;
-    let discovered = (|| {
+    let discovered: Result<_, PrototypeError> = (|| {
         let transport = OwnedTorTransport { arti: Arc::clone(&owned_arti) };
         let mut search = CommonsSearch::new(transport, ready);
         let choices = request_choices(&mut search, intent.query())
