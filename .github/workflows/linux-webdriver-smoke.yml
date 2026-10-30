@@ -1,0 +1,158 @@
+name: Linux native WebDriver smoke
+on:
+  pull_request:
+    paths:
+      - "tools/ci/tauri_webdriver_smoke.py"
+      - "tools/ci/webdriver_protocol.py"
+      - "tools/ci/runner_image_gate.py"
+      - "tools/ci/test_runner_image_gate.py"
+      - "tools/ci/test_webdriver_protocol.py"
+      - ".github/workflows/linux-webdriver-smoke.yml"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  window-input:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Prepare evidence before any installation or build
+        run: |
+          mkdir "$RUNNER_TEMP/pulqva-wd"
+          python3 - <<'PY'
+          import json,pathlib,os,subprocess
+          out=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
+          sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
+          (out/"prebuild-plan.json").write_text(json.dumps({"source_sha":sha,"ci_provenance":{"checkout_sha":sha,"run_id":os.environ["GITHUB_RUN_ID"],"attempt":os.environ["GITHUB_RUN_ATTEMPT"]},"task":"Linux worker regression -> locked release -> real native GUI Tor E2E","runtime_executed":False,"kernel_pins_changes":"none committed","linux_arti_identity":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01"},indent=2))
+          PY
+      - name: Test actual collector manifest with sanitized environment
+        run: python3 -m unittest discover -s tools/ci -p test_webdriver_protocol.py -v
+      - name: Qualify image measurement before using it
+        run: python3 -m unittest discover -s tools/ci -p test_runner_image_gate.py -v
+      - name: Require exact canonical runner metadata before GUI
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,os,subprocess,hashlib,platform,shlex
+          out=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd/runner-provenance.json"
+          data={"environment":{k:os.environ.get(k) for k in ("ImageOS","ImageVersion")},"kernel":platform.release(),"architecture":platform.machine(),"etc_environment":{},"files":{}}
+          for token in shlex.split(pathlib.Path("/etc/environment").read_text()):
+            key,sep,value=token.partition("=")
+            if sep and key in ("ImageOS","ImageVersion"):data["etc_environment"][key]=value
+          for name in ("/imagegeneration/imagedata.json","/etc/os-release"):
+            p=pathlib.Path(name);b=p.read_bytes()
+            data["files"][name]={"sha256":hashlib.sha256(b).hexdigest(),"text":b.decode(),"mtime_ns":p.stat().st_mtime_ns}
+          data["system_packages"]=subprocess.check_output(["dpkg-query","-W","-f=${Package}=${Version}\\n","libc6","python3","bash","systemd"],text=True).splitlines()
+          out.write_text(json.dumps(data,indent=2))
+          print(json.dumps(data,indent=2))
+          PY
+          python3 tools/ci/runner_image_gate.py --metadata /imagegeneration/imagedata.json --output "$RUNNER_TEMP/pulqva-wd/runner-condition.json" --expected-image ubuntu-24.04 --expected-version 20261025.353.1
+      - name: Test actual capture environment boundary
+        run: python3 -m unittest discover -s tools/ci -p test_linux_capture_environment.py -v
+      - name: Install runner-only native GUI test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth dbus-x11 at-spi2-core webkit2gtk-driver libwebkit2gtk-4.1-0 libayatana-appindicator3-1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libglib2.0-dev libssl-dev pkg-config build-essential
+          test "$(dpkg-query -W -f='${Version}' webkit2gtk-driver)" = "2.52.6-0ubuntu0.24.04.1"
+          pkg-config --modversion glib-2.0 gobject-2.0 gtk+-3.0 webkit2gtk-4.1 | tee "$RUNNER_TEMP/pulqva-wd/build-prerequisites.log"
+          rustup toolchain install 1.92.0 --profile minimal
+          cargo +1.92.0 install tauri-driver --version 2.0.6 --locked
+      - uses: actions/download-artifact@v4
+        with:
+          name: pulqva-linux-x86_64-portable-candidate-4618e013f55a5430ccba06f32b4a8f3b3e18eb83
+          run-id: 40968803164
+          github-token: ${{ github.token }}
+          path: accepted-input
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: "12959329479"
+          merge-multiple: true
+          run-id: 40994630169
+          github-token: ${{ github.token }}
+          path: accepted-app
+      - name: Stage exact accepted app without changing its source or pins
+        shell: python
+        run: |
+          import pathlib,zipfile,hashlib,json,os
+          archive=pathlib.Path("accepted-input/PULQVA-linux-x86_64-portable-candidate.zip")
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
+          assert root.is_dir();app=root/"bin/PULQVA";app.parent.mkdir()
+          with zipfile.ZipFile(archive) as z:
+            assert z.namelist().count("PULQVA")==1
+            data=pathlib.Path("accepted-app/bin/PULQVA").read_bytes()
+            assert hashlib.sha256(data).hexdigest()=="6f224bbb8abc2af4a35af139a77dd308b0f057dffcaf035ae4af75e52e0a76e3"
+            app.write_bytes(data)
+            identities={
+              "sidecars/arti/linux-x86_64/arti":"5f579c2525ae911d2ce402595b83512c03f8f24f224d49b05dcdee927b28ec01",
+              "sidecars/yt-dlp/linux-x86_64/yt-dlp":"58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a",
+              "sidecars/ffmpeg/linux-x86_64/ffmpeg-n9.0.2-17-g2a571b6068-linux64-gpl-9.0.tar.xz":"68ee646831adaae2495618346f3bba94ff207ff83bbd34d643e7004730d66269"}
+            for name,digest in identities.items():
+              assert z.namelist().count(name)==1
+              data=z.read(name);assert hashlib.sha256(data).hexdigest()==digest
+              target=root/"lib/PULQVA"/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
+              target.chmod(0o755 if name.endswith(("/arti","/yt-dlp")) else 0o644)
+          import subprocess
+          source_sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
+          receipt=json.loads(pathlib.Path("accepted-app/build-receipt.json").read_text())
+          assert receipt["source_sha"]=="ef9f2bd10374a109e40d9e21bc729d73e06221de"
+          assert receipt["app_sha256"]==hashlib.sha256(app.read_bytes()).hexdigest()
+          receipt["harness_source_sha"]=source_sha
+          receipt["app_rebuilt"]=False
+          (root/"build-receipt.json").write_text(json.dumps(receipt,indent=2))
+          app.chmod(0o755)
+          product=json.loads(pathlib.Path("apps/pulqva-desktop/src-tauri/tauri.conf.json").read_text())["productName"]
+          assert product=="PULQVA"
+          resource_root=(app.parent/"../lib"/product).resolve(strict=True)
+          assert resource_root==(root/"lib/PULQVA").resolve()
+          verified={}
+          for name,digest in identities.items():
+            item=resource_root/name
+            assert item.is_file() and not item.is_symlink()
+            assert hashlib.sha256(item.read_bytes()).hexdigest()==digest
+            verified[name]=digest
+          (root/"resource-layout.json").write_text(json.dumps({"layout":"bin/PULQVA + lib/PULQVA/sidecars","resource_root":str(resource_root),"verified_members":verified},indent=2))
+          case=root/"case";case.mkdir()
+          env={k:str(root/k) for k in ["HOME","XDG_CONFIG_HOME","XDG_DATA_HOME","XDG_CACHE_HOME"]}
+          for v in env.values():pathlib.Path(v).mkdir(mode=0o700)
+          downloads=pathlib.Path(env["HOME"])/"Downloads";downloads.mkdir(mode=0o700)
+          (pathlib.Path(env["XDG_CONFIG_HOME"])/"user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="'+str(downloads)+'"'+chr(10))
+          env["TAURI_WEBVIEW_AUTOMATION"]="true";env["LIBGL_ALWAYS_SOFTWARE"]="1"
+          manifest=dict(directory=str(case),cwd=str(pathlib.Path.cwd()),argv=["python3","-B","tools/ci/tauri_webdriver_smoke.py",str(app),str(root/"gui")],log_limit=4194304,deadline_seconds=220,isolated_environment=env)
+          (root/"launch.json").write_text(json.dumps(manifest,indent=2))
+      - name: Exercise real native window under independent guardian and Xvfb
+        run: |
+          dbus-run-session -- xvfb-run -a python3 -B tools/ci/linux_guardian.py "$RUNNER_TEMP/pulqva-wd/launch.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          r=pathlib.Path(os.environ["RUNNER_TEMP"])/"pulqva-wd"
+          s=json.loads((r/"gui/smoke-receipt.json").read_text())
+          g=json.loads((r/"case/guard-result.json").read_text())
+          assert s["gui_window_input"]=="PASS" and s["real_tor_e2e"]=="PASS" and s["cleanup"]=="PASS"
+          assert g["cleanup_pass"] and not g["members_after"] and g["identities_gone"]
+          import sys
+          sys.path.insert(0,"tools/ci")
+          from matrix_receipt import verify
+          assert verify(json.loads((r/"gui/manifest.json").read_text()),json.loads((r/"gui/matrix_receipt.json").read_text()))=="PASS"
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-native-webdriver-smoke-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/pulqva-wd/prebuild-plan.json
+            ${{ runner.temp }}/pulqva-wd/runner-condition.json
+            ${{ runner.temp }}/pulqva-wd/runner-provenance.json
+            ${{ runner.temp }}/pulqva-wd/build-*.log
+            ${{ runner.temp }}/pulqva-wd/gui/
+            ${{ runner.temp }}/pulqva-wd/case/
+            ${{ runner.temp }}/pulqva-wd/launch.json
+            ${{ runner.temp }}/pulqva-wd/resource-layout.json
+            ${{ runner.temp }}/pulqva-wd/build-receipt.json
+            ${{ runner.temp }}/pulqva-wd/bin/PULQVA
+            ${{ runner.temp }}/pulqva-wd/XDG_CONFIG_HOME/user-dirs.dirs
+            ${{ runner.temp }}/pulqva-wd/HOME/Downloads/
+          if-no-files-found: error
+          retention-days: 14

@@ -319,7 +319,7 @@ pub async fn prototype_search(query: String, app: tauri::AppHandle,
     validate_query(query.clone())?;
     let paths = PrototypeRuntimePaths::from_app(&app)?;
     let engine = Arc::clone(&state.engine);
-    tauri::async_runtime::spawn_blocking(move || {
+    spawn_backend_task(move || {
         let mut engine = engine.try_lock().map_err(busy)?;
         if let Some(mut previous) = engine.active.take() { previous.close()?; }
         let active = search_with_paths(query, &paths)?;
@@ -349,7 +349,7 @@ pub async fn prototype_download(session_id: String, index: usize, app: tauri::Ap
     state: tauri::State<'_, PrototypeState>) -> Result<FileView, PrototypeError> {
     let paths = PrototypeRuntimePaths::from_app(&app)?;
     let engine = Arc::clone(&state.engine);
-    tauri::async_runtime::spawn_blocking(move || {
+    spawn_backend_task(move || {
         let mut engine = engine.try_lock().map_err(busy)?;
         let active = engine.active.as_mut().ok_or_else(|| error("session-missing", "Search again."))?;
         active.authorize(&session_id, index)?;
@@ -365,7 +365,7 @@ pub async fn prototype_download(session_id: String, index: usize, app: tauri::Ap
 #[tauri::command]
 pub async fn prototype_clear(state: tauri::State<'_, PrototypeState>) -> Result<(), PrototypeError> {
     let engine = Arc::clone(&state.engine);
-    tauri::async_runtime::spawn_blocking(move || {
+    spawn_backend_task(move || {
         let mut engine = engine.try_lock().map_err(busy)?;
         if let Some(mut active) = engine.active.take() { active.close()?; }
         Ok(())
@@ -471,5 +471,34 @@ mod tests {
         let a = token().unwrap(); let b = token().unwrap();
         assert_eq!(a.len(), 64); assert_ne!(a,b);
         assert!(a.bytes().all(|b| b.is_ascii_hexdigit()));
+    }
+}
+
+// Linux HTTPS coordinator rejects entered Tokio contexts. Tauri's blocking pool
+// still enters its runtime, so use an owned/joined OS worker only on Linux.
+#[cfg(not(target_os = "linux"))]
+use tauri::async_runtime::spawn_blocking as spawn_backend_task;
+#[cfg(target_os = "linux")]
+fn spawn_backend_task<T, F>(operation: F) -> tauri::async_runtime::JoinHandle<Result<T, PrototypeError>>
+where T: Send + 'static, F: FnOnce() -> Result<T, PrototypeError> + Send + 'static {
+    tauri::async_runtime::spawn_blocking(move || {
+        std::thread::Builder::new().name("pulqva-linux-backend".into()).spawn(operation)
+            .map_err(|_| error("backend-worker-unavailable", "Backend worker could not start."))?
+            .join().map_err(|_| error("backend-task-failed", "Backend operation could not finish."))?
+    })
+}
+#[cfg(all(test, target_os = "linux"))]
+mod linux_backend_context_tests {
+    use super::*;
+    #[test]
+    fn blocking_pool_has_tokio_context_but_production_worker_does_not() {
+        tauri::async_runtime::block_on(async {
+            let entered = tauri::async_runtime::spawn_blocking(||
+                tauri::async_runtime::TokioHandle::try_current().is_ok()).await.unwrap();
+            assert!(entered, "regression must reproduce the original Tokio context");
+            let detached = spawn_backend_task(|| Ok(
+                tauri::async_runtime::TokioHandle::try_current().is_err())).await.unwrap().unwrap();
+            assert!(detached, "production coordinator must remain outside Tokio");
+        });
     }
 }
