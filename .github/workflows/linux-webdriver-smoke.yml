@@ -55,7 +55,7 @@ jobs:
           env={k:str(root/k) for k in ["HOME","XDG_CONFIG_HOME","XDG_DATA_HOME","XDG_CACHE_HOME"]}
           for v in env.values():pathlib.Path(v).mkdir(mode=0o700)
           downloads=pathlib.Path(env["HOME"])/"Downloads";downloads.mkdir(mode=0o700)
-          (pathlib.Path(env["XDG_CONFIG_HOME"])/"user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="'+str(downloads)+'"\\n')
+          (pathlib.Path(env["XDG_CONFIG_HOME"])/"user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="'+str(downloads)+'"'+chr(10))
           env["TAURI_WEBVIEW_AUTOMATION"]="true";env["LIBGL_ALWAYS_SOFTWARE"]="1"
           manifest=dict(directory=str(case),cwd=str(pathlib.Path.cwd()),argv=["python3","-B","tools/ci/tauri_webdriver_smoke.py",str(app),str(root/"gui")],log_limit=4194304,deadline_seconds=220,isolated_environment=env)
           (root/"launch.json").write_text(json.dumps(manifest,indent=2))
@@ -74,6 +74,11 @@ jobs:
         if: always()
         with:
           name: linux-native-webdriver-smoke-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/pulqva-wd/
+          path: |
+            ${{ runner.temp }}/pulqva-wd/gui/
+            ${{ runner.temp }}/pulqva-wd/case/
+            ${{ runner.temp }}/pulqva-wd/launch.json
+            ${{ runner.temp }}/pulqva-wd/XDG_CONFIG_HOME/user-dirs.dirs
+            ${{ runner.temp }}/pulqva-wd/HOME/Downloads/
           if-no-files-found: error
           retention-days: 14

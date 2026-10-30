@@ -11,13 +11,15 @@ try:
  with (out/"driver.log").open("xb") as log:
   driver=job.launch(["tauri-driver","--port","4444","--native-port","4445"],stdout=log,stderr=subprocess.STDOUT)
   deadline=time.monotonic()+20
+  # Retry only idempotent readiness, never duplicate NewSession.
   while True:
    try:
-    value=call("POST","/session",{"capabilities":{"alwaysMatch":{"browserName":"wry","tauri:options":{"application":str(app)}}}})
-    session=value["sessionId"];break
-   except urllib.error.URLError:
-    if time.monotonic()>=deadline:raise
-    time.sleep(.25)
+    if call("GET","/status").get("ready") is True:break
+   except (urllib.error.URLError,ConnectionError,OSError):pass
+   if time.monotonic()>=deadline:raise TimeoutError("Native WebDriver status not ready")
+   time.sleep(.1)
+  value=call("POST","/session",{"capabilities":{"alwaysMatch":{"browserName":"wry","tauri:options":{"application":str(app)}}}})
+  session=value["sessionId"]
   prefix="/session/"+session
   element=call("POST",prefix+"/element",{"using":"css selector","value":"#prototype-query"})
   eid=element["element-6066-11e4-a52e-4f735466cecf"]
@@ -77,14 +79,14 @@ finally:
  clean=job.close()
  from runtime_linux_job import _identity
  receipt["independent_identity_absence"]=all(_identity(p)!=(p,t) for p,t in identities)
- receipt["ports_free"]={}
- for port in [4444,4445,19050]:
-  for protocol,kind in [("tcp",socket.SOCK_STREAM),("udp",socket.SOCK_DGRAM)]:
-   sock=socket.socket(socket.AF_INET,kind)
-   try:sock.bind(("127.0.0.1",port));receipt["ports_free"][str(port)+"/"+protocol]=True
-   except OSError:receipt["ports_free"][str(port)+"/"+protocol]=False
-   finally:sock.close()
- receipt["cleanup"]="PASS" if clean and not job.members() and receipt["independent_identity_absence"] and all(receipt["ports_free"].values()) else "FAIL"
- receipt["owned_members_after"]=job.members()
+ receipt["port_states"]=[]
+ for table in ["tcp","tcp6","udp","udp6"]:
+  for row in pathlib.Path("/proc/net/"+table).read_text().splitlines()[1:]:
+   fields=row.split();port=int(fields[1].rsplit(":",1)[1],16)
+   if port in [4444,4445,19050]:
+    receipt["port_states"].append({"protocol":table,"port":port,"state":fields[3]})
+ live_ports=[r for r in receipt["port_states"] if r["protocol"].startswith("udp") or r["state"]=="0A"]
+ receipt["cleanup"]="PASS" if clean and not job.members() and receipt["independent_identity_absence"] and not live_ports else "FAIL"
+ receipt["cleanup_note"]="TCP TIME_WAIT retained explicitly; acceptance requires no live owned PID/listener or bound UDP socket."
  (out/"smoke-receipt.json").write_text(json.dumps(receipt,indent=2))
 print(json.dumps(receipt));assert receipt["gui_window_input"]=="PASS" and receipt["real_tor_e2e"]=="PASS" and receipt["cleanup"]=="PASS"
