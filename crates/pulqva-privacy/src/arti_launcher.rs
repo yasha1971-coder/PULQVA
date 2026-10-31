@@ -173,7 +173,11 @@ pub fn launch_prepared_official_tor(
 ) -> Result<RunningArti, ArtiProcessError> {
     let diagnostic = std::env::var_os("PULQVA_TOR_DIAGNOSTICS").as_deref() == Some(std::ffi::OsStr::new("1"));
     let mut command = Command::new(&prepared.executable);
-    command.arg("-f").arg(&prepared.config).stdin(Stdio::null());
+    let directory = prepared.config.parent().ok_or_else(|| ArtiProcessError::Io {
+        operation: "resolve prepared official Tor directory",
+        source: io::Error::new(io::ErrorKind::InvalidInput, "missing runtime directory"),
+    })?;
+    command.arg("-f").arg(&prepared.config).current_dir(directory).stdin(Stdio::null());
     if diagnostic { command.stdout(Stdio::piped()).stderr(Stdio::piped()); }
     else { command.stdout(Stdio::null()).stderr(Stdio::null()); }
     let mut child = command.spawn().map_err(|source| ArtiProcessError::Io {

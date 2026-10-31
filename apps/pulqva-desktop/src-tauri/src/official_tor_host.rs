@@ -44,6 +44,50 @@ fn copy_new(source: &Path, destination: &Path, hash: &str, size: u64) -> Result<
     drop(output);
     verify(destination, hash, size)
 }
+
+fn ascii_unavailable() -> DownloadActionError {
+    DownloadActionError { code: "official-tor-ascii-runtime-unavailable",
+        message: "Windows could not provide a safe ASCII path for the private Tor runtime.".into() }
+}
+fn checked_ascii_alias(original: &Path, alias: PathBuf) -> Result<PathBuf, DownloadActionError> {
+    use std::path::{Component, Prefix};
+    if !alias.is_absolute() || !alias.to_str().is_some_and(str::is_ascii)
+        || !matches!(alias.components().next(), Some(Component::Prefix(p))
+            if matches!(p.kind(), Prefix::Disk(_) | Prefix::VerbatimDisk(_))) {
+        return Err(ascii_unavailable());
+    }
+    plain_path(original, false)?;
+    plain_path(&alias, false)?;
+    // An 8.3 name must refer to this exact owned directory, never a replacement
+    // temp directory. Same filesystem object means the same owner and ACL.
+    if fs::canonicalize(original).map_err(|_| ascii_unavailable())?
+        != fs::canonicalize(&alias).map_err(|_| ascii_unavailable())? {
+        return Err(ascii_unavailable());
+    }
+    Ok(alias)
+}
+fn ascii_runtime_dir(runtime: &Path) -> Result<PathBuf, DownloadActionError> {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    plain_path(runtime, false)?;
+    if runtime.to_str().is_some_and(str::is_ascii) {
+        return checked_ascii_alias(runtime, runtime.to_path_buf());
+    }
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetShortPathNameW(long: *const u16, short: *mut u16, size: u32) -> u32;
+    }
+    let input: Vec<u16> = runtime.as_os_str().encode_wide().chain(Some(0)).collect();
+    let required = unsafe { GetShortPathNameW(input.as_ptr(), std::ptr::null_mut(), 0) };
+    if required == 0 || required > 32768 { return Err(ascii_unavailable()); }
+    let mut output = vec![0u16; required as usize];
+    let written = unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), required) };
+    if written == 0 || written >= required { return Err(ascii_unavailable()); }
+    let alias = PathBuf::from(std::ffi::OsString::from_wide(&output[..written as usize]));
+    // Disabled/unavailable 8.3 names are an explicit failure, never permission
+    // to use shared TEMP, weaken ACLs, change Windows settings or use clearnet.
+    checked_ascii_alias(runtime, alias)
+}
+
 pub(super) fn launch(resources: &Path, root: &Path) -> Result<RunningArti, DownloadActionError> {
     plain_path(resources, false)?;
     plain_path(root, false)?;
@@ -52,6 +96,7 @@ pub(super) fn launch(resources: &Path, root: &Path) -> Result<RunningArti, Downl
     for (name, hash, size) in MEMBERS { verify(&source.join(name), hash, size)?; }
     let runtime = root.join("official-tor");
     fs::create_dir(&runtime).map_err(|_| invalid())?;
+    let runtime = ascii_runtime_dir(&runtime)?;
     for (name, hash, size) in MEMBERS { copy_new(&source.join(name), &runtime.join(name), hash, size)?; }
     let endpoint = TorSocksEndpoint::new(DEFAULT_TOR_SOCKS_PORT).map_err(DownloadActionError::from)?;
     let prepared = pulqva_privacy::prepare_official_tor_runtime(
@@ -92,6 +137,50 @@ mod tests {
     fn incomplete_package_cannot_spawn_or_prepare_runtime() {
         let root = fixture();
         assert!(launch(&root, &root).is_err()); assert!(!root.join("official-tor").exists());
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod ascii_runtime_tests {
+    use super::*;
+    fn nonce() -> String {
+        format!("{}-{}", std::process::id(), std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos())
+    }
+    #[test]
+    fn cyrillic_profile_runtime_uses_same_private_directory_and_cleans_up() {
+        let parent = PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("Windows user profile"))
+            .join("Temp").join(format!("pulqva-ascii-regression-{}", nonce()));
+        let runtime = parent.join("Profile Контур with spaces").join("official-tor");
+        fs::create_dir_all(&runtime).unwrap();
+        let alias = ascii_runtime_dir(&runtime).expect("ASCII alias required; do not disable this gate if volume lacks aliases");
+        assert!(alias.is_absolute() && alias.to_str().unwrap().is_ascii());
+        assert_eq!(fs::canonicalize(&alias).unwrap(), fs::canonicalize(&runtime).unwrap());
+        for name in ["tor.exe", "geoip", "geoip6"] { fs::write(alias.join(name), b"fixture, never executed").unwrap(); }
+        let prepared = pulqva_privacy::prepare_official_tor_runtime(
+            &alias.join("tor.exe"), &alias.join("torrc"), &alias.join("state"),
+            &alias.join("geoip"), &alias.join("geoip6"),
+            TorSocksEndpoint::new(19050).unwrap()).unwrap();
+        let config = fs::read_to_string(alias.join("torrc")).unwrap();
+        assert!(config.is_ascii() && !config.contains("Контур"));
+        assert!(config.contains("SocksPort 127.0.0.1:19050"));
+        fs::write(alias.join("state").join("control_auth_cookie"), b"fixture only").unwrap();
+        assert!(runtime.join("state").join("control_auth_cookie").is_file());
+        drop(prepared);
+        fs::remove_dir_all(&parent).unwrap();
+        assert!(!alias.exists());
+    }
+    #[test]
+    fn rejects_non_ascii_or_different_directory_instead_of_falling_back() {
+        let root = std::env::temp_dir().join(format!("pulqva-ascii-negative-{}", nonce()));
+        fs::create_dir(&root).unwrap();
+        let different = root.join("different"); fs::create_dir(&different).unwrap();
+        assert!(checked_ascii_alias(&root, different).is_err());
+        assert!(checked_ascii_alias(&root, PathBuf::from("relative")).is_err());
+        let unicode = root.join("Контур"); fs::create_dir(&unicode).unwrap();
+        assert_eq!(checked_ascii_alias(&unicode, unicode.clone()).unwrap_err().code,
+            "official-tor-ascii-runtime-unavailable");
         fs::remove_dir_all(root).unwrap();
     }
 }
