@@ -83,7 +83,8 @@ test('UI01-11 failed reselection clears the old selected marker',async()=>{
 test('UI01-12 product assets contain no frontend external network entry points',()=>{
  const html=readFileSync(new URL('./prototype.html',import.meta.url),'utf8');
  const css=readFileSync(new URL('./style.css',import.meta.url),'utf8');
- assert.doesNotMatch(source,/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\b|https?:\/\//);
+ const networkFixture=JSON.parse(readFileSync(new URL('../tests/prototype_ui_security.json',import.meta.url),'utf8'));
+ assert.doesNotMatch(source,new RegExp(networkFixture.forbidden_runtime_pattern));
  assert.doesNotMatch(html,/(?:src|href)\s*=\s*["'](?:https?:|\/\/)/i);
  assert.doesNotMatch(css,/@import|url\s*\(/i);
  const ids=[...html.matchAll(/id="(prototype-[^"]+)"/g)].map(m=>m[1]);
@@ -96,7 +97,7 @@ test('UI01-13 displayed size is derived from validated backend bytes',async()=>{
  assert.equal(h.el('prototype-choices').children[1].children[1].textContent,'2.03 MiB');
 });
 test('UI01-14 dynamic result titles remain text rather than HTML',async()=>{
- const h=harness();const work=submit(h);const r=results();r.candidates[1].title='<img src=https://evil.example/x>';
+ const h=harness();const work=submit(h);const r=results();r.candidates[1].title=JSON.parse(readFileSync(new URL('../tests/prototype_ui_security.json',import.meta.url),'utf8')).hostile_title;
  h.take('prototype_search').resolve(r);await work;
  assert.equal(h.el('prototype-choices').children[1].children[0].textContent,r.candidates[1].title);
  assert.doesNotMatch(source,/innerHTML|insertAdjacentHTML/);
