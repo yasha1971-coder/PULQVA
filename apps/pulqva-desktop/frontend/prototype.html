@@ -1,28 +1,43 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PULQVA — экспериментальный прототип</title>
+<title>PULQVA — Private Discovery</title>
 <link rel="stylesheet" href="./style.css"><script src="./prototype.js" defer></script>
 </head>
-<body><main class="shell">
-<section class="hero"><div class="mark" aria-hidden="true">P</div><div>
-<p class="eyebrow">PULQVA · experimental preview</p><h1>Запрос → выбор → файл</h1>
-<p>Экспериментальный поиск Wikimedia Commons: видео WebM до 8 МиБ. Не готовый релиз v0.1.</p>
-<p>Поиск по словам, без ИИ и Autopilot. Наличие Tor-маршрута не является гарантией полной анонимности.</p>
-</div></section>
-<section class="intent-card">
-<form id="prototype-form"><label for="prototype-query">Что найти?</label>
-<input id="prototype-query" name="query" maxlength="512" required autocomplete="off" placeholder="Например: countdown">
-<button id="prototype-search" type="submit">Найти через Tor</button></form>
-<p id="prototype-status" role="status" aria-live="polite">Для поиска необходимы проверенные компоненты в пакете приложения.</p>
+<body class="product-window">
+<div class="product-layout">
+<aside class="product-rail" aria-label="PULQVA workspace">
+  <div class="product-brand"><span class="product-logo" aria-hidden="true">P</span><div class="brand-copy"><strong>PULQVA</strong><small>PRIVATE DISCOVERY</small></div></div>
+  <div class="rail-section">WORKSPACE</div><div class="rail-active" aria-current="page"><span aria-hidden="true">⌕</span><span class="rail-label">Discover</span></div>
+  <div class="rail-note"><span aria-hidden="true">◈</span><strong>Your search.<br>Your choice.</strong><p>No account required.<br>External requests use Tor.</p></div>
+  <small class="rail-footer">PRE-ALPHA · USER TEST</small>
+</aside>
+<main class="product-main">
+<header class="product-top"><span>DISCOVER <span aria-hidden="true">/</span> VIDEO SEARCH</span><span class="product-pill">Tor required <span aria-hidden="true">·</span> EN</span></header>
+<section class="product-hero" aria-labelledby="product-heading">
+<p class="product-kicker">A SIMPLER WAY TO FIND</p>
+<h1 id="product-heading">Find what matters.<br><span>Keep it private.</span></h1>
+<p class="product-intro">Find a video. Explore real results. Choose what to save.</p>
+<form id="prototype-form" class="product-search">
+<label class="sr-only" for="prototype-query">Describe the video you're looking for</label>
+<input id="prototype-query" name="query" maxlength="512" required autocomplete="off" placeholder="Try countdown or Big Buck Bunny">
+<button id="prototype-search" type="submit">Search via Tor <span aria-hidden="true">↗</span></button>
+</form>
+<div class="product-helper"><span>Keyword search · Local AI not connected</span><span>WebM · up to 8 MiB</span></div>
+<ol class="product-journey" aria-label="How it works"><li>Describe</li><li>Private search</li><li>Choose</li><li>Save &amp; verify</li></ol>
+</section>
+<section class="product-results" aria-labelledby="results-heading">
+<div class="product-section-heading"><h2 id="results-heading">Search results</h2><span>YOUR CHOICE, ALWAYS</span></div>
+<p id="prototype-status" class="product-status" role="status" aria-live="polite">Your results will appear here. Search uses the verified components in your app package.</p>
 <ol id="prototype-choices" class="candidate-list"></ol>
-<section id="prototype-selection" hidden><h2 id="prototype-selected-title"></h2>
-<button id="prototype-download" type="button" disabled>Скачать выбранное</button></section>
-<section id="prototype-file" hidden><h2>Файл сохранён и проверен</h2>
-<p id="prototype-file-title"></p><p>Путь: <code id="prototype-file-path"></code></p>
-<p>Размер: <span id="prototype-file-size"></span> байт</p><p>SHA-256: <code id="prototype-file-sha"></code></p>
-<p>Хеш подтверждает сохранённые байты, а не безопасность содержимого или личность автора.</p></section>
-<button id="prototype-clear" type="button">Очистить сессию и остановить Tor</button>
-</section><p class="footnote">Файл не открывается автоматически. Запросы не передаются облачному ИИ. Результаты берутся из сетевого поиска, а не из демонстрационного списка. Пока идёт операция, закрытие окна откладывается до её завершения.</p>
-</main></body></html>
+<section id="prototype-selection" class="product-selection" hidden><div><p class="product-kicker">SELECTED VIDEO</p><h2 id="prototype-selected-title"></h2><p>Download starts only when you choose.</p></div><button id="prototype-download" type="button" disabled>Download selected</button></section>
+<section id="prototype-file" class="product-receipt" hidden><h2>Saved and verified</h2>
+<p id="prototype-file-title"></p><dl><dt>Saved to</dt><dd><code id="prototype-file-path"></code></dd>
+<dt>Size in bytes</dt><dd id="prototype-file-size"></dd><dt>SHA-256</dt><dd><code id="prototype-file-sha"></code></dd></dl>
+<p>The hash identifies the saved bytes. It does not prove the content is safe or authenticate its author.</p></section>
+</section>
+<footer class="product-footer"><p>Files never open automatically. No cloud AI requests.<br>Tor routing does not guarantee absolute anonymity.</p><button id="prototype-clear" type="button">Clear session</button></footer>
+<p class="product-close-note">Clear session stops Tor. During an operation, closing the window waits for it to finish.</p>
+</main></div>
+</body></html>

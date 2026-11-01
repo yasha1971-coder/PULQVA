@@ -60,3 +60,44 @@ test('PT-UI-07 clearing session invalidates all old result handlers',async()=>{
 test('PT-UI-08 download cannot start before explicit selection',async()=>{
  const h=harness();await searched(h);const count=h.calls.length;await h.el('prototype-download').handlers.click();assert.equal(h.calls.length,count);
 });
+
+test('UI01-09 English product window is truthful about AI and size',()=>{
+ const html=readFileSync(new URL('./prototype.html',import.meta.url),'utf8');
+ assert.match(html,/<html lang="en">/);assert.match(html,/Find what matters\./);
+ assert.match(html,/Keyword search · Local AI not connected/);assert.match(html,/up to 8 MiB/);
+ assert.match(html,/Saved and verified/);assert.doesNotMatch(html,/AI Ready|Tor Connected|100 MB|sample results/i);
+});
+test('UI01-10 selected styling requires matching backend confirmation',async()=>{
+ const h=harness();await searched(h);const work=choose(h);
+ assert.equal(h.el('prototype-choices').children[1].className,'candidate-item');
+ h.take('prototype_select').resolve({sessionId:nonce,index:1,title:'one'});await work;
+ assert.equal(h.el('prototype-choices').children[1].className,'candidate-item is-selected');
+ assert.equal(h.el('prototype-choices').querySelectorAll('button')[1].textContent,'Selected');
+});
+test('UI01-11 failed reselection clears the old selected marker',async()=>{
+ const h=harness();await selected(h);const work=choose(h,0);
+ h.take('prototype_select').resolve({sessionId:'c'.repeat(64),index:0,title:'zero'});await work;
+ assert.equal(h.el('prototype-choices').children.some(r=>r.className.includes('is-selected')),false);
+ assert.equal(h.el('prototype-download').disabled,true);
+});
+test('UI01-12 product assets contain no frontend external network entry points',()=>{
+ const html=readFileSync(new URL('./prototype.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('./style.css',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\b|https?:\/\//);
+ assert.doesNotMatch(html,/(?:src|href)\s*=\s*["'](?:https?:|\/\/)/i);
+ assert.doesNotMatch(css,/@import|url\s*\(/i);
+ const ids=[...html.matchAll(/id="(prototype-[^"]+)"/g)].map(m=>m[1]);
+ const required=['prototype-form','prototype-query','prototype-search','prototype-status','prototype-choices','prototype-selection','prototype-selected-title','prototype-download','prototype-file','prototype-file-title','prototype-file-path','prototype-file-size','prototype-file-sha','prototype-clear'];
+ assert.deepEqual(ids.slice().sort(),required.slice().sort());
+});
+test('UI01-13 displayed size is derived from validated backend bytes',async()=>{
+ const h=harness();const work=submit(h);const r=results();r.candidates[1].byteSize=2131934;
+ h.take('prototype_search').resolve(r);await work;
+ assert.equal(h.el('prototype-choices').children[1].children[1].textContent,'2.03 MiB');
+});
+test('UI01-14 dynamic result titles remain text rather than HTML',async()=>{
+ const h=harness();const work=submit(h);const r=results();r.candidates[1].title='<img src=https://evil.example/x>';
+ h.take('prototype_search').resolve(r);await work;
+ assert.equal(h.el('prototype-choices').children[1].children[0].textContent,r.candidates[1].title);
+ assert.doesNotMatch(source,/innerHTML|insertAdjacentHTML/);
+});
