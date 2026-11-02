@@ -166,12 +166,22 @@ mod tests {
             LocalIntentErrorCode::Timeout);
     }
     #[test]
-    fn missing_local_server_has_no_fallback() {
+    fn missing_local_server_never_returns_interpretation() {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let port = listener.local_addr().unwrap().port();
         drop(listener);
-        assert_eq!(interpret_at("Big Buck Bunny", LoopbackIntentEndpoint::new(port, Duration::from_millis(200)).unwrap())
-            .unwrap_err().code, LocalIntentErrorCode::Unavailable);
+        let error = interpret_at("Big Buck Bunny", LoopbackIntentEndpoint::new(port, Duration::from_millis(200)).unwrap())
+            .expect_err("No local server must never yield an Intent or Reject");
+        // Windows CI reached the unchanged deadline; Linux reported an I/O failure.
+        // Neither observation establishes an OS-level cause or permits success.
+        assert!(matches!(error.code, LocalIntentErrorCode::Unavailable | LocalIntentErrorCode::Timeout));
+    }
+    #[test]
+    fn connection_refused_and_deadline_keep_exact_error_categories() {
+        let refused = LocalIntentError::from(IntentHttpError::Io(std::io::Error::from(std::io::ErrorKind::ConnectionRefused)));
+        assert_eq!(refused.code, LocalIntentErrorCode::Unavailable);
+        let deadline = LocalIntentError::from(IntentHttpError::Deadline);
+        assert_eq!(deadline.code, LocalIntentErrorCode::Timeout);
     }
     #[test]
     fn invalid_input_fails_before_connection_and_errors_do_not_echo_sensitive_data() {
