@@ -16,7 +16,7 @@ function harness() {
   const invoke=(command,args)=>{calls.push({command,args});let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});pending.push({command,args,resolve,reject});return promise;};
   vm.runInNewContext(source,{window:{__TAURI__:{core:{invoke}}}, document:{querySelector:s=>el(s.slice(1)),createElement:node},TextEncoder,console});
   const take=command=>{const i=pending.findIndex(p=>p.command===command);assert.notEqual(i,-1,command);return pending.splice(i,1)[0];};
-  el('prototype-file').hidden=true;el('prototype-selection').hidden=true;el('prototype-interpretation').hidden=true;
+  el('prototype-file').hidden=true;el('prototype-selection').hidden=true;el('prototype-interpretation').hidden=true;el('prototype-search-intent').disabled=true;
   return {el,take,calls};
 }
 const nonce='a'.repeat(64);
@@ -88,7 +88,7 @@ test('UI01-12 product assets contain no frontend external network entry points',
  assert.doesNotMatch(html,/(?:src|href)\s*=\s*["'](?:https?:|\/\/)/i);
  assert.doesNotMatch(css,/@import|url\s*\(/i);
  const ids=[...html.matchAll(/id="(prototype-[^"]+)"/g)].map(m=>m[1]);
- const required=['prototype-form','prototype-query','prototype-search','prototype-status','prototype-choices','prototype-selection','prototype-selected-title','prototype-download','prototype-file','prototype-file-title','prototype-file-path','prototype-file-size','prototype-file-sha','prototype-clear','prototype-interpret','prototype-ai-status','prototype-interpretation','prototype-interpretation-query','prototype-interpretation-mode'];
+ const required=['prototype-form','prototype-query','prototype-search','prototype-status','prototype-choices','prototype-selection','prototype-selected-title','prototype-download','prototype-file','prototype-file-title','prototype-file-path','prototype-file-size','prototype-file-sha','prototype-clear','prototype-interpret','prototype-ai-status','prototype-interpretation','prototype-interpretation-query','prototype-interpretation-mode','prototype-search-intent'];
  assert.deepEqual(ids.slice().sort(),required.slice().sort());
 });
 test('UI01-13 displayed size is derived from validated backend bytes',async()=>{
@@ -190,4 +190,102 @@ test('INTENT-UI-23 an in-flight Tor search also blocks interpretation',async()=>
  assert.deepEqual(h.calls.map(c=>c.command),['prototype_search']);
  h.take('prototype_search').resolve(results());await work;
  assert.equal(h.el('prototype-interpret').disabled,false);
+});
+
+const searchTerms=h=>h.el('prototype-search-intent').handlers.click();
+const searchResults=()=>({...results(),query:'Big Buck Bunny'});
+test('INTENT02-27 verified terms search uses exact normalized query and explicit second-result session choice',async()=>{
+ const h=harness();h.el('prototype-query').value='Find an animated film about Big Buck Bunny';
+ const work=interpret(h);h.take('interpret_local_request').resolve(intent());await work;
+ assert.equal(h.el('prototype-search-intent').disabled,false);assert.equal(h.calls.length,1);
+ const search=searchTerms(h);const req=h.take('prototype_search');
+ assert.equal(req.args.query,'Big Buck Bunny');assert.deepEqual(Object.keys(req.args),['query']);
+ assert.equal(h.el('prototype-query').value,'Find an animated film about Big Buck Bunny');
+ req.resolve(searchResults());await search;
+ assert.equal(h.el('prototype-choices').children.length,2);
+ const selectedWork=choose(h,1);const choice=h.take('prototype_select');
+ assert.equal(choice.args.sessionId,nonce);assert.equal(choice.args.index,1);
+ choice.resolve({sessionId:nonce,index:1,title:'one'});await selectedWork;
+ assert.equal(h.el('prototype-selected-title').textContent,'one');
+ assert.deepEqual(h.calls.map(c=>c.command),['interpret_local_request','prototype_search','prototype_select']);
+});
+test('INTENT02-28 Reject and model error revoke earlier verified terms',async()=>{
+ for(const reject of [true,false]) {
+  const h=harness();await interpreted(h);const work=interpret(h);const req=h.take('interpret_local_request');
+  reject?req.resolve({kind:'reject',reason:'semantic_authority'}):req.reject({code:'unavailable'});
+  await work;const count=h.calls.length;await searchTerms(h);
+  assert.equal(h.calls.length,count);assert.equal(h.el('prototype-search-intent').disabled,true);
+  assert.equal(h.el('prototype-choices').children.length,0);
+ }
+});
+test('INTENT02-29 text changes with or without events and edit-restore revoke verified terms',async()=>{
+ for(const mode of ['event','silent','restore']) {
+  const h=harness();await interpreted(h);h.el('prototype-query').value='another film';
+  if(mode!=='silent')h.el('prototype-query').handlers.input();
+  if(mode==='restore'){h.el('prototype-query').value='Big Buck Bunny';h.el('prototype-query').handlers.input();}
+  const count=h.calls.length;await searchTerms(h);
+  assert.equal(h.calls.length,count);assert.equal(h.el('prototype-search-intent').disabled,true);
+ }
+});
+test('INTENT02-30 duplicate terms clicks and competing busy actions cause one search only',async()=>{
+ const h=harness();await interpreted(h);const work=searchTerms(h);
+ await searchTerms(h);await interpret(h);await submit(h);await h.el('prototype-clear').handlers.click();
+ assert.equal(h.calls.filter(c=>c.command==='prototype_search').length,1);
+ assert.equal(h.el('prototype-search-intent').disabled,true);
+ h.take('prototype_search').resolve(searchResults());await work;
+ assert.equal(h.calls.length,2);assert.equal(h.el('prototype-search-intent').disabled,true);
+});
+test('INTENT02-31 Clear and malformed IPC output cannot authorize a terms search',async()=>{
+ const h=harness();await interpreted(h);const clear=h.el('prototype-clear').handlers.click();
+ h.take('prototype_clear').resolve();await clear;const count=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,count);
+ const work=interpret(h);h.take('interpret_local_request').resolve({...intent(),choice_mode:'shell'});await work;
+ const before=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,before);
+ assert.equal(h.el('prototype-search-intent').disabled,true);
+});
+test('INTENT02-32 Tor failure consumes verified terms with no results, selection or automatic retry',async()=>{
+ const h=harness();await interpreted(h);const work=searchTerms(h);
+ h.take('prototype_search').reject({message:'Tor unavailable'});await work;
+ assert.equal(h.el('prototype-choices').children.length,0);assert.equal(h.el('prototype-download').disabled,true);
+ assert.equal(h.el('prototype-status').textContent,'Tor unavailable');
+ const count=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,count);
+ assert.equal(h.calls.some(c=>c.command==='prototype_select'||c.command==='prototype_download'),false);
+});
+test('INTENT02-33 autopilot never triggers automatic search, selection or download',async()=>{
+ const h=harness();h.el('prototype-query').value='Choose a rabbit film for me';
+ const work=interpret(h);h.take('interpret_local_request').resolve({...intent(),choice_mode:'autopilot'});await work;
+ assert.equal(h.calls.length,1);assert.equal(h.el('prototype-interpretation-mode').textContent,'autopilot');
+ const search=searchTerms(h);h.take('prototype_search').resolve(searchResults());await search;
+ assert.deepEqual(h.calls.map(c=>c.command),['interpret_local_request','prototype_search']);
+ assert.equal(h.el('prototype-selection').hidden,true);assert.equal(h.el('prototype-download').disabled,true);
+});
+test('INTENT02-34 copied primitive terms resist response mutation and altered display is refused',async()=>{
+ const h=harness();h.el('prototype-query').value='Find the rabbit film';const work=interpret(h);const response=intent();
+ h.take('interpret_local_request').resolve(response);await work;response.query='tampered terms';response.choice_mode='autopilot';
+ const search=searchTerms(h);const req=h.take('prototype_search');assert.equal(req.args.query,'Big Buck Bunny');
+ req.resolve(searchResults());await search;
+ for(const field of ['prototype-interpretation-query','prototype-interpretation-mode']) {
+  const other=harness();await interpreted(other);other.el(field).textContent='tampered display';
+  const count=other.calls.length;await searchTerms(other);assert.equal(other.calls.length,count);
+  assert.equal(other.el('prototype-search-intent').disabled,true);
+ }
+});
+test('INTENT02-35 ordinary keyword search uses the original input and invalidates prior terms',async()=>{
+ const h=harness();await interpreted(h);const search=submit(h);const req=h.take('prototype_search');
+ assert.equal(req.args.query,'countdown');req.resolve(results());await search;
+ const count=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,count);
+});
+test('INTENT02-36 invalid SearchView cannot render candidates or enable download',async()=>{
+ const h=harness();await interpreted(h);const work=searchTerms(h);const r=searchResults();r.candidates[1].index=4;
+ h.take('prototype_search').resolve(r);await work;
+ assert.equal(h.el('prototype-choices').children.length,0);assert.equal(h.el('prototype-download').disabled,true);
+ assert.equal(h.el('prototype-search-intent').disabled,true);
+});
+test('INTENT02-37 stale AI completion and forged visible button cannot start a search',async()=>{
+ const h=harness();h.el('prototype-query').value='Big Buck Bunny';const work=interpret(h);
+ h.el('prototype-query').value='new subject';h.el('prototype-query').handlers.input();
+ h.take('interpret_local_request').resolve(intent());await work;
+ h.el('prototype-search-intent').disabled=false;h.el('prototype-interpretation').hidden=false;
+ h.el('prototype-interpretation-query').textContent='forged terms';
+ const count=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,count);
+ assert.equal(h.el('prototype-search-intent').disabled,true);
 });

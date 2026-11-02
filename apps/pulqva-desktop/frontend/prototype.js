@@ -9,11 +9,13 @@
   let generation = 0;
   let interpretationGeneration = 0;
   let activeInterpretation = null;
+  let verifiedInterpretation = null;
   const status = text => { el("prototype-status").textContent = text; };
   const setBusy = value => {
     busy = value;
     el("prototype-search").disabled = value;
     el("prototype-interpret").disabled = value;
+    el("prototype-search-intent").disabled = value || !verifiedTermsCurrent();
     el("prototype-query").disabled = value;
     el("prototype-clear").disabled = value;
     el("prototype-download").disabled = value || selected === null;
@@ -36,7 +38,16 @@
     el("prototype-download").disabled = true;
   }
   const aiStatus = text => { el("prototype-ai-status").textContent = text; };
+  function verifiedTermsCurrent() {
+    const value = verifiedInterpretation;
+    return value !== null && value.ticket === interpretationGeneration && value.searchGeneration === generation &&
+      value.sourceQuery === el("prototype-query").value && !el("prototype-interpretation").hidden &&
+      el("prototype-interpretation-query").textContent === value.query &&
+      el("prototype-interpretation-mode").textContent === value.choiceMode;
+  }
   function hideInterpretation() {
+    verifiedInterpretation = null;
+    el("prototype-search-intent").disabled = true;
     el("prototype-interpretation").hidden = true;
     el("prototype-interpretation-query").textContent = "";
     el("prototype-interpretation-mode").textContent = "";
@@ -119,8 +130,10 @@
         aiStatus("The local model could not interpret this request safely. Please rephrase. No search was started.");
         return;
       }
-      el("prototype-interpretation-query").textContent = result.query;
-      el("prototype-interpretation-mode").textContent = result.choice_mode;
+      verifiedInterpretation = Object.freeze({ query: result.query, choiceMode: result.choice_mode,
+        sourceQuery: query, ticket, searchGeneration: epoch });
+      el("prototype-interpretation-query").textContent = verifiedInterpretation.query;
+      el("prototype-interpretation-mode").textContent = verifiedInterpretation.choiceMode;
       el("prototype-interpretation").hidden = false;
       aiStatus("Intent validated by Rust. No search was started.");
     } catch (err) {
@@ -136,9 +149,8 @@
       }
     }
   });
-  el("prototype-form").addEventListener("submit", async event => {
-    event.preventDefault(); if (busy) return;
-    const query = el("prototype-query").value;
+  async function searchViaTor(query) {
+    if (busy) return;
     if (!query.trim()) { status("Describe the video you want to find."); return; }
     const epoch = ++generation; reset(); setBusy(true); status("Connecting through Tor and searching for real results…");
     try {
@@ -148,6 +160,20 @@
       current = response; render(response, epoch); status(`${response.candidates.length} real results. Select a video to continue.`);
     } catch (err) { if (epoch === generation) status(message(err)); }
     finally { if (epoch === generation) setBusy(false); }
+  }
+  el("prototype-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    await searchViaTor(el("prototype-query").value);
+  });
+  el("prototype-search-intent").addEventListener("click", async () => {
+    if (busy) return;
+    if (!verifiedTermsCurrent()) {
+      invalidateInterpretation();
+      aiStatus("Interpret the current request before searching these terms.");
+      return;
+    }
+    const query = verifiedInterpretation.query;
+    await searchViaTor(query);
   });
   el("prototype-download").addEventListener("click", async () => {
     if (busy || !selected || !current) return;
