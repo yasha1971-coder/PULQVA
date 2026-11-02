@@ -419,3 +419,8 @@ body.product-window { --ink:#112e38;--muted:#526b73;--accent:#087b79;--line:#dfe
  .product-search button { min-height:44px; }
  .product-selection { align-items:stretch;flex-direction:column; }
 }
+
+/* INTENT-01B: separate development interpretation, same product theme. */
+.product-ai-action { display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin-top:12px; }
+.product-ai-action button { border:1px solid #9bbfb5;background:#eef7f3;color:#165c57;padding:0 14px;font-size:12px; }
+.product-ai-action p { flex:1 1 180px;margin:0;color:#3c5a64;font-size:11px;overflow-wrap:anywhere; }

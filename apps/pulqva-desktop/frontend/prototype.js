@@ -7,10 +7,13 @@
   let current = null;
   let selected = null;
   let generation = 0;
+  let interpretationGeneration = 0;
+  let activeInterpretation = null;
   const status = text => { el("prototype-status").textContent = text; };
   const setBusy = value => {
     busy = value;
     el("prototype-search").disabled = value;
+    el("prototype-interpret").disabled = value;
     el("prototype-query").disabled = value;
     el("prototype-clear").disabled = value;
     el("prototype-download").disabled = value || selected === null;
@@ -25,11 +28,40 @@
     }
   }
   function reset() {
+    invalidateInterpretation();
     current = null; selected = null;
     el("prototype-choices").replaceChildren();
     el("prototype-selection").hidden = true;
     el("prototype-file").hidden = true;
     el("prototype-download").disabled = true;
+  }
+  const aiStatus = text => { el("prototype-ai-status").textContent = text; };
+  function hideInterpretation() {
+    el("prototype-interpretation").hidden = true;
+    el("prototype-interpretation-query").textContent = "";
+    el("prototype-interpretation-mode").textContent = "";
+  }
+  function invalidateInterpretation() {
+    ++interpretationGeneration;
+    hideInterpretation();
+    aiStatus("Interpretation is separate from keyword search.");
+  }
+  const aiErrors = {
+    unavailable: "Local AI is unavailable. Start the local Qwen server and try again.",
+    timeout: "Local AI timed out. Try again when the server is ready.",
+    invalid_response: "The local model response failed validation. No search was started.",
+    invalid_request: "Please enter a valid request for local interpretation.",
+    busy: "A local interpretation is already running. Please wait.",
+    worker_failed: "The local interpretation worker failed. Please try again."
+  };
+  function validInterpretation(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const keys = Object.keys(value).sort().join(",");
+    if (value.kind === "reject") return keys === "kind,reason" && value.reason === "semantic_authority";
+    return value.kind === "intent" && keys === "choice_mode,kind,query" &&
+      typeof value.query === "string" && value.query.trim().length > 0 &&
+      new TextEncoder().encode(value.query).length <= 512 &&
+      (value.choice_mode === "ask" || value.choice_mode === "autopilot");
   }
   const validToken = value => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
   function validSearch(value) {
@@ -62,6 +94,48 @@
       item.append(label, size, button); el("prototype-choices").append(item);
     }
   }
+  el("prototype-query").addEventListener("input", () => {
+    invalidateInterpretation();
+    aiStatus("Request changed. Interpret again to see its local interpretation.");
+  });
+  el("prototype-interpret").addEventListener("click", async () => {
+    if (busy) return;
+    const query = el("prototype-query").value;
+    if (!query.trim()) {
+      invalidateInterpretation();
+      aiStatus("Enter a request to interpret locally.");
+      return;
+    }
+    const ticket = ++interpretationGeneration, epoch = generation;
+    activeInterpretation = ticket;
+    hideInterpretation(); setBusy(true); aiStatus("Interpreting locally…");
+    const isCurrent = () => ticket === interpretationGeneration && epoch === generation &&
+      el("prototype-query").value === query;
+    try {
+      const result = await invoke("interpret_local_request", { query });
+      if (!isCurrent()) return;
+      if (!validInterpretation(result)) throw { code: "invalid_response" };
+      if (result.kind === "reject") {
+        aiStatus("The local model could not interpret this request safely. Please rephrase. No search was started.");
+        return;
+      }
+      el("prototype-interpretation-query").textContent = result.query;
+      el("prototype-interpretation-mode").textContent = result.choice_mode;
+      el("prototype-interpretation").hidden = false;
+      aiStatus("Intent validated by Rust. No search was started.");
+    } catch (err) {
+      if (isCurrent()) {
+        hideInterpretation();
+        const code = err && typeof err.code === "string" ? err.code : "";
+        aiStatus(Object.hasOwn(aiErrors, code) ? aiErrors[code] : "Local interpretation failed. No search was started.");
+      }
+    } finally {
+      if (activeInterpretation === ticket) {
+        activeInterpretation = null;
+        setBusy(false);
+      }
+    }
+  });
   el("prototype-form").addEventListener("submit", async event => {
     event.preventDefault(); if (busy) return;
     const query = el("prototype-query").value;

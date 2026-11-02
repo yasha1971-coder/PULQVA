@@ -24,7 +24,13 @@
 <input id="prototype-query" name="query" maxlength="512" required autocomplete="off" placeholder="Try countdown or Big Buck Bunny">
 <button id="prototype-search" type="submit">Search via Tor <span aria-hidden="true">↗</span></button>
 </form>
-<div class="product-helper"><span>Keyword search · Local AI not connected</span><span>WebM · up to 8 MiB</span></div>
+<div class="product-helper"><span>Keyword search · Local AI development mode</span><span>WebM · up to 8 MiB</span></div>
+<div class="product-ai-action"><button id="prototype-interpret" type="button">Interpret with local AI</button>
+<p id="prototype-ai-status" role="status" aria-live="polite">Development mode · Start your local Qwen server to interpret.</p></div>
+<section id="prototype-interpretation" class="product-receipt" aria-labelledby="local-interpretation-heading" hidden>
+<h2 id="local-interpretation-heading">Local interpretation</h2>
+<dl><dt>Query</dt><dd id="prototype-interpretation-query"></dd><dt>Choice mode</dt><dd id="prototype-interpretation-mode"></dd></dl>
+<p>Validated by Rust. This interpretation is not sent to Tor search. Development server only.</p></section>
 <ol class="product-journey" aria-label="How it works"><li>Describe</li><li>Private search</li><li>Choose</li><li>Save &amp; verify</li></ol>
 </section>
 <section class="product-results" aria-labelledby="results-heading">
