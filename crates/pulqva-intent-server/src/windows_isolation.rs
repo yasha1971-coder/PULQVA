@@ -31,6 +31,7 @@ static GENERATION:AtomicU64=AtomicU64::new(0);
 #[link(name="kernel32")] unsafe extern "system"{
  fn CloseHandle(h:H)->i32;
  fn GetDriveTypeW(root:*const u16)->u32;
+ fn GetWindowsDirectoryW(buffer:*mut u16,size:u32)->u32;
  fn CreatePipe(read:*mut H,write:*mut H,attrs:*mut SecurityAttributes,size:u32)->i32;
  fn SetHandleInformation(h:H,mask:u32,flags:u32)->i32;
  fn CreateJobObjectW(attrs:H,name:*const u16)->H;
@@ -100,6 +101,22 @@ fn wide(s:&std::ffi::OsStr)->io::Result<Vec<u16>>{
  let mut v:Vec<_>=s.encode_wide().collect();
  if v.contains(&0){return Err(invalid("embedded NUL"));}
  v.push(0);Ok(v)
+}
+/// A strictly minimal, explicit Unicode environment for a native Windows child.
+/// Never inherit user PATH, proxy configuration, credentials, or other ambient vars.
+/// Obtain SystemRoot from Windows itself, not from mutable parent environment.
+fn child_environment()->io::Result<Vec<u16>>{
+ let mut root=[0u16;32768];
+ let len=unsafe{GetWindowsDirectoryW(root.as_mut_ptr(),root.len() as u32)};
+ if len==0{return Err(last());}
+ if len as usize>=root.len(){return Err(invalid("Windows directory exceeds bound"));}
+ if len<3||root[1]!=58||root[2]!=92||root[..len as usize].contains(&0){
+  return Err(invalid("Windows directory is not a local absolute drive path"));
+ }
+ let mut out:Vec<u16>="SystemRoot=".encode_utf16().collect();
+ out.extend_from_slice(&root[..len as usize]);
+ out.extend_from_slice(&[0,0]);
+ Ok(out)
 }
 fn quote(s:&std::ffi::OsStr)->io::Result<Vec<u16>>{
  let mut raw=wide(s)?;raw.pop();
@@ -172,10 +189,11 @@ impl IsolatedChild{
   startup.startup.input=child_in.0;startup.startup.output=child_out.0;startup.startup.error=child_out.0;
   startup.attributes=attributes.ptr();
   let mut pi:ProcessInformation=unsafe{zeroed()};
-  let mut environment=[0u16,0];
+  let mut environment=child_environment()?;
   check(unsafe{CreateProcessW(exe.as_ptr(),command.as_mut_ptr(),std::ptr::null_mut(),std::ptr::null_mut(),1,
    CREATE_SUSPENDED|CREATE_UNICODE_ENVIRONMENT|EXTENDED_STARTUPINFO_PRESENT|CREATE_NO_WINDOW,
-   environment.as_mut_ptr().cast(),cwd.as_ptr(),&mut startup,&mut pi)})?;
+   environment.as_mut_ptr().cast(),cwd.as_ptr(),&mut startup,&mut pi)})
+   .map_err(|e|io::Error::new(e.kind(),format!("CreateProcessW failed: {e}")))?;
   let process=Handle::new(pi.process)?;let primary=Handle::new(pi.thread)?;
   if let Err(e)=check(unsafe{AssignProcessToJobObject(job.0,process.0)}){
    let terminated=unsafe{TerminateProcess(process.0,1)};
@@ -247,6 +265,15 @@ impl Drop for IsolatedChild{fn drop(&mut self){if self.close().is_err(){if let S
  }
  #[test]fn rejects_unc_without_filesystem_or_network_access(){
   assert!(regular_path(Path::new(r"\\server\share\app.exe"),false).is_err());
+ }
+ #[test]fn environment_contains_only_kernel_derived_system_root(){
+  let env=child_environment().expect("Windows must provide its own system directory");
+  let txt=String::from_utf16(&env[..env.len()-2]).unwrap();
+  assert!(txt.starts_with("SystemRoot="));
+  assert!(!txt.contains("PATH="));
+  assert!(!txt.contains("HTTP_PROXY"));
+  assert!(env.ends_with(&[0,0]));
+  assert_eq!(txt.matches('=').count(),1);
  }
  #[test]fn rejects_oversized_command(){
   assert!(command(Path::new("C:\\x.exe"),&[OsString::from("x".repeat(32768))]).is_err());
