@@ -1,0 +1,69 @@
+name: windows-appcontainer-ipc-probe-artifact
+on:
+  pull_request:
+    paths:
+      - "crates/pulqva-intent-server/**"
+      - "crates/pulqva-intent-http/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/windows-appcontainer-ipc-probe-artifact.yml"
+permissions:
+  contents: read
+jobs:
+  prepare-ipc-probe:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Pin source and toolchain
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((git rev-parse HEAD).Trim() -ne "${{ github.event.pull_request.head.sha }}") { throw 'source mismatch' }
+          if (git status --porcelain) { throw 'dirty checkout' }
+          rustup toolchain install 1.91.0 --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw 'toolchain install failed' }
+          if ((& rustc +1.91.0 --version) -notmatch '^rustc 1\.91\.0 ') { throw 'rust toolchain mismatch' }
+      - name: Compile test binary without running AppContainer probe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & cargo +1.91.0 test --locked -p pulqva-intent-server --lib --no-run
+          if ($LASTEXITCODE -ne 0) { throw 'test binary compilation failed' }
+          $found = @(Get-ChildItem 'target/debug/deps' -Filter 'pulqva_intent_server-*.exe' -File)
+          if ($found.Count -ne 1) { throw "expected exactly one test executable, found $($found.Count)" }
+          $dest = Join-Path $env:RUNNER_TEMP 'pulqva-appcontainer-ipc-probe'
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          Copy-Item -LiteralPath $found[0].FullName -Destination (Join-Path $dest 'pulqva_appcontainer_ipc_probe.exe')
+          $exe = Join-Path $dest 'pulqva_appcontainer_ipc_probe.exe'
+          $size = (Get-Item -LiteralPath $exe).Length
+          if ($size -le 0 -or $size -gt 100MB) { throw 'unexpected test executable size' }
+          $receipt = [ordered]@{
+            schema=1
+            purpose='owner-manual-windows-appcontainer-stdio-ipc-test'
+            source_sha=(git rev-parse HEAD).Trim()
+            pr_head_sha="${{ github.event.pull_request.head.sha }}"
+            tested_on='windows-latest compilation only'
+            rustc=(& rustc +1.91.0 -vV | Out-String).Trim()
+            executable='pulqva_appcontainer_ipc_probe.exe'
+            bytes=$size
+            sha256=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            appcontainer_probe_executed=$false
+            model_inference_executed=$false
+            egress_denial_proved=$false
+            expected_manual_command='pulqva_appcontainer_ipc_probe.exe --ignored --exact windows_isolation::tests::real_appcontainer_stdio_roundtrip_probe --nocapture'
+          }
+          $receipt | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 (Join-Path $dest 'receipt.json')
+          if (git status --porcelain) { throw 'source changed during build' }
+          Write-Host "IPC_PROBE_BUILD_OK sha256=$($receipt.sha256) size=$size"
+      - name: Upload diagnostic executable and receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulqva-windows-appcontainer-ipc-probe-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/pulqva-appcontainer-ipc-probe/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
