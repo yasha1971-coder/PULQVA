@@ -1,5 +1,8 @@
 //! Supervised lifecycle boundary for the local PULQVA intent server.
 mod diagnostics;
+// WIN-ISOLATION-01 WIP: compile/test the primitive; not enabled in product runtime.
+#[cfg(all(windows, test))]
+mod windows_isolation;
 pub use diagnostics::{ReadinessDiagnostics, STDERR_RETAINED_BYTES};
 use std::{fmt, io::{Read,Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, path::PathBuf,
           process::{Child,Command,Stdio}, thread, time::{Duration,Instant}};
