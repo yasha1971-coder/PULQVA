@@ -251,4 +251,66 @@ impl Drop for IsolatedChild{fn drop(&mut self){if self.close().is_err(){if let S
  #[test]fn rejects_oversized_command(){
   assert!(command(Path::new("C:\\x.exe"),&[OsString::from("x".repeat(32768))]).is_err());
  }
+
+ // WIN-ISOLATION-02-PROBE — manual Windows execution only. This is a
+ // real AppContainer stdio probe, not a real-Qwen or egress-denial test.
+ const IPC_CHALLENGE: &[u8; 5] = b"PING\n";
+ const IPC_RESPONSE: &[u8] = b"PULQVA_ISOLATION_IPC_V1:PONG\n";
+
+ #[test]
+ fn isolated_ipc_child_witness() {
+  use std::io::{Read,Write};
+  // The exact test filter is present only in the spawned child invocation.
+  // The ordinary test suite returns without reading stdin.
+  if !std::env::args().any(|s|s=="windows_isolation::tests::isolated_ipc_child_witness"){return;}
+  let mut challenge=[0u8;5];
+  if std::io::stdin().read_exact(&mut challenge).is_ok() && &challenge==IPC_CHALLENGE {
+   let mut stdout=std::io::stdout().lock();
+   let _=stdout.write_all(IPC_RESPONSE);
+   let _=stdout.flush();
+  }
+ }
+
+ #[test]
+ #[ignore = "requires explicitly authorized real Windows AppContainer test; not CI acceptance"]
+ fn real_appcontainer_stdio_roundtrip_probe() -> io::Result<()> {
+  use std::io::{Read,Write};
+  use std::sync::mpsc;
+  let exe=std::env::current_exe()?;
+  let cwd=exe.parent().ok_or_else(||invalid("test exe has no parent"))?;
+  let args=[
+   OsString::from("--exact"),
+   OsString::from("windows_isolation::tests::isolated_ipc_child_witness"),
+   OsString::from("--nocapture"),
+  ];
+  let mut child=IsolatedChild::spawn(&exe,&args,cwd)?;
+  child.input()?.write_all(IPC_CHALLENGE)?;
+  child.input()?.flush()?;
+  let mut output=child.output()?.try_clone()?;
+  let (tx,rx)=mpsc::sync_channel(1);
+  let worker=std::thread::spawn(move || {
+   let mut buf=[0u8;1024];let mut received=Vec::new();
+   loop {
+    match output.read(&mut buf) {
+     Ok(0)=>break,
+     Ok(n)=>{
+      if received.len()+n>4096 {break;}
+      received.extend_from_slice(&buf[..n]);
+     },
+     Err(_)=>break,
+    }
+   }
+   let _=tx.send(received);
+  });
+  let response=rx.recv_timeout(Duration::from_secs(8));
+  let cleanup=child.close();
+  if response.is_ok() && cleanup.is_ok(){let _=worker.join();}
+  cleanup?;
+  let bytes=response.map_err(|_|io::Error::new(io::ErrorKind::TimedOut,"AppContainer stdio witness timed out"))?;
+  if !bytes.windows(IPC_RESPONSE.len()).any(|window|window==IPC_RESPONSE) {
+   return Err(io::Error::new(io::ErrorKind::InvalidData,
+     "AppContainer child returned no valid bounded IPC witness"));
+  }
+  Ok(())
+ }
 }
