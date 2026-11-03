@@ -32,6 +32,7 @@ static GENERATION:AtomicU64=AtomicU64::new(0);
  fn CloseHandle(h:H)->i32;
  fn GetDriveTypeW(root:*const u16)->u32;
  fn GetWindowsDirectoryW(buffer:*mut u16,size:u32)->u32;
+ fn GetEnvironmentVariableW(name:*const u16,buffer:*mut u16,size:u32)->u32;
  fn CreatePipe(read:*mut H,write:*mut H,attrs:*mut SecurityAttributes,size:u32)->i32;
  fn SetHandleInformation(h:H,mask:u32,flags:u32)->i32;
  fn CreateJobObjectW(attrs:H,name:*const u16)->H;
@@ -105,16 +106,33 @@ fn wide(s:&std::ffi::OsStr)->io::Result<Vec<u16>>{
 /// A strictly minimal, explicit Unicode environment for a native Windows child.
 /// Never inherit user PATH, proxy configuration, credentials, or other ambient vars.
 /// Obtain SystemRoot from Windows itself, not from mutable parent environment.
+/// An AppContainer profile depends on LOCALAPPDATA for startup. Pass only the
+/// documented minimum, never PATH, proxies or the ambient environment.
+/// See MicrosoftDocs/win32 implementing-an-appcontainer: Creating the Profile.
 fn child_environment()->io::Result<Vec<u16>>{
  let mut root=[0u16;32768];
- let len=unsafe{GetWindowsDirectoryW(root.as_mut_ptr(),root.len() as u32)};
- if len==0{return Err(last());}
- if len as usize>=root.len(){return Err(invalid("Windows directory exceeds bound"));}
- if len<3||root[1]!=58||root[2]!=92||root[..len as usize].contains(&0){
+ let root_len=unsafe{GetWindowsDirectoryW(root.as_mut_ptr(),root.len() as u32)};
+ if root_len==0{return Err(last());}
+ if root_len as usize>=root.len(){return Err(invalid("Windows directory exceeds bound"));}
+ if root_len<3||root[1]!=58||root[2]!=92||root[..root_len as usize].contains(&0){
   return Err(invalid("Windows directory is not a local absolute drive path"));
  }
- let mut out:Vec<u16>="SystemRoot=".encode_utf16().collect();
- out.extend_from_slice(&root[..len as usize]);
+ let name:Vec<u16>="LOCALAPPDATA\0".encode_utf16().collect();
+ let mut local=[0u16;32768];
+ let local_len=unsafe{GetEnvironmentVariableW(name.as_ptr(),local.as_mut_ptr(),local.len() as u32)};
+ if local_len==0{
+  return Err(io::Error::new(io::ErrorKind::NotFound,"LOCALAPPDATA is required for AppContainer profile initialization"));
+ }
+ if local_len as usize>=local.len(){return Err(invalid("LOCALAPPDATA exceeds bound"));}
+ if local_len<3||!(local[0]>=65 && local[0]<=90 || local[0]>=97 && local[0]<=122)||local[1]!=58||local[2]!=92
+   ||local[..local_len as usize].contains(&0) {
+  return Err(invalid("LOCALAPPDATA must be an absolute local-drive path"));
+ }
+ let mut out:Vec<u16>="LOCALAPPDATA=".encode_utf16().collect();
+ out.extend_from_slice(&local[..local_len as usize]);
+ out.push(0);
+ out.extend("SystemRoot=".encode_utf16());
+ out.extend_from_slice(&root[..root_len as usize]);
  out.extend_from_slice(&[0,0]);
  Ok(out)
 }
@@ -266,14 +284,16 @@ impl Drop for IsolatedChild{fn drop(&mut self){if self.close().is_err(){if let S
  #[test]fn rejects_unc_without_filesystem_or_network_access(){
   assert!(regular_path(Path::new(r"\\server\share\app.exe"),false).is_err());
  }
- #[test]fn environment_contains_only_kernel_derived_system_root(){
-  let env=child_environment().expect("Windows must provide its own system directory");
-  let txt=String::from_utf16(&env[..env.len()-2]).unwrap();
-  assert!(txt.starts_with("SystemRoot="));
-  assert!(!txt.contains("PATH="));
-  assert!(!txt.contains("HTTP_PROXY"));
+ #[test]fn environment_contains_only_required_appcontainer_variables(){
+  let env=child_environment().expect("Windows must provide LOCALAPPDATA and system root");
   assert!(env.ends_with(&[0,0]));
-  assert_eq!(txt.matches('=').count(),1);
+  let entries:Vec<_>=env.split(|c|*c==0).filter(|e|!e.is_empty())
+    .map(|e|String::from_utf16(e).unwrap()).collect();
+  assert_eq!(entries.len(),2);
+  assert!(entries[0].starts_with("LOCALAPPDATA="));
+  assert!(entries[1].starts_with("SystemRoot="));
+  assert!(entries.iter().all(|e|!e.starts_with("PATH=") && !e.contains("PROXY")
+     && !e.starts_with("USERPROFILE=")));
  }
  #[test]fn rejects_oversized_command(){
   assert!(command(Path::new("C:\\x.exe"),&[OsString::from("x".repeat(32768))]).is_err());
