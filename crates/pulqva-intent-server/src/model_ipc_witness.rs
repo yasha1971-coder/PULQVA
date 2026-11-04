@@ -50,6 +50,46 @@ fn decode(bytes:&[u8])->io::Result<()>{
   _=>Err(invalid("fixed public request requires intent/ask")),
  }
 }
+// Inline native arguments remove the child's dependency on temporary policy files.
+// Preserve exact compiled strings; no shell escaping or permission change.
+fn model_args(model:&Path)->Vec<OsString>{
+ vec![
+  "-m".into(),model.as_os_str().to_owned(),"--json-schema".into(),SCHEMA.into(),
+  "--system-prompt".into(),SYSTEM.into(),"--single-turn".into(),
+  "--simple-io".into(),"--no-display-prompt".into(),"-p".into(),PROMPT.into(),
+  "-n".into(),"512".into(),"-c".into(),"4096".into(),"-t".into(),"4".into(),"--no-warmup".into()]
+}
+#[test]fn inline_policy_survives_actual_windows_argument_parsing(){
+ use std::os::windows::ffi::OsStrExt;
+ #[link(name="shell32")] unsafe extern "system"{
+  fn CommandLineToArgvW(line:*const u16,count:*mut i32)->*mut *mut u16;
+ }
+ #[link(name="kernel32")] unsafe extern "system"{fn LocalFree(value:H)->H;}
+ struct Parsed(*mut *mut u16);
+ impl Drop for Parsed{fn drop(&mut self){unsafe{LocalFree(self.0.cast());}}}
+ let executable=Path::new(r"C:\Program Files\PULQVA\llama-cli.exe");
+ let model=Path::new(r"C:\PULQVA data\Модель Qwen.gguf");
+ let args=model_args(model);
+ assert_eq!(args[1].as_os_str(),model.as_os_str());
+ for (index,expected) in [(2,"--json-schema"),(3,SCHEMA),(4,"--system-prompt"),(5,SYSTEM)]{
+  assert_eq!(args[index].as_os_str(),std::ffi::OsStr::new(expected));
+ }
+ assert!(!args.iter().any(|a|a.as_os_str()==std::ffi::OsStr::new("--json-schema-file")
+  ||a.as_os_str()==std::ffi::OsStr::new("--system-prompt-file")));
+ let line=command(executable,&args).unwrap();
+ let mut count=0;
+ let raw=unsafe{CommandLineToArgvW(line.as_ptr(),&mut count)};
+ assert!(!raw.is_null(),"CommandLineToArgvW failed");
+ let parsed=Parsed(raw);
+ assert_eq!(count as usize,args.len()+1);
+ let mut expected=vec![executable.as_os_str().to_owned()];expected.extend(args);
+ for (index,value) in expected.iter().enumerate(){
+  let ptr=unsafe{*parsed.0.add(index)};let mut len=0;
+  while unsafe{*ptr.add(len)}!=0{len+=1;}
+  let observed=unsafe{std::slice::from_raw_parts(ptr,len)};
+  assert_eq!(observed,value.encode_wide().collect::<Vec<_>>(),"argv {index} changed");
+ }
+}
 #[test]fn hex_preserves_all_bytes_and_leading_zeroes(){
  assert_eq!(hex(&[]),"");
  assert_eq!(hex(&[0,1,15,16,127,128,255]),"00010f107f80ff");
@@ -172,11 +212,7 @@ fn real_qwen_appcontainer_witness()->io::Result<()>{
   let schema=generation.join("schema.json");let system=generation.join("system.txt");
   fs::write(&schema,SCHEMA)?;fs::write(&system,SYSTEM)?;
   regular_path(&schema,false)?;regular_path(&system,false)?;
-  let args:Vec<OsString>=vec![
-   "-m".into(),model.into_os_string(),"--json-schema-file".into(),schema.into_os_string(),
-   "--system-prompt-file".into(),system.into_os_string(),"--single-turn".into(),
-   "--simple-io".into(),"--no-display-prompt".into(),"-p".into(),PROMPT.into(),
-   "-n".into(),"512".into(),"-c".into(),"4096".into(),"-t".into(),"4".into(),"--no-warmup".into()];
+  let args=model_args(&model);
   receipt["args"]=json!(args.iter().map(|s|s.to_string_lossy()).collect::<Vec<_>>());
   receipt["test_executable"]=json!(hash_file(&std::env::current_exe()?)?);
   receipt["evaluator_sha256"]=json!(digest(include_bytes!("model_ipc_witness.rs")));

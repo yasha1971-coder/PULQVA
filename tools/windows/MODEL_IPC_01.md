@@ -19,7 +19,10 @@ Replace paths with existing owner-controlled assets, never UNC, junctions or sym
 CLI/model bytes are streamed through SHA256 before launch and compared to the owner pins.
 Adjacent DLL identities are inventoried but this is not DLL dependency closure.
 The compiled production system policy/schema and fixed public countdown request are frozen
-in manifest.json before spawn. No private user input is consumed. Every generation is new.
+in manifest.json before spawn. The exact compiled schema and system policy are passed
+as single native --json-schema / --system-prompt arguments. Generated policy files
+remain evidence only: no child read permission or ACL broadening is required for them.
+No private user input is consumed. Every generation is new.
 
 The process uses the existing zero-capability AppContainer Job launcher, separate stderr pipe,
 180-second child deadline, combined 1 MiB output cap and existing 5-second cleanup.
