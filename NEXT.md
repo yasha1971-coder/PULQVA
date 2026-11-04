@@ -33,3 +33,18 @@ ONE NEXT ACTION for PR101: IMPLEMENT the bounded ignored Windows model CLI witne
 Parent e7ec429e4ab94db56295c35d438087b653d17bf1 failed continuity-guard run 41823433727, job 126552029436: protected history/policy changed; explicit transition required: PROJECT_STATE.json. Comparison with 16bc9686bc2f3cdad66d77b861eebb66d4b0c1d9 found only the added model_ipc_01 object. Restore PROJECT_STATE.json to the exact green-head blob fbed400ac04d73ed8cea2bfa2afbf8d02e87e9be; retain the PREPARE receipt and checkpoint above unchanged. Guard, historical last_verified_commit, runtime code and security policy are unchanged. CI for this recovery is PENDING at publication; this is not MODEL-IPC-01 implementation or Qwen/egress evidence.
 
 ONE NEXT ACTION: observe continuity-guard for the recovery commit; only after success, return directly to the bounded MODEL-IPC-01 IMPLEMENT task. No new PREPARE, model launch or merge in this recovery phase.
+
+## PR101 MODEL-IPC-01 IMPLEMENT — WIP checkpoint (2026-11-04)
+
+Parent ff2cdd1562c78b03a7754204e21d70a727b2cc01: independently observed 17/17 successful workflows.
+Added real ignored Qwen witness using existing zero-capability AppContainer spawn, separate stderr,
+prelaunch SHA256/size pins, fixed production policy/schema/public request, output/deadline bounds,
+strict production decoding, Job cleanup and test-only manifest/receipt. Runbook: tools/windows/MODEL_IPC_01.md.
+Protected PROJECT_STATE and global verified anchor unchanged. Local Git checkout access denied;
+implementation published via connected GitHub. No local cargo available on PATH, no local build attempted.
+New-head compilation and deterministic checks PENDING; Qwen/cleanup/egress NOT TESTED.
+This is executable implementation WIP, not another PREPARE and not acceptance.
+
+ONE NEXT ACTION: inspect exact-head hosted compilation and deterministic gates; resolve any
+compile error and complete receipt validator/failure attribution before owner witness execution.
+No GUI/Tor/policy/working-package changes or merge.

@@ -186,6 +186,9 @@ impl IsolatedChild{
  /// No shell, no ambient environment and no inherited handles beyond two pipes.
  /// File access is fail-closed: this function does not broaden asset ACLs.
  pub fn spawn(executable:&Path,args:&[OsString],cwd:&Path)->io::Result<Self>{
+  Self::spawn_inner(executable,args,cwd,None)
+ }
+ fn spawn_inner(executable:&Path,args:&[OsString],cwd:&Path,stderr:Option<H>)->io::Result<Self>{
   regular_path(executable,false)?;regular_path(cwd,true)?;
   let exe=wide(executable.as_os_str())?;let cwd=wide(cwd.as_os_str())?;
   let mut command=command(executable,args)?;
@@ -197,14 +200,15 @@ impl IsolatedChild{
   check(unsafe{SetHandleInformation(parent_in.0,HANDLE_FLAG_INHERIT,0)})?;
   check(unsafe{SetHandleInformation(parent_out.0,HANDLE_FLAG_INHERIT,0)})?;
   let mut caps=SecurityCapabilities{sid:profile.sid,capabilities:std::ptr::null_mut(),count:0,reserved:0};
-  let mut inherited=[child_in.0,child_out.0];
+  let mut inherited=vec![child_in.0,child_out.0];
+  if let Some(h)=stderr{inherited.push(h);}
   let mut attributes=Attributes::new()?;
   attributes.set(SECURITY_CAPABILITIES,&mut caps)?;
-  attributes.set(HANDLE_LIST,&mut inherited)?;
+  check(unsafe{UpdateProcThreadAttribute(attributes.ptr(),0,HANDLE_LIST,inherited.as_mut_ptr().cast(),inherited.len()*size_of::<H>(),std::ptr::null_mut(),std::ptr::null_mut())})?;
   let mut startup:StartupInfoEx=unsafe{zeroed()};
   startup.startup.cb=size_of::<StartupInfoEx>() as u32;
   startup.startup.flags=STARTF_USESTDHANDLES;
-  startup.startup.input=child_in.0;startup.startup.output=child_out.0;startup.startup.error=child_out.0;
+  startup.startup.input=child_in.0;startup.startup.output=child_out.0;startup.startup.error=stderr.unwrap_or(child_out.0);
   startup.attributes=attributes.ptr();
   let mut pi:ProcessInformation=unsafe{zeroed()};
   let mut environment=child_environment()?;
@@ -361,3 +365,7 @@ impl Drop for IsolatedChild{fn drop(&mut self){if self.close().is_err(){if let S
   Ok(())
  }
 }
+
+#[cfg(test)]
+#[path = "model_ipc_witness.rs"]
+mod model_ipc_witness;

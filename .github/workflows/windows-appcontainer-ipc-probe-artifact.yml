@@ -33,6 +33,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           & cargo +1.91.0 test --locked -p pulqva-intent-server --lib --no-run
           if ($LASTEXITCODE -ne 0) { throw 'test binary compilation failed' }
+          & cargo +1.91.0 test --locked -p pulqva-intent-server --lib
+          if ($LASTEXITCODE -ne 0) { throw 'deterministic server tests failed' }
           $found = @(Get-ChildItem 'target/debug/deps' -Filter 'pulqva_intent_server-*.exe' -File)
           if ($found.Count -ne 1) { throw "expected exactly one test executable, found $($found.Count)" }
           $dest = Join-Path $env:RUNNER_TEMP 'pulqva-appcontainer-ipc-probe'
@@ -41,6 +43,7 @@ jobs:
           $exe = Join-Path $dest 'pulqva_appcontainer_ipc_probe.exe'
           $size = (Get-Item -LiteralPath $exe).Length
           if ($size -le 0 -or $size -gt 100MB) { throw 'unexpected test executable size' }
+          Copy-Item -LiteralPath 'tools/windows/MODEL_IPC_01.md' -Destination (Join-Path $dest 'MODEL_IPC_01.md')
           $receipt = [ordered]@{
             schema=1
             purpose='owner-manual-windows-appcontainer-stdio-ipc-test'
@@ -53,6 +56,7 @@ jobs:
             sha256=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
             appcontainer_probe_executed=$false
             model_inference_executed=$false
+            model_manual_command='pulqva_appcontainer_ipc_probe.exe --ignored --exact windows_isolation::model_ipc_witness::real_qwen_appcontainer_witness --nocapture'
             egress_denial_proved=$false
             expected_manual_command='pulqva_appcontainer_ipc_probe.exe --ignored --exact windows_isolation::tests::real_appcontainer_stdio_roundtrip_probe --nocapture'
           }
