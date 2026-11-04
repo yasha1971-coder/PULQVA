@@ -1,8 +1,11 @@
 //! Supervised lifecycle boundary for the local PULQVA intent server.
 mod diagnostics;
-// WIN-ISOLATION-01 WIP: compile/test the primitive; not enabled in product runtime.
-#[cfg(all(windows, test))]
-mod windows_isolation;
+// WIN-ISOLATION-03: the raw pipe/AppContainer launcher is available to Windows
+// production code. Real owner Windows PING/PONG acceptance passed on f389cfd.
+// It is NOT wired to Qwen/GUI; process egress denial and model assets remain untested.
+// Keep platform boundary strict: Linux must not compile Windows native APIs.
+#[cfg(windows)]
+pub mod windows_isolation;
 pub use diagnostics::{ReadinessDiagnostics, STDERR_RETAINED_BYTES};
 use std::{fmt, io::{Read,Write}, net::{Ipv4Addr, SocketAddrV4, TcpStream}, path::PathBuf,
           process::{Child,Command,Stdio}, thread, time::{Duration,Instant}};
