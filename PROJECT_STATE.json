@@ -345,17 +345,5 @@
     "observed_at": "2026-10-05T23:29:48Z",
     "digest_origin": "GitHub release asset digest, independently matched against downloaded full bytes",
     "scope": "Archive identity and standard-library archive member hashing only; no executable launch, repinning or product acceptance"
-  },
-  "pr101_model_autostart": {
-    "status": "DECISION_RECORDED_IMPLEMENTATION_PENDING",
-    "date": "2026-11-04",
-    "decision": "decisions/MODEL_AUTOSTART_01.md",
-    "checkpoint": "NEXT.md#pr101-model_autostart_01--owner-directed-product-priority-2026-11-04",
-    "windows_appcontainer_stdio_owner_test": "PASS on f389cfd (test witness, not Qwen)",
-    "next_atomic_task": "MODEL-IPC-01",
-    "model_cli_in_appcontainer": "NOT_TESTED",
-    "gui_owned_model_start": "PENDING",
-    "package_and_no_egress": "NOT_TESTED",
-    "note": "Independent PR101 lane; T069 canonical queue and verified anchor unchanged."
   }
 }
