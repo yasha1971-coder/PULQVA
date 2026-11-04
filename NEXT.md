@@ -14,3 +14,9 @@ Owner-dispatched workflow 37769355186, attempt 1, source 3ca7a85ef5de3f9108cc321
 Method rule: reject mismatched comparison conditions, verify method before costly run, freeze evidence generation, and make any correction in a separate generation. No blind reruns.
 
 ONE NEXT ACTION for lane A: reconcile its task/INDEX and relevant integration state against live heads before selecting a new technical milestone. Do not repeat the accepted live run. Keep unrelated lane and FFmpeg work isolated.
+
+## PR101 MODEL_AUTOSTART_01 — owner-directed product priority (2026-11-04)
+
+Decision: [decisions/MODEL_AUTOSTART_01.md](decisions/MODEL_AUTOSTART_01.md). Windows AppContainer stdio PING/PONG PASS on actual owner PC (f389cfd); automatic GUI Qwen, pinned CLI/model package, full egress confinement and clean-machine release remain PENDING / NOT TESTED. Do not misreport production module exposure at c01dbe9 as model integration. Preserve existing manual-server prototype; no unrestricted launcher or security bypass.
+
+ONE NEXT ACTION for PR101: MODEL-IPC-01 — check exact pinned llama.cpp CLI and GGUF identities; build one bounded Windows AppContainer model stdio witness with fixed-public input, typed decode and clean ownership receipt. No GUI/model-package changes until the witness is actually accepted. The independent T069 queue above is unchanged.
