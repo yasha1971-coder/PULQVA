@@ -11,13 +11,22 @@ const CAP:usize=1048576;
 #[link(name="kernel32")] unsafe extern "system" {
  fn PeekNamedPipe(pipe:H,buffer:H,size:u32,read:*mut u32,available:*mut u32,left:*mut u32)->i32;
 }
-fn digest(bytes:&[u8])->String{format!("{:x}",Sha256::digest(bytes))}
+fn hex(bytes:&[u8])->String{
+ const DIGITS:&[u8;16]=b"0123456789abcdef";
+ let mut encoded=String::with_capacity(bytes.len()*2);
+ for &byte in bytes{
+  encoded.push(DIGITS[(byte>>4) as usize] as char);
+  encoded.push(DIGITS[(byte&15) as usize] as char);
+ }
+ encoded
+}
+fn digest(bytes:&[u8])->String{hex(&Sha256::digest(bytes))}
 fn hash_file(path:&Path)->io::Result<(u64,String)>{
  regular_path(path,false)?;
  let mut f=File::open(path)?;let mut h=Sha256::new();let mut size=0;
  let mut buf=[0u8;65536];
  loop{let n=f.read(&mut buf)?;if n==0{break;}h.update(&buf[..n]);size+=n as u64;}
- Ok((size,format!("{:x}",h.finalize())))
+ Ok((size,hex(&h.finalize())))
 }
 fn env_path(key:&str)->io::Result<std::path::PathBuf>{
  std::env::var_os(key).map(Into::into).ok_or_else(||invalid(key))
@@ -40,6 +49,11 @@ fn decode(bytes:&[u8])->io::Result<()>{
   pulqva_core::Interpretation::Intent(i) if i.choice_mode()==pulqva_core::ChoiceMode::Ask=>Ok(()),
   _=>Err(invalid("fixed public request requires intent/ask")),
  }
+}
+#[test]fn hex_preserves_all_bytes_and_leading_zeroes(){
+ assert_eq!(hex(&[]),"");
+ assert_eq!(hex(&[0,1,15,16,127,128,255]),"00010f107f80ff");
+ assert_eq!(digest(b""),"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 }
 #[test]fn strict_stdout_boundary(){
  assert!(decode(br#"{"kind":"intent","query":"countdown video","choice_mode":"ask"}"#).is_ok());

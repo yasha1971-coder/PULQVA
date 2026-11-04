@@ -48,3 +48,23 @@ This is executable implementation WIP, not another PREPARE and not acceptance.
 ONE NEXT ACTION: inspect exact-head hosted compilation and deterministic gates; resolve any
 compile error and complete receipt validator/failure attribution before owner witness execution.
 No GUI/Tor/policy/working-package changes or merge.
+
+## PR101 MODEL-IPC-01 COMPILE-FIX — 2026-11-04
+
+Branch fix/windows-official-tor-runtime; exact parent 4bb3cbc8ac56a6ff9746cef57b6128b363e6f352; PR #101 OPEN/DRAFT/unmerged.
+Observed parent CI: 14/17 workflows PASS; failures desktop-shell-check 41832410580,
+windows-appcontainer-ipc-probe-artifact 41832410873 and discovery deterministic contracts 41832410542.
+Recovered logs: job126582629464 E0277 LowerHex at witness lines14/20;
+job126582632981 E0432/E0433 from dependency-free rustc inclusion of the model witness.
+Replace digest-array LowerHex with explicit byte/nibble lowercase hex, preserving leading zeroes;
+add empty/all-nibble-range vector checks alongside existing abc vector.
+Run the same Windows isolation suite through locked Cargo (compile-only then filtered lib tests),
+including model deterministic tests; ignored real host/Qwen probes remain ignored. No test removed.
+Local Cargo/rustc unavailable in PATH; no local build attempted. One automatic new-head CI wave
+is PENDING at publication. No manual rerun, real model launch or merge.
+Protected PROJECT_STATE.json, global last_verified_commit, GUI, Tor, security policy and working binaries unchanged.
+Receipt validation/failure-attribution completeness remains outside this compile-only phase.
+Real Qwen-in-AppContainer, Windows cleanup and independent network egress remain NOT TESTED.
+
+ONE NEXT ACTION: observe exact publication SHA CI (especially the three failed parent workflows);
+retain run IDs and first failure if any. Do not repeat PREPARE or claim witness acceptance from compilation.
