@@ -35,6 +35,10 @@ A setup failure still emits a receipt once the output generation exists.
 Hashing can exceed the child deadline; the deadline starts immediately before spawn.
 Do not call PING/PONG or compilation a model PASS.
 
-Known implementation gaps for the next bounded verification phase: hosted compile/tests,
-receipt-validator deterministic tests and complete per-probe failure attribution/provenance.
+Compile-fix source 2019cf7 passed 17/17 hosted workflows. The failure-attribution correction
+adds deterministic synthetic early-exit and simultaneous-error tests; its own exact-head CI
+must pass before acceptance. Run, cleanup and stdout/stderr retention errors are kept separately.
+Setup/spawn/output/decode errors mark the active probe ERROR; unobserved egress stays SKIP.
+Remaining gate: full receipt schema/provenance validation and deterministic rejection tests.
+Receipt-root/generation creation and final receipt-write failure cannot guarantee a saved receipt.
 Do not run a costly evidence matrix until those gates pass.

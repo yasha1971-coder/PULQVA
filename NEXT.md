@@ -68,3 +68,25 @@ Real Qwen-in-AppContainer, Windows cleanup and independent network egress remain
 
 ONE NEXT ACTION: observe exact publication SHA CI (especially the three failed parent workflows);
 retain run IDs and first failure if any. Do not repeat PREPARE or claim witness acceptance from compilation.
+
+## PR101 MODEL-IPC-01 FAILURE-ATTRIBUTION — WIP (2026-11-04)
+
+Exact parent 2019cf7f065c849bc6dcb0623a44dbfb181b1f58, branch fix/windows-official-tor-runtime.
+PR101 OPEN/DRAFT/unmerged; observed parent latest CI 17/17 SUCCESS.
+Arti config run41838391577 succeeded after the single targeted runner-loss retry
+(job126656552825); original failed job126603201172 retained.
+COMPILE-FIX is scoped verified; protected global anchor remains unchanged.
+
+Atomic correction: setup/spawn, bounded-output and typed-decoding errors now mark the
+active probe ERROR with measured duration and exact error, rather than leaving SKIP.
+Cleanup status is independent; run, cleanup and both bounded output-write errors are
+retained separately, and original run failure keeps return precedence. Both writes
+are attempted. Added deterministic synthetic early-exit/combined-failure/success tests.
+No new harness, model launch, production/security/GUI/Tor/binary changes or merge.
+Local Cargo/rustc absent in PATH: no local build attempted. Exact new-head hosted tests PENDING.
+Full receipt schema/provenance validation remains a separate gate; this is NOT complete
+matrix acceptance. Receipt root/generation creation and final receipt write can still
+fail without a saved receipt. Real Qwen, Windows host cleanup and network egress NOT TESTED.
+
+ONE NEXT ACTION: observe exact new-head deterministic CI; after acceptance, address
+receipt schema/provenance validation before any costly owner witness execution.
