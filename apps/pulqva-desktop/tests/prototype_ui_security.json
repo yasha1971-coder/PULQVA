@@ -1,0 +1,4 @@
+{
+  "forbidden_runtime_pattern": "\\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\\b|https?:\\/\\/",
+  "hostile_title": "<img src=https://evil.example/x>"
+}

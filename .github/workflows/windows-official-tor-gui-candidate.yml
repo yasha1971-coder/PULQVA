@@ -1,0 +1,84 @@
+name: windows-official-tor-gui-candidate
+on:
+  pull_request:
+    paths:
+      - "apps/pulqva-desktop/**"
+      - "crates/pulqva-privacy/**"
+      - ".github/workflows/windows-official-tor-gui-candidate.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verified-app:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Record exact inputs before build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((git rev-parse HEAD).Trim() -ne $env:SOURCE_SHA) { throw 'source mismatch' }
+          if (git status --porcelain) { throw 'dirty checkout' }
+          New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP 'official-tor-app') | Out-Null
+          $paths = @('Cargo.lock','apps/pulqva-desktop/src-tauri/Cargo.lock','kernel/CORE_CONTRACT.md','kernel/PRIVACY_INVARIANTS.md','kernel/UX_CONTRACT.md')
+          $inputs = [ordered]@{}
+          foreach ($p in $paths) { $inputs[$p] = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLowerInvariant() }
+          $inputs | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP 'official-tor-app/inputs.json')
+      - name: Install exact Rust
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.91.0 --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw 'toolchain installation failed' }
+      - name: Test privacy crate without weakening symlink checks
+        shell: pwsh
+        run: |
+          cargo +1.91.0 test -p pulqva-privacy --lib --locked 2>&1 | Tee-Object (Join-Path $env:RUNNER_TEMP 'official-tor-app/privacy-tests.log')
+          if ($LASTEXITCODE -ne 0) { throw 'privacy tests failed' }
+      - name: Test real desktop boundaries including official Tor host adapter
+        shell: pwsh
+        run: |
+          cargo +1.91.0 test --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml --all-targets 2>&1 | Tee-Object (Join-Path $env:RUNNER_TEMP 'official-tor-app/desktop-tests.log')
+          if ($LASTEXITCODE -ne 0) { throw 'desktop tests failed' }
+      - name: Build exact GUI candidate
+        shell: pwsh
+        run: |
+          cargo +1.91.0 build --release --locked --manifest-path apps/pulqva-desktop/src-tauri/Cargo.toml 2>&1 | Tee-Object (Join-Path $env:RUNNER_TEMP 'official-tor-app/build.log')
+          if ($LASTEXITCODE -ne 0) { throw 'GUI build failed' }
+          Copy-Item apps/pulqva-desktop/src-tauri/target/release/pulqva-desktop.exe (Join-Path $env:RUNNER_TEMP 'official-tor-app/PULQVA.exe')
+      - name: Bind candidate to source and unchanged locks
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ((git rev-parse HEAD).Trim() -ne $env:SOURCE_SHA) { throw 'source drift' }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'tracked input mutation' }
+          $out = Join-Path $env:RUNNER_TEMP 'official-tor-app'
+          $inputs = Get-Content (Join-Path $out 'inputs.json') -Raw | ConvertFrom-Json
+          foreach ($p in $inputs.PSObject.Properties) {
+            if ((Get-FileHash -LiteralPath $p.Name -Algorithm SHA256).Hash.ToLowerInvariant() -ne $p.Value) { throw 'frozen input drift' }
+          }
+          $app = Join-Path $out 'PULQVA.exe'
+          [ordered]@{
+            schema=1; status='BUILT_TESTED_NOT_LIVE_VERIFIED'; source_sha=$env:SOURCE_SHA
+            workflow_sha=$env:GITHUB_SHA; run_id=$env:GITHUB_RUN_ID; attempt=$env:GITHUB_RUN_ATTEMPT
+            runner_os=$env:RUNNER_OS; runner_arch=$env:RUNNER_ARCH
+            rustc=(& rustc +1.91.0 -vV | Out-String).Trim()
+            build_flags='--release --locked'; app_bytes=(Get-Item $app).Length
+            app_sha256=(Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant()
+            privacy_tests='PASS'; desktop_tests='PASS'; runtime_executed=$false
+            sidecars_bundled=$false
+            staging_requirement='Fresh namespace: retain authenticated legacy Arti/yt-dlp/FFmpeg resources; add qualified Tor16.0 tor.exe and GeoIP members. Verify all before launch.'
+          } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $out 'build-receipt.json')
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-tor-windows-app-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/official-tor-app/
+          if-no-files-found: error
+          retention-days: 14

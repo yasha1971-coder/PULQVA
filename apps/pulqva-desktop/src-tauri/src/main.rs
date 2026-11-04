@@ -20,6 +20,9 @@ mod ffmpeg_archive_compat;
 mod ytdlp_materialize;
 mod discovery_session;
 mod prototype;
+mod interpret_local;
+#[cfg(windows)]
+mod official_tor_host;
 mod tor_diagnostics;
 
 use pulqva_core::{
@@ -2202,6 +2205,7 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            interpret_local::interpret_local_request,
             app_status,
             submit_intent,
             list_local_candidates,

@@ -2532,6 +2532,7 @@ dependencies = [
  "getrandom 0.3.4",
  "pulqva-core",
  "pulqva-discovery",
+ "pulqva-intent-http",
  "pulqva-privacy",
  "same-file",
  "serde",
@@ -2562,6 +2563,25 @@ dependencies = [
  "sha2 0.11.0",
  "tokio",
  "webpki-roots",
+]
+
+[[package]]
+name = "pulqva-intent-http"
+version = "0.0.0"
+dependencies = [
+ "pulqva-core",
+ "pulqva-intent-json",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "pulqva-intent-json"
+version = "0.0.0"
+dependencies = [
+ "pulqva-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

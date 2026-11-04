@@ -25,6 +25,12 @@ pub(crate) fn write_failure(
 ) -> io::Result<()> {
     writeln!(out, "PULQVA_TOR_DIAG v=1 error={} cleanup_ok={} omitted={}",
         category(error), cleanup_ok, trace.omitted())?;
+    if let TorReadinessError::ChildExited(status) = error {
+        match status.code() {
+            Some(code) => writeln!(out, "child_exit_code={} child_exit_hex=0x{:08x}", code, code as u32)?,
+            None => writeln!(out, "child_exit_code=unavailable")?,
+        }
+    }
     if let TorReadinessError::Timeout(timeout) = error {
         writeln!(out, "timeout_stage={:?}", timeout.stage)?;
     }
@@ -88,5 +94,23 @@ mod tests {
         }
         assert!(write_failure(&mut Broken, &TorReadinessError::Protocol("hidden"),
             &TorReadinessTrace::default(), true).is_err());
+    }
+}
+
+#[cfg(all(test, windows))]
+mod child_exit_tests {
+    use super::*;
+    use std::os::windows::process::ExitStatusExt;
+    #[test]
+    fn preserves_windows_exit_status_without_any_raw_message() {
+        for code in [1u32, 0xc0000135, 0xc0000428] {
+            let mut output = Vec::new();
+            write_failure(&mut output, &TorReadinessError::ChildExited(
+                std::process::ExitStatus::from_raw(code)),
+                &TorReadinessTrace::default(), true).unwrap();
+            let text = String::from_utf8(output).unwrap();
+            assert!(text.contains(&format!("child_exit_hex=0x{code:08x}")));
+            assert!(!text.contains("PRIVATE"));
+        }
     }
 }

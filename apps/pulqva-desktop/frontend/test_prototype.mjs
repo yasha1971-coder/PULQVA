@@ -14,9 +14,9 @@ function harness() {
   const elements=new Map();const calls=[];const pending=[];
   const el=id=>{if(!elements.has(id))elements.set(id,node());return elements.get(id);};
   const invoke=(command,args)=>{calls.push({command,args});let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});pending.push({command,args,resolve,reject});return promise;};
-  vm.runInNewContext(source,{window:{__TAURI__:{core:{invoke}}}, document:{querySelector:s=>el(s.slice(1)),createElement:node},console});
+  vm.runInNewContext(source,{window:{__TAURI__:{core:{invoke}}}, document:{querySelector:s=>el(s.slice(1)),createElement:node},TextEncoder,console});
   const take=command=>{const i=pending.findIndex(p=>p.command===command);assert.notEqual(i,-1,command);return pending.splice(i,1)[0];};
-  el('prototype-file').hidden=true;el('prototype-selection').hidden=true;
+  el('prototype-file').hidden=true;el('prototype-selection').hidden=true;el('prototype-interpretation').hidden=true;el('prototype-search-intent').disabled=true;
   return {el,take,calls};
 }
 const nonce='a'.repeat(64);
@@ -59,4 +59,233 @@ test('PT-UI-07 clearing session invalidates all old result handlers',async()=>{
 });
 test('PT-UI-08 download cannot start before explicit selection',async()=>{
  const h=harness();await searched(h);const count=h.calls.length;await h.el('prototype-download').handlers.click();assert.equal(h.calls.length,count);
+});
+
+test('UI01-09 English product window is truthful about AI and size',()=>{
+ const html=readFileSync(new URL('./prototype.html',import.meta.url),'utf8');
+ assert.match(html,/<html lang="en">/);assert.match(html,/Find what matters\./);
+ assert.match(html,/Keyword search · Local AI development mode/);assert.match(html,/up to 8 MiB/);
+ assert.match(html,/Saved and verified/);assert.doesNotMatch(html,/AI Ready|Tor Connected|100 MB|sample results/i);
+});
+test('UI01-10 selected styling requires matching backend confirmation',async()=>{
+ const h=harness();await searched(h);const work=choose(h);
+ assert.equal(h.el('prototype-choices').children[1].className,'candidate-item');
+ h.take('prototype_select').resolve({sessionId:nonce,index:1,title:'one'});await work;
+ assert.equal(h.el('prototype-choices').children[1].className,'candidate-item is-selected');
+ assert.equal(h.el('prototype-choices').querySelectorAll('button')[1].textContent,'Selected');
+});
+test('UI01-11 failed reselection clears the old selected marker',async()=>{
+ const h=harness();await selected(h);const work=choose(h,0);
+ h.take('prototype_select').resolve({sessionId:'c'.repeat(64),index:0,title:'zero'});await work;
+ assert.equal(h.el('prototype-choices').children.some(r=>r.className.includes('is-selected')),false);
+ assert.equal(h.el('prototype-download').disabled,true);
+});
+test('UI01-12 product assets contain no frontend external network entry points',()=>{
+ const html=readFileSync(new URL('./prototype.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('./style.css',import.meta.url),'utf8');
+ const networkFixture=JSON.parse(readFileSync(new URL('../tests/prototype_ui_security.json',import.meta.url),'utf8'));
+ assert.doesNotMatch(source,new RegExp(networkFixture.forbidden_runtime_pattern));
+ assert.doesNotMatch(html,/(?:src|href)\s*=\s*["'](?:https?:|\/\/)/i);
+ assert.doesNotMatch(css,/@import|url\s*\(/i);
+ const ids=[...html.matchAll(/id="(prototype-[^"]+)"/g)].map(m=>m[1]);
+ const required=['prototype-form','prototype-query','prototype-search','prototype-status','prototype-choices','prototype-selection','prototype-selected-title','prototype-download','prototype-file','prototype-file-title','prototype-file-path','prototype-file-size','prototype-file-sha','prototype-clear','prototype-interpret','prototype-ai-status','prototype-interpretation','prototype-interpretation-query','prototype-interpretation-mode','prototype-search-intent'];
+ assert.deepEqual(ids.slice().sort(),required.slice().sort());
+});
+test('UI01-13 displayed size is derived from validated backend bytes',async()=>{
+ const h=harness();const work=submit(h);const r=results();r.candidates[1].byteSize=2131934;
+ h.take('prototype_search').resolve(r);await work;
+ assert.equal(h.el('prototype-choices').children[1].children[1].textContent,'2.03 MiB');
+});
+test('UI01-14 dynamic result titles remain text rather than HTML',async()=>{
+ const h=harness();const work=submit(h);const r=results();r.candidates[1].title=JSON.parse(readFileSync(new URL('../tests/prototype_ui_security.json',import.meta.url),'utf8')).hostile_title;
+ h.take('prototype_search').resolve(r);await work;
+ assert.equal(h.el('prototype-choices').children[1].children[0].textContent,r.candidates[1].title);
+ assert.doesNotMatch(source,/innerHTML|insertAdjacentHTML/);
+});
+
+const interpret=h=>h.el('prototype-interpret').handlers.click();
+const intent=()=>({kind:'intent',query:'Big Buck Bunny',choice_mode:'ask'});
+async function interpreted(h) {
+ h.el('prototype-query').value='Big Buck Bunny';
+ const work=interpret(h);h.take('interpret_local_request').resolve(intent());await work;
+}
+test('INTENT-UI-15 typed Intent is displayed without starting search or changing input',async()=>{
+ const h=harness();h.el('prototype-query').value='Find Big Buck Bunny';
+ const work=interpret(h);const req=h.take('interpret_local_request');
+ assert.deepEqual(Object.keys(req.args),['query']);assert.equal(req.args.query,'Find Big Buck Bunny');
+ assert.equal(h.el('prototype-ai-status').textContent,'Interpreting locally…');
+ req.resolve(intent());await work;
+ assert.equal(h.el('prototype-interpretation').hidden,false);
+ assert.equal(h.el('prototype-interpretation-query').textContent,'Big Buck Bunny');
+ assert.equal(h.el('prototype-interpretation-mode').textContent,'ask');
+ assert.equal(h.el('prototype-query').value,'Find Big Buck Bunny');
+ assert.deepEqual(h.calls.map(c=>c.command),['interpret_local_request']);
+});
+test('INTENT-UI-16 Reject displays an English explanation and never starts search',async()=>{
+ const h=harness();h.el('prototype-query').value='an unclear request';
+ const work=interpret(h);h.take('interpret_local_request').resolve({kind:'reject',reason:'semantic_authority'});await work;
+ assert.equal(h.el('prototype-interpretation').hidden,true);
+ assert.match(h.el('prototype-ai-status').textContent,/Please rephrase/);
+ assert.equal(h.el('prototype-query').value,'an unclear request');assert.equal(h.calls.length,1);
+});
+test('INTENT-UI-17 server errors preserve input, hide old Intent and restore controls',async()=>{
+ for(const code of ['unavailable','timeout','invalid_response']) {
+  const h=harness();await interpreted(h);const work=interpret(h);
+  h.take('interpret_local_request').reject({code,message:'private error text'});await work;
+  assert.equal(h.el('prototype-interpretation').hidden,true);
+  assert.equal(h.el('prototype-interpretation-query').textContent,'');
+  assert.equal(h.el('prototype-query').value,'Big Buck Bunny');
+  assert.equal(h.el('prototype-query').disabled,false);assert.equal(h.el('prototype-interpret').disabled,false);
+  assert.equal(h.calls.length,2);assert.doesNotMatch(h.el('prototype-ai-status').textContent,/private/);
+ }
+});
+test('INTENT-UI-18 duplicate and competing actions while interpreting issue no extra IPC',async()=>{
+ const h=harness();h.el('prototype-query').value='Big Buck Bunny';const work=interpret(h);
+ await interpret(h);await submit(h);await h.el('prototype-clear').handlers.click();await h.el('prototype-download').handlers.click();
+ assert.equal(h.calls.length,1);assert.equal(h.el('prototype-interpret').disabled,true);
+ assert.equal(h.el('prototype-search').disabled,true);
+ h.take('interpret_local_request').resolve(intent());await work;
+ assert.equal(h.el('prototype-search').disabled,false);
+});
+test('INTENT-UI-19 changed input invalidates stale success and failure without locking the UI',async()=>{
+ for(const failed of [false,true]) {
+  const h=harness();h.el('prototype-query').value='Big Buck Bunny';const work=interpret(h);
+  h.el('prototype-query').value='new subject';h.el('prototype-query').handlers.input();
+  const changedStatus=h.el('prototype-ai-status').textContent;
+  const request=h.take('interpret_local_request');failed?request.reject({code:'timeout'}):request.resolve(intent());
+  await work;
+  assert.equal(h.el('prototype-interpretation').hidden,true);assert.equal(h.el('prototype-query').value,'new subject');
+  assert.equal(h.el('prototype-ai-status').textContent,changedStatus);
+  assert.equal(h.el('prototype-query').disabled,false);assert.equal(h.el('prototype-interpret').disabled,false);
+ }
+});
+test('INTENT-UI-20 interpretation preserves the existing selection session and download receipt flow',async()=>{
+ const h=harness();await selected(h);await interpreted(h);
+ assert.equal(h.el('prototype-download').disabled,false);assert.equal(h.el('prototype-selection').hidden,false);
+ const work=h.el('prototype-download').handlers.click();const request=h.take('prototype_download');
+ assert.equal(request.args.sessionId,nonce);assert.equal(request.args.index,1);
+ request.resolve({title:'one',filePath:'Downloads/PULQVA/new.webm',byteSize:300,sha256:'b'.repeat(64)});await work;
+ assert.equal(h.el('prototype-file').hidden,false);
+});
+test('INTENT-UI-21 malformed or substituted IPC shapes cannot show a successful Intent',async()=>{
+ const bad=[null,'raw model text',{kind:'other'},{...intent(),choice_mode:'shell'},
+  {...intent(),query:''},{...intent(),query:'я'.repeat(257)},{...intent(),command:'run'},
+  {kind:'reject',reason:'other'},{kind:'reject',reason:'semantic_authority',query:'injected'}];
+ for(const value of bad) {
+  const h=harness();h.el('prototype-query').value='Big Buck Bunny';const work=interpret(h);
+  h.take('interpret_local_request').resolve(value);await work;
+  assert.equal(h.el('prototype-interpretation').hidden,true);
+  assert.match(h.el('prototype-ai-status').textContent,/failed validation/);assert.equal(h.calls.length,1);
+ }
+});
+test('INTENT-UI-22 Clear and editing remove the prior local interpretation',async()=>{
+ const h=harness();await interpreted(h);h.el('prototype-query').handlers.input();
+ assert.equal(h.el('prototype-interpretation').hidden,true);
+ await interpreted(h);const work=h.el('prototype-clear').handlers.click();
+ h.take('prototype_clear').resolve();await work;
+ assert.equal(h.el('prototype-interpretation').hidden,true);assert.equal(h.el('prototype-interpretation-query').textContent,'');
+});
+test('INTENT-UI-23 an in-flight Tor search also blocks interpretation',async()=>{
+ const h=harness();const work=submit(h);await interpret(h);
+ assert.deepEqual(h.calls.map(c=>c.command),['prototype_search']);
+ h.take('prototype_search').resolve(results());await work;
+ assert.equal(h.el('prototype-interpret').disabled,false);
+});
+
+const searchTerms=h=>h.el('prototype-search-intent').handlers.click();
+const searchResults=()=>({...results(),query:'Big Buck Bunny'});
+test('INTENT02-27 verified terms search uses exact normalized query and explicit second-result session choice',async()=>{
+ const h=harness();h.el('prototype-query').value='Find an animated film about Big Buck Bunny';
+ const work=interpret(h);h.take('interpret_local_request').resolve(intent());await work;
+ assert.equal(h.el('prototype-search-intent').disabled,false);assert.equal(h.calls.length,1);
+ const search=searchTerms(h);const req=h.take('prototype_search');
+ assert.equal(req.args.query,'Big Buck Bunny');assert.deepEqual(Object.keys(req.args),['query']);
+ assert.equal(h.el('prototype-query').value,'Find an animated film about Big Buck Bunny');
+ req.resolve(searchResults());await search;
+ assert.equal(h.el('prototype-choices').children.length,2);
+ const selectedWork=choose(h,1);const choice=h.take('prototype_select');
+ assert.equal(choice.args.sessionId,nonce);assert.equal(choice.args.index,1);
+ choice.resolve({sessionId:nonce,index:1,title:'one'});await selectedWork;
+ assert.equal(h.el('prototype-selected-title').textContent,'one');
+ assert.deepEqual(h.calls.map(c=>c.command),['interpret_local_request','prototype_search','prototype_select']);
+});
+test('INTENT02-28 Reject and model error revoke earlier verified terms',async()=>{
+ for(const reject of [true,false]) {
+  const h=harness();await interpreted(h);const work=interpret(h);const req=h.take('interpret_local_request');
+  reject?req.resolve({kind:'reject',reason:'semantic_authority'}):req.reject({code:'unavailable'});
+  await work;const count=h.calls.length;await searchTerms(h);
+  assert.equal(h.calls.length,count);assert.equal(h.el('prototype-search-intent').disabled,true);
+  assert.equal(h.el('prototype-choices').children.length,0);
+ }
+});
+test('INTENT02-29 text changes with or without events and edit-restore revoke verified terms',async()=>{
+ for(const mode of ['event','silent','restore']) {
+  const h=harness();await interpreted(h);h.el('prototype-query').value='another film';
+  if(mode!=='silent')h.el('prototype-query').handlers.input();
+  if(mode==='restore'){h.el('prototype-query').value='Big Buck Bunny';h.el('prototype-query').handlers.input();}
+  const count=h.calls.length;await searchTerms(h);
+  assert.equal(h.calls.length,count);assert.equal(h.el('prototype-search-intent').disabled,true);
+ }
+});
+test('INTENT02-30 duplicate terms clicks and competing busy actions cause one search only',async()=>{
+ const h=harness();await interpreted(h);const work=searchTerms(h);
+ await searchTerms(h);await interpret(h);await submit(h);await h.el('prototype-clear').handlers.click();
+ assert.equal(h.calls.filter(c=>c.command==='prototype_search').length,1);
+ assert.equal(h.el('prototype-search-intent').disabled,true);
+ h.take('prototype_search').resolve(searchResults());await work;
+ assert.equal(h.calls.length,2);assert.equal(h.el('prototype-search-intent').disabled,true);
+});
+test('INTENT02-31 Clear and malformed IPC output cannot authorize a terms search',async()=>{
+ const h=harness();await interpreted(h);const clear=h.el('prototype-clear').handlers.click();
+ h.take('prototype_clear').resolve();await clear;const count=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,count);
+ const work=interpret(h);h.take('interpret_local_request').resolve({...intent(),choice_mode:'shell'});await work;
+ const before=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,before);
+ assert.equal(h.el('prototype-search-intent').disabled,true);
+});
+test('INTENT02-32 Tor failure consumes verified terms with no results, selection or automatic retry',async()=>{
+ const h=harness();await interpreted(h);const work=searchTerms(h);
+ h.take('prototype_search').reject({message:'Tor unavailable'});await work;
+ assert.equal(h.el('prototype-choices').children.length,0);assert.equal(h.el('prototype-download').disabled,true);
+ assert.equal(h.el('prototype-status').textContent,'Tor unavailable');
+ const count=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,count);
+ assert.equal(h.calls.some(c=>c.command==='prototype_select'||c.command==='prototype_download'),false);
+});
+test('INTENT02-33 autopilot never triggers automatic search, selection or download',async()=>{
+ const h=harness();h.el('prototype-query').value='Choose a rabbit film for me';
+ const work=interpret(h);h.take('interpret_local_request').resolve({...intent(),choice_mode:'autopilot'});await work;
+ assert.equal(h.calls.length,1);assert.equal(h.el('prototype-interpretation-mode').textContent,'autopilot');
+ const search=searchTerms(h);h.take('prototype_search').resolve(searchResults());await search;
+ assert.deepEqual(h.calls.map(c=>c.command),['interpret_local_request','prototype_search']);
+ assert.equal(h.el('prototype-selection').hidden,true);assert.equal(h.el('prototype-download').disabled,true);
+});
+test('INTENT02-34 copied primitive terms resist response mutation and altered display is refused',async()=>{
+ const h=harness();h.el('prototype-query').value='Find the rabbit film';const work=interpret(h);const response=intent();
+ h.take('interpret_local_request').resolve(response);await work;response.query='tampered terms';response.choice_mode='autopilot';
+ const search=searchTerms(h);const req=h.take('prototype_search');assert.equal(req.args.query,'Big Buck Bunny');
+ req.resolve(searchResults());await search;
+ for(const field of ['prototype-interpretation-query','prototype-interpretation-mode']) {
+  const other=harness();await interpreted(other);other.el(field).textContent='tampered display';
+  const count=other.calls.length;await searchTerms(other);assert.equal(other.calls.length,count);
+  assert.equal(other.el('prototype-search-intent').disabled,true);
+ }
+});
+test('INTENT02-35 ordinary keyword search uses the original input and invalidates prior terms',async()=>{
+ const h=harness();await interpreted(h);const search=submit(h);const req=h.take('prototype_search');
+ assert.equal(req.args.query,'countdown');req.resolve(results());await search;
+ const count=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,count);
+});
+test('INTENT02-36 invalid SearchView cannot render candidates or enable download',async()=>{
+ const h=harness();await interpreted(h);const work=searchTerms(h);const r=searchResults();r.candidates[1].index=4;
+ h.take('prototype_search').resolve(r);await work;
+ assert.equal(h.el('prototype-choices').children.length,0);assert.equal(h.el('prototype-download').disabled,true);
+ assert.equal(h.el('prototype-search-intent').disabled,true);
+});
+test('INTENT02-37 stale AI completion and forged visible button cannot start a search',async()=>{
+ const h=harness();h.el('prototype-query').value='Big Buck Bunny';const work=interpret(h);
+ h.el('prototype-query').value='new subject';h.el('prototype-query').handlers.input();
+ h.take('interpret_local_request').resolve(intent());await work;
+ h.el('prototype-search-intent').disabled=false;h.el('prototype-interpretation').hidden=false;
+ h.el('prototype-interpretation-query').textContent='forged terms';
+ const count=h.calls.length;await searchTerms(h);assert.equal(h.calls.length,count);
+ assert.equal(h.el('prototype-search-intent').disabled,true);
 });
