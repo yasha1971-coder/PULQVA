@@ -1,0 +1,69 @@
+{
+  "protocol": "MODEL-IPC-01/PREPARE-v1",
+  "date": "2026-11-04",
+  "phase": "PREPARE",
+  "source_head": "16bc9686bc2f3cdad66d77b861eebb66d4b0c1d9",
+  "pr": 101,
+  "branch": "fix/windows-official-tor-runtime",
+  "assets": {
+    "cli": {
+      "bytes": 9052672,
+      "sha256": "c4dc5742c5dfa02b3b43f9f1839f2977c7ffc2e4ce79410f2a324943dac501d3",
+      "origin": "owner-reported; rehash before execution"
+    },
+    "model": {
+      "filename": "Qwen_Qwen3.5-4B-Q4_K_M.gguf",
+      "bytes": 3013027808,
+      "sha256": "13c16f426047e2de38cd075bdade4a7bcbc8c774384876f677740cda65f8a983",
+      "origin": "owner-reported; rehash before execution"
+    }
+  },
+  "launcher": "existing IsolatedChild::spawn; zero network capabilities; no ACL/security policy changes; no unrestricted fallback",
+  "proposed_limits": {
+    "child_deadline_seconds": 180,
+    "cleanup_seconds": 5,
+    "combined_output_bytes": 1048576,
+    "ctx_size": 4096,
+    "predict": 512,
+    "threads": 4,
+    "no_warmup": true
+  },
+  "preconditions": [
+    "Read exact production schema and typed parser before fixing public prompt/schema and hashes",
+    "Validate local fixed-drive non-reparse CLI/model/schema/cwd before reading or launching; no network paths",
+    "Hash CLI and GGUF before spawn; record DLL dependencies and actual hashes without claiming EXE hash pins DLLs",
+    "Freeze prompt/schema/flags/manifest/evaluator and source hashes before any probe",
+    "Reuse existing artifact workflow; build and deterministic tests only in CI; real model ignored/explicit owner invocation"
+  ],
+  "constraints": [
+    "stdout and stderr currently share a pipe: bounded diagnostic-aware framing required; never accept arbitrary JSON substring",
+    "No GUI/Tor/working binary/kernel edits",
+    "Any model/runtime access denial must retain Windows error; no ACL broadening",
+    "Only strict typed validated intent can pass; generated text is never executed",
+    "Direct-network egress remains NOT_TESTED absent independent observation"
+  ],
+  "planned_probes": [
+    "process",
+    "model_loading",
+    "bounded_output",
+    "typed_decoding",
+    "pid_cleanup",
+    "direct_network_egress"
+  ],
+  "receipt_requirements": [
+    "matrix_receipt.json with all probes represented even on readiness failure",
+    "monotonic durations; null with reason when unavailable",
+    "source/runtime/model/prompt/schema/flags hashes and OS/toolchain",
+    "PASS/FAIL/SKIP/ERROR per probe; separate NOT_TESTED claim for egress",
+    "raw fixed-public output bounded by cap; exact OS errors; exit and cleanup status"
+  ],
+  "current_evidence": {
+    "ci_head": "16bc9686bc2f3cdad66d77b861eebb66d4b0c1d9",
+    "rust_check_run": 41792945529,
+    "ipc_build_run": 41792945578,
+    "conclusion": "success",
+    "scope": "existing source CI only; no new witness build or Qwen execution"
+  },
+  "next_action": "IMPLEMENT: add bounded ignored real-model witness using existing launcher and production typed boundary; extend existing exact-head artifact CI and owner runbook. Do not run old PING/PONG as model evidence.",
+  "status": "PREPARED_NOT_IMPLEMENTED"
+}

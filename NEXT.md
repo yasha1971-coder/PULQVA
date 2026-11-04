@@ -20,3 +20,10 @@ ONE NEXT ACTION for lane A: reconcile its task/INDEX and relevant integration st
 Decision: [decisions/MODEL_AUTOSTART_01.md](decisions/MODEL_AUTOSTART_01.md). Windows AppContainer stdio PING/PONG PASS on actual owner PC (f389cfd); automatic GUI Qwen, pinned CLI/model package, full egress confinement and clean-machine release remain PENDING / NOT TESTED. Do not misreport production module exposure at c01dbe9 as model integration. Preserve existing manual-server prototype; no unrestricted launcher or security bypass.
 
 ONE NEXT ACTION for PR101: MODEL-IPC-01 / phase A — run read-only `tools/windows/model_ipc_assets.ps1` against the owner's local PULQVA root and capture actual CLI/server/GGUF SHA-256 and sizes. Script committed at 69da1812153ead4905a653df5f4efecd3a6e006c; no model was executed, and no qualifying CLI binary is yet known. Only after identities are grounded, create one bounded Windows AppContainer model stdio witness. No GUI/model-package changes until real owner acceptance. The independent T069 queue above is unchanged.
+
+
+## PR101 MODEL-IPC-01 — PREPARE checkpoint (2026-11-04)
+
+Actual head 16bc9686bc2f3cdad66d77b861eebb66d4b0c1d9; existing-head rust-check 41792945529 and IPC artifact 41792945578 completed success. Owner supplied CLI/GGUF identities; see `recovery/evidence/model-ipc-01-prepare-20261104.json`. Identities are owner-reported, not independently rehashed here. Existing launcher merges stderr/stdout and does not grant model read ACLs. No witness code, new build, GUI/Tor/security change or real Qwen execution in this phase. Global last_verified_commit preserved. Local old checkout Git access returned Permission denied; authoritative source was read through GitHub.
+
+ONE NEXT ACTION for PR101: IMPLEMENT the bounded ignored Windows model CLI witness, production typed decoding, existing exact-head CI artifact and exact owner runbook from this manifest. Freeze final public prompt/schema/hash/flags before launch; fail closed on access denial. Real owner test and egress observation remain NOT TESTED. Do not use old PING/PONG or CI compilation as Qwen evidence.

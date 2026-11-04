@@ -345,5 +345,14 @@
     "observed_at": "2026-10-05T23:29:48Z",
     "digest_origin": "GitHub release asset digest, independently matched against downloaded full bytes",
     "scope": "Archive identity and standard-library archive member hashing only; no executable launch, repinning or product acceptance"
+  },
+  "model_ipc_01": {
+    "phase": "PREPARE",
+    "status": "PREPARED_NOT_IMPLEMENTED",
+    "source_head": "16bc9686bc2f3cdad66d77b861eebb66d4b0c1d9",
+    "checkpoint": "recovery/evidence/model-ipc-01-prepare-20261104.json",
+    "ci": "existing-head CI success; new witness not built",
+    "model_execution": "NOT_TESTED",
+    "next_action": "IMPLEMENT: add bounded ignored real-model witness using existing launcher and production typed boundary; extend existing exact-head artifact CI and owner runbook. Do not run old PING/PONG as model evidence."
   }
 }
