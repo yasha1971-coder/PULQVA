@@ -189,10 +189,15 @@ impl IsolatedChild{
   Self::spawn_inner(executable,args,cwd,None)
  }
  fn spawn_inner(executable:&Path,args:&[OsString],cwd:&Path,stderr:Option<H>)->io::Result<Self>{
+  Self::spawn_prepared(executable,args,cwd,stderr,|_|Ok(()))
+ }
+ fn spawn_prepared(executable:&Path,args:&[OsString],cwd:&Path,stderr:Option<H>,
+  prepare:impl FnOnce(H)->io::Result<()>)->io::Result<Self>{
   regular_path(executable,false)?;regular_path(cwd,true)?;
   let exe=wide(executable.as_os_str())?;let cwd=wide(cwd.as_os_str())?;
   let mut command=command(executable,args)?;
   let mut profile=Profile::create()?;
+  prepare(profile.sid)?;
   let job=Handle::new(unsafe{CreateJobObjectW(std::ptr::null_mut(),std::ptr::null())})?;
   let mut limits:ExtendedLimits=unsafe{zeroed()};limits.basic.flags=JOB_KILL_ON_CLOSE;
   check(unsafe{SetInformationJobObject(job.0,9,(&mut limits as *mut ExtendedLimits).cast(),size_of::<ExtendedLimits>() as u32)})?;
@@ -369,3 +374,7 @@ impl Drop for IsolatedChild{fn drop(&mut self){if self.close().is_err(){if let S
 #[cfg(test)]
 #[path = "model_ipc_witness.rs"]
 mod model_ipc_witness;
+
+#[path = "windows_completion.rs"]
+mod windows_completion;
+pub use windows_completion::{BundledIntentError, interpret_bundled};

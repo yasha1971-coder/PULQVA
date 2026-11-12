@@ -1,4 +1,4 @@
-//! Development-only, manually started local model. This does not qualify model egress isolation.
+//! Local model interpretation through the owned Windows worker or the non-Windows development adapter.
 use pulqva_core::{ChoiceMode, Interpretation};
 use pulqva_intent_http::{
     IntentHttpError, LoopbackIntentEndpoint, build_interpretation_request, interpret_via_loopback,
@@ -80,15 +80,42 @@ fn interpret_at(query: &str, endpoint: LoopbackIntentEndpoint) -> Result<LocalIn
     interpret_via_loopback(endpoint, &request).map(view).map_err(Into::into)
 }
 
-/// One fixed IPv4 loopback endpoint; no URL/port, prompt/schema, proxy or route from IPC.
-/// Returns typed data only. It never starts Tor, searches, downloads or launches a model.
+/// IPC accepts only request text. Windows starts the pinned worker inside an owned Job.
+/// Returns typed data only. Tor search and download require their own actions.
 #[tauri::command]
-pub async fn interpret_local_request(query: String) -> Result<LocalInterpretation, LocalIntentError> {
+pub async fn interpret_local_request(_app: tauri::AppHandle, query: String) -> Result<LocalInterpretation, LocalIntentError> {
+    #[cfg(windows)]
+    let location = {
+        use tauri::Manager;
+        let paths = _app.path();
+        let unavailable = |_| LocalIntentError::new(LocalIntentErrorCode::Unavailable, "The bundled local model is unavailable.");
+        (paths.resource_dir().map_err(unavailable)?, paths.local_data_dir().map_err(unavailable)?)
+    };
     let guard = InferenceGuard::acquire()?;
     tauri::async_runtime::spawn_blocking(move || {
         let _guard = guard;
-        let endpoint = LoopbackIntentEndpoint::new(18081, Duration::from_secs(60))?;
-        interpret_at(&query, endpoint)
+        #[cfg(windows)]
+        {
+            use pulqva_intent_server::windows_isolation::{BundledIntentError, interpret_bundled};
+            if query.trim().is_empty() || query.len() > 4096 || query.contains('\0') {
+                return Err(LocalIntentError::from(IntentHttpError::InvalidPlan));
+            }
+            interpret_bundled(&location.0, &location.1, &query).map(view).map_err(|error| {
+                match error {
+                    BundledIntentError::InvalidOutput => LocalIntentError::new(
+                        LocalIntentErrorCode::InvalidResponse, "The local model response failed strict validation."),
+                    BundledIntentError::Io(ref e) if e.kind() == std::io::ErrorKind::TimedOut =>
+                        LocalIntentError::new(LocalIntentErrorCode::Timeout, "The local model timed out."),
+                    BundledIntentError::Io(_) => LocalIntentError::new(
+                        LocalIntentErrorCode::Unavailable, "The bundled local model could not run."),
+                }
+            })
+        }
+        #[cfg(not(windows))]
+        {
+            let endpoint = LoopbackIntentEndpoint::new(18081, Duration::from_secs(60))?;
+            interpret_at(&query, endpoint)
+        }
     }).await.map_err(|_| LocalIntentError::new(LocalIntentErrorCode::WorkerFailed, "The local interpretation worker failed."))?
 }
 

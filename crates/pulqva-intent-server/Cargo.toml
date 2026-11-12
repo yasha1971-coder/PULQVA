@@ -11,6 +11,6 @@ pulqva-intent-http = { path = "../pulqva-intent-http" }
 serde_json = "1"
 
 
-[dev-dependencies]
+[target.'cfg(windows)'.dependencies]
 pulqva-intent-json = { path = "../pulqva-intent-json" }
 sha2 = "0.11"

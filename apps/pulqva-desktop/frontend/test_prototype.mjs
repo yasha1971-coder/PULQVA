@@ -64,7 +64,7 @@ test('PT-UI-08 download cannot start before explicit selection',async()=>{
 test('UI01-09 English product window is truthful about AI and size',()=>{
  const html=readFileSync(new URL('./prototype.html',import.meta.url),'utf8');
  assert.match(html,/<html lang="en">/);assert.match(html,/Find what matters\./);
- assert.match(html,/Keyword search · Local AI development mode/);assert.match(html,/up to 8 MiB/);
+ assert.match(html,/Keyword search · Local AI/);assert.match(html,/up to 8 MiB/);
  assert.match(html,/Saved and verified/);assert.doesNotMatch(html,/AI Ready|Tor Connected|100 MB|sample results/i);
 });
 test('UI01-10 selected styling requires matching backend confirmation',async()=>{

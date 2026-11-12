@@ -58,7 +58,7 @@
     aiStatus("Interpretation is separate from keyword search.");
   }
   const aiErrors = {
-    unavailable: "Local AI is unavailable. Start the local Qwen server and try again.",
+    unavailable: "Local AI is unavailable. Check your application files and try again.",
     timeout: "Local AI timed out. Try again when the server is ready.",
     invalid_response: "The local model response failed validation. No search was started.",
     invalid_request: "Please enter a valid request for local interpretation.",
