@@ -10,6 +10,7 @@ build = "build.rs"
 
 [dependencies]
 pulqva-core = { path = "../../../crates/pulqva-core" }
+pulqva-intent-http = { path = "../../../crates/pulqva-intent-http" }
 pulqva-discovery = { path = "../../../crates/pulqva-discovery" }
 pulqva-privacy = { path = "../../../crates/pulqva-privacy" }
 serde = { version = "1", features = ["derive"] }
@@ -25,6 +26,9 @@ tauri = { version = "=2.11.6" }
 tauri-runtime = { version = "=2.11.3", default-features = false }
 tauri-runtime-wry = { version = "=2.11.4", default-features = false }
 tauri-macros = { version = "=2.6.3", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+pulqva-intent-server = { path = "../../../crates/pulqva-intent-server" }
 
 [build-dependencies]
 tauri-build = { version = "=2.6.3", features = [] }

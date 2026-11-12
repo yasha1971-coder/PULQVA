@@ -601,7 +601,9 @@ version = "0.0.0"
 dependencies = [
  "pulqva-core",
  "pulqva-intent-http",
+ "pulqva-intent-json",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

@@ -185,18 +185,24 @@ fn search_impl(query: String, resources: PathBuf, app_data: PathBuf) -> Result<A
     let mut directory = owned_child(&app_data.join("prototype-runtime"))?;
     let layout = AppRuntimeLayout::new(&directory.0)?;
     let plan = build_bundled_sidecar_materialization_plan(&layout)?;
-    let plan = validate_packaged_sidecar_sources(resolve_bundled_sidecar_sources(resources, plan)?)?;
+    let plan = validate_packaged_sidecar_sources(resolve_bundled_sidecar_sources(resources.clone(), plan)?)?;
     let (layout, ytdlp) = prepare_materialized_ytdlp_prelaunch(layout, &plan, |p,r,a| {
         ytdlp_materialize::materialize_verified_ytdlp(p,r,a).map(|v| v.path().to_path_buf())
     })?;
+    #[cfg(windows)]
+    let mut arti = crate::official_tor_host::launch(&resources, layout.root())?;
+    #[cfg(not(windows))]
+    let mut arti = {
     let (layout, arti_path) = prepare_materialized_arti_prelaunch(layout, &plan, |p,r,a| {
         arti_materialize::materialize_verified_arti(p,r,a).map(|v| v.path().to_path_buf())
     })?;
     let arti_plan = ArtiRuntimePlan::new(arti_path, layout.tor_config_file()?,
         layout.tor_cache_dir()?, layout.tor_state_dir()?,
         TorSocksEndpoint::new(DEFAULT_TOR_SOCKS_PORT).map_err(DownloadActionError::from)?);
-    let mut arti = launch_prepared_arti(prepare_arti_runtime(arti_plan).map_err(DownloadActionError::from)?)
+    let arti = launch_prepared_arti(prepare_arti_runtime(arti_plan).map_err(DownloadActionError::from)?)
         .map_err(DownloadActionError::from)?;
+        arti
+    };
     let diagnostics = crate::tor_diagnostics::enabled(
         std::env::var_os("PULQVA_TOR_DIAGNOSTICS").as_deref());
     let (readiness, trace) = if diagnostics {
@@ -319,7 +325,7 @@ pub async fn prototype_search(query: String, app: tauri::AppHandle,
     validate_query(query.clone())?;
     let paths = PrototypeRuntimePaths::from_app(&app)?;
     let engine = Arc::clone(&state.engine);
-    tauri::async_runtime::spawn_blocking(move || {
+    spawn_backend_task(move || {
         let mut engine = engine.try_lock().map_err(busy)?;
         if let Some(mut previous) = engine.active.take() { previous.close()?; }
         let active = search_with_paths(query, &paths)?;
@@ -349,7 +355,7 @@ pub async fn prototype_download(session_id: String, index: usize, app: tauri::Ap
     state: tauri::State<'_, PrototypeState>) -> Result<FileView, PrototypeError> {
     let paths = PrototypeRuntimePaths::from_app(&app)?;
     let engine = Arc::clone(&state.engine);
-    tauri::async_runtime::spawn_blocking(move || {
+    spawn_backend_task(move || {
         let mut engine = engine.try_lock().map_err(busy)?;
         let active = engine.active.as_mut().ok_or_else(|| error("session-missing", "Search again."))?;
         active.authorize(&session_id, index)?;
@@ -365,7 +371,7 @@ pub async fn prototype_download(session_id: String, index: usize, app: tauri::Ap
 #[tauri::command]
 pub async fn prototype_clear(state: tauri::State<'_, PrototypeState>) -> Result<(), PrototypeError> {
     let engine = Arc::clone(&state.engine);
-    tauri::async_runtime::spawn_blocking(move || {
+    spawn_backend_task(move || {
         let mut engine = engine.try_lock().map_err(busy)?;
         if let Some(mut active) = engine.active.take() { active.close()?; }
         Ok(())
@@ -471,5 +477,34 @@ mod tests {
         let a = token().unwrap(); let b = token().unwrap();
         assert_eq!(a.len(), 64); assert_ne!(a,b);
         assert!(a.bytes().all(|b| b.is_ascii_hexdigit()));
+    }
+}
+
+// Windows HTTPS rejects entered Tokio contexts too. Reuse the proven joined
+// worker; retain the original non-Windows command path on this branch.
+#[cfg(not(windows))]
+use tauri::async_runtime::spawn_blocking as spawn_backend_task;
+#[cfg(windows)]
+fn spawn_backend_task<T, F>(operation: F) -> tauri::async_runtime::JoinHandle<Result<T, PrototypeError>>
+where T: Send + 'static, F: FnOnce() -> Result<T, PrototypeError> + Send + 'static {
+    tauri::async_runtime::spawn_blocking(move || {
+        std::thread::Builder::new().name("pulqva-windows-backend".into()).spawn(operation)
+            .map_err(|_| error("backend-worker-unavailable", "Backend worker could not start."))?
+            .join().map_err(|_| error("backend-task-failed", "Backend operation could not finish."))?
+    })
+}
+#[cfg(all(test, windows))]
+mod windows_backend_context_tests {
+    use super::*;
+    #[test]
+    fn blocking_pool_has_tokio_context_but_production_worker_does_not() {
+        tauri::async_runtime::block_on(async {
+            let entered = tauri::async_runtime::spawn_blocking(||
+                tauri::async_runtime::TokioHandle::try_current().is_ok()).await.unwrap();
+            assert!(entered, "regression must reproduce the original Tokio context");
+            let detached = spawn_backend_task(|| Ok(
+                tauri::async_runtime::TokioHandle::try_current().is_err())).await.unwrap().unwrap();
+            assert!(detached, "production coordinator must remain outside Tokio");
+        });
     }
 }
