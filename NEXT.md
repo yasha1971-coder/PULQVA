@@ -90,3 +90,7 @@ fail without a saved receipt. Real Qwen, Windows host cleanup and network egress
 
 ONE NEXT ACTION: observe exact new-head deterministic CI; after acceptance, address
 receipt schema/provenance validation before any costly owner witness execution.
+
+## Windows Tor network observer calibration — PENDING
+
+Diagnostic branch audit/windows-tor-observer-8b01623d, PR #101 parent 8b01623d8a66c06d05cad89a0e472c8712623b2e, build run 43185557030. This isolated hosted Windows job checks positive controls for WFP TCPv4 and DNS Client ETW, captures a matrix receipt, and restores the runner audit policy. Product execution is pending. Next: inspect the receipt before implementing ZIP-level traffic and Tor-loss checks.

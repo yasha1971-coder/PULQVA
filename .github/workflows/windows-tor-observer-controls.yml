@@ -1,0 +1,24 @@
+name: Windows Tor observer positive controls
+on:
+  push:
+    branches:
+      - audit/windows-tor-observer-8b01623d
+permissions:
+  contents: read
+jobs:
+  observer:
+    runs-on: windows-2025
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Observe direct IPv4 TCP and a fresh DNS query
+        shell: pwsh
+        run: ./tools/windows/tor_observer_controls.ps1
+      - name: Save the observer receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-tor-observer-${{ github.run_id }}
+          path: ${{ runner.temp }}/pulqva-network-observer/matrix_receipt.json
+          if-no-files-found: error
+          retention-days: 14
