@@ -11,6 +11,9 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
+      - name: Verify exact WFP matcher with deterministic fixtures
+        shell: pwsh
+        run: ./tools/windows/tor_observer_controls.ps1 -SelfTest
       - name: Observe direct IPv4 TCP and a fresh DNS query
         shell: pwsh
         run: ./tools/windows/tor_observer_controls.ps1

@@ -94,3 +94,12 @@ receipt schema/provenance validation before any costly owner witness execution.
 ## Windows Tor network observer calibration — PENDING
 
 Diagnostic branch audit/windows-tor-observer-8b01623d, PR #101 parent 8b01623d8a66c06d05cad89a0e472c8712623b2e, build run 43185557030. This isolated hosted Windows job checks positive controls for WFP TCPv4 and DNS Client ETW, captures a matrix receipt, and restores the runner audit policy. Product execution is pending. Next: inspect the receipt before implementing ZIP-level traffic and Tor-loss checks.
+
+
+## Windows observer TCP-control correction — 2026-11-23
+
+Dedicated diagnostic branch; product PR101 remains 8b01623d. Prior control run45130473420 failed calibration: DNS17 events, completed direct TCP77ms, zero matched WFP records; preserved unchanged. That receipt cannot establish the missing-event cause or product privacy.
+
+Correction extends the same observer: capture PID/start/complete socket tuple and Security record bookmark; strictly match permitted outbound TCP5156 on full tuple and PID (decimal or explicit hex); allow fixed10s event delivery; preserve bounded candidate fields and read errors; read back enabled/restored audit policy. Twelve deterministic matcher cases PASS locally; hosted result PENDING. No product/runtime/package/security-contract change. No laptop audit-policy change, no Sysmon installation or model execution.
+
+ONE NEXT ACTION: observe the exact correction commit's single automatic Windows workflow, verify receipt/provenance/cleanup, then decide the next bounded package-audit step. No blind rerun or product privacy claim from calibration.
